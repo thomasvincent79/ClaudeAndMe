@@ -1,0 +1,186 @@
+<h1>Data tests &amp; unit tests</h1>
+<p class="lead">dbt has two families of tests. <strong>Data tests</strong> check the data that is actually in the warehouse after a build.
+<strong>Unit tests</strong> (new in 1.8) check your SQL logic against small hand-written inputs <em>before</em> building. Both exist in 1.8.6 and 1.12;
+the differences are mostly in the YAML syntax and its validation.</p>
+
+<div class="toc">
+  <a href="#kinds">1 · The kinds of tests</a>
+  <a href="#sim">2 · Data test simulator</a>
+  <a href="#unit">3 · Unit tests</a>
+  <a href="#versions">4 · 1.8.6 vs 1.12 syntax</a>
+  <a href="#best">5 · Best practices</a>
+</div>
+
+<h2 id="kinds">1 · The kinds of tests</h2>
+<div class="diagram">
+<svg viewBox="0 0 900 190" role="img" aria-label="Data test evaluation">
+  <rect class="d-box" x="10" y="60" width="170" height="70" rx="10"/>
+  <text class="d-txt" x="95" y="90" text-anchor="middle" font-weight="700">test SQL</text>
+  <text class="d-mut" x="95" y="108" text-anchor="middle">select the FAILING rows</text>
+  <rect class="d-box" x="235" y="60" width="170" height="70" rx="10"/>
+  <text class="d-txt" x="320" y="90" text-anchor="middle" font-weight="700">count(*) = failures</text>
+  <text class="d-mut" x="320" y="108" text-anchor="middle">optional: where, limit</text>
+  <rect class="d-box" x="460" y="45" width="190" height="100" rx="10" style="stroke:var(--accent)"/>
+  <text class="d-txt" x="555" y="75" text-anchor="middle" font-weight="700">severity: error?</text>
+  <text class="d-mut" x="555" y="95" text-anchor="middle">error_if (default != 0) → ERROR</text>
+  <text class="d-mut" x="555" y="111" text-anchor="middle">else warn_if (default != 0) → WARN</text>
+  <text class="d-mut" x="555" y="127" text-anchor="middle">else PASS</text>
+  <rect x="710" y="15" width="180" height="40" rx="8" fill="var(--del)"/><text class="d-txt" x="800" y="40" text-anchor="middle" font-weight="700">ERROR → skip children</text>
+  <rect x="710" y="75" width="180" height="40" rx="8" fill="var(--upd)"/><text class="d-txt" x="800" y="100" text-anchor="middle" font-weight="700">WARN → continue</text>
+  <rect x="710" y="135" width="180" height="40" rx="8" fill="var(--new)"/><text class="d-txt" x="800" y="160" text-anchor="middle" font-weight="700">PASS</text>
+  <path id="t1" class="d-line" d="M180 95 L235 95"/><path id="t2" class="d-line" d="M405 95 L460 95"/>
+  <path class="d-line" d="M650 80 L710 35"/><path class="d-line" d="M650 95 L710 95"/><path class="d-line" d="M650 110 L710 155"/>
+  <circle r="5" class="flow-dot"><animateMotion dur="1.4s" repeatCount="indefinite"><mpath href="#t1"/></animateMotion></circle>
+  <circle r="5" class="flow-dot"><animateMotion dur="1.4s" begin=".7s" repeatCount="indefinite"><mpath href="#t2"/></animateMotion></circle>
+</svg>
+</div>
+
+<div class="tbl-wrap card">
+<table class="prose">
+  <tr><th>Kind</th><th>Where</th><th>What it checks</th><th>When it runs</th></tr>
+  <tr><td><strong>Generic data test</strong></td><td>YAML (<code>data_tests:</code>) on a model, column, source, seed or snapshot</td>
+      <td>Reusable test macros: <code>unique</code>, <code>not_null</code>, <code>accepted_values</code>, <code>relationships</code>, plus packages (dbt_utils, dbt_expectations) or your own <code>{% test %}</code> macros</td><td>After the model is built (<code>dbt test</code> / <code>dbt build</code>)</td></tr>
+  <tr><td><strong>Singular data test</strong></td><td>A <code>.sql</code> file in <code>tests/</code></td><td>Any one-off business rule written as "select the bad rows"</td><td>After the referenced models</td></tr>
+  <tr><td><strong>Unit test</strong> <span class="tag v18">1.8+</span></td><td>YAML (<code>unit_tests:</code>)</td><td>The model's SQL logic on mocked inputs (<code>given</code>) against an <code>expect</code>ed output</td><td>Before the model is built in <code>dbt build</code>. Needs only the parent tables' schemas (<code>--empty</code> helps in CI)</td></tr>
+  <tr><td>Model contract</td><td><code>contract: {enforced: true}</code></td><td>Column names and types (plus constraints where the warehouse enforces them)</td><td>At build time, preflight</td></tr>
+</table>
+</div>
+
+<h2 id="sim">2 · Data test simulator</h2>
+<p>An <code>orders</code> model with four planted problems: a null customer, a duplicated id, a typo in a status, and an orphan customer. Pick a test and play with its config.</p>
+<div class="sim" id="testsim">
+  <div class="controls" style="margin-bottom:8px"><span class="ctl-label">Test</span><div id="t-test"></div></div>
+  <div class="controls" style="margin-bottom:8px">
+    <span class="ctl-label">severity</span><div id="t-sev"></div>
+    <span class="ctl-label">warn_if</span><input id="t-warnif" class="btn" style="width:70px;font-family:monospace" />
+    <span class="ctl-label">error_if</span><input id="t-errorif" class="btn" style="width:70px;font-family:monospace" />
+  </div>
+  <div class="controls" style="margin-bottom:12px">
+    <span class="ctl-label">where</span><div id="t-where"></div>
+    <span class="ctl-label">store_failures</span><div id="t-store"></div>
+  </div>
+  <div class="sim-cols">
+    <div>
+      <div class="pane-title"><span>analytics.orders</span><span>customers.id ∈ {101, 102, 104, 105}</span></div>
+      <div id="t-table"></div>
+      <div id="t-result"></div>
+    </div>
+    <div>
+      <div class="pane-title"><span>compiled test query</span></div>
+      <div id="t-sql"></div>
+    </div>
+  </div>
+  <div id="t-yaml"></div>
+  <div class="legend">
+    <span><i style="background:var(--del)"></i>returned by the test query (failure)</span>
+    <span><i style="background:var(--gone)"></i>excluded by <code>where</code></span>
+  </div>
+</div>
+
+<h2 id="unit">3 · Unit tests</h2>
+<div class="diagram">
+<svg viewBox="0 0 900 170" role="img" aria-label="Unit test flow">
+  <rect x="10" y="20" width="200" height="130" rx="10" fill="var(--soft)" stroke="var(--line)"/>
+  <text class="d-txt" x="110" y="45" text-anchor="middle" font-weight="700">given</text>
+  <text class="d-mut" x="110" y="70" text-anchor="middle">ref('stg_orders') → 3 mock rows</text>
+  <text class="d-mut" x="110" y="90" text-anchor="middle">ref('stg_fx') → 1 mock row</text>
+  <text class="d-mut" x="110" y="115" text-anchor="middle">only the columns you use</text>
+  <rect x="300" y="45" width="220" height="80" rx="10" fill="var(--card)" stroke="var(--accent)"/>
+  <text class="d-txt" x="410" y="78" text-anchor="middle" font-weight="700">your model SQL</text>
+  <text class="d-mut" x="410" y="98" text-anchor="middle">refs replaced by CTEs of mocks</text>
+  <rect x="610" y="20" width="130" height="130" rx="10" fill="var(--soft)" stroke="var(--line)"/>
+  <text class="d-txt" x="675" y="45" text-anchor="middle" font-weight="700">actual</text>
+  <rect x="760" y="20" width="130" height="130" rx="10" fill="var(--soft)" stroke="var(--line)"/>
+  <text class="d-txt" x="825" y="45" text-anchor="middle" font-weight="700">expect</text>
+  <text class="d-mut" x="757" y="90" text-anchor="middle" font-size="18">=?</text>
+  <text class="d-mut" x="750" y="170" text-anchor="middle">diff shown on failure</text>
+  <path id="u1" class="d-line" d="M210 85 L300 85"/><path id="u2" class="d-line" d="M520 85 L610 85"/>
+  <circle r="5" class="flow-dot"><animateMotion dur="1.4s" repeatCount="indefinite"><mpath href="#u1"/></animateMotion></circle>
+  <circle r="5" class="flow-dot"><animateMotion dur="1.4s" begin=".7s" repeatCount="indefinite"><mpath href="#u2"/></animateMotion></circle>
+</svg>
+</div>
+
+<div class="file">models/fct_orders_unit_tests.yml (same syntax in 1.8.6 and 1.12)</div>
+<pre class="code">unit_tests:
+  - name: test_amount_converted_to_eur
+    model: fct_orders
+    given:
+      - input: ref(<span class="s">'stg_orders'</span>)
+        rows:
+          - {id: 1, amount: 100, currency: <span class="s">'USD'</span>}
+          - {id: 2, amount: 50,  currency: <span class="s">'EUR'</span>}
+      - input: ref(<span class="s">'stg_fx'</span>)
+        rows:
+          - {currency: <span class="s">'USD'</span>, rate_to_eur: 0.9}
+    expect:
+      rows:
+        - {id: 1, amount_eur: 90}
+        - {id: 2, amount_eur: 50}
+
+  - name: test_incremental_only_new_rows       <span class="c"># test the is_incremental() branch</span>
+    model: fct_orders
+    overrides:
+      macros:
+        <span class="h">is_incremental: true</span>
+    given:
+      - input: ref(<span class="s">'stg_orders'</span>)
+        rows: [{id: 1, updated_at: <span class="s">'2024-01-01'</span>}, {id: 2, updated_at: <span class="s">'2024-01-05'</span>}]
+      - input: this                            <span class="c"># current state of the incremental model</span>
+        rows: [{id: 1, updated_at: <span class="s">'2024-01-01'</span>}]
+    expect:
+      rows: [{id: 2, updated_at: <span class="s">'2024-01-05'</span>}]</pre>
+<p>Unit tests also accept <code>format: csv</code> or <code>sql</code> for fixtures, <code>fixture:</code> files in <code>tests/fixtures/</code>, and
+<code>overrides</code> for <code>vars</code>, <code>env_vars</code> and macros. Run them with <code>dbt test --select "test_type:unit"</code> and exclude them in production with
+<code>dbt build --exclude-resource-type unit_test</code>.</p>
+
+<h2 id="versions">4 · 1.8.6 vs 1.12 syntax</h2>
+<div class="vgrid">
+  <div class="vcol only-v18"><span class="tag v18">1.8.6</span>
+    <ul>
+      <li><code>data_tests:</code> is the new name, and <code>tests:</code> is still accepted (you can't use both on the same resource).</li>
+      <li>Test arguments sit directly under the test name (<code>values:</code>, <code>to:</code>, <code>field:</code>).</li>
+      <li>Unknown keys in YAML are silently ignored, so typos (e.g. <code>severty: warn</code>) go unnoticed.</li>
+      <li>Unit tests: new, but available in 1.8.</li>
+    </ul>
+<pre class="code">      - name: status
+        data_tests:
+          - accepted_values:
+              values: [<span class="s">'placed'</span>, <span class="s">'shipped'</span>]
+              config:
+                severity: warn</pre>
+  </div>
+  <div class="vcol only-v112"><span class="tag v112">1.12</span>
+    <ul>
+      <li>Generic-test arguments go under <code>arguments:</code> (1.10.5+). The old top-level form still works but raises a deprecation warning.</li>
+      <li>YAML is validated against a JSON schema: custom keys must move under <code>config: meta:</code> (warnings since 1.10, on by default for most adapters in 1.11).</li>
+      <li>A test <code>config</code> that is not a mapping raises <code>TestConfigNotDictError</code> (1.12).</li>
+      <li>Opt-in flag <code>require_sql_header_in_test_configs</code> allows <code>sql_header</code> in a generic test's config (1.12).</li>
+      <li>Disabling a model also disables its unit tests (1.11).</li>
+    </ul>
+<pre class="code">      - name: status
+        data_tests:
+          - accepted_values:
+              <span class="h">arguments:</span>
+                values: [<span class="s">'placed'</span>, <span class="s">'shipped'</span>]
+              config:
+                severity: warn</pre>
+  </div>
+</div>
+
+<h2 id="best">5 · Best practices</h2>
+<div class="cards">
+  <div class="card"><h3 style="margin-top:0">What to test</h3>
+    <ul><li>Every model's grain: <code>unique</code> + <code>not_null</code> on the primary key (or <code>dbt_utils.unique_combination_of_columns</code>).</li>
+      <li>Foreign keys with <code>relationships</code>, enums with <code>accepted_values</code>.</li>
+      <li>Sources: <code>freshness</code> plus key tests, so problems are caught at the entrance.</li>
+      <li>Snapshots &amp; incrementals: key tests are mandatory (see the other pages).</li></ul></div>
+  <div class="card"><h3 style="margin-top:0">Severity strategy</h3>
+    <ul><li><code>error</code> for things that make data wrong (grain, keys).</li>
+      <li><code>warn</code> + <code>error_if: "&gt;100"</code> for "a few bad rows are tolerable".</li>
+      <li><code>where</code> to scope a test to recent data on large tables (for example <code>"created_at &gt; current_date - 3"</code>).</li>
+      <li><code>store_failures: true</code> (or <code>--store-failures</code>) to investigate failing rows in the <code>_dbt_test__audit</code> schema.</li></ul></div>
+  <div class="card"><h3 style="margin-top:0">Unit test or data test?</h3>
+    <ul><li><strong>Unit</strong>: complex logic you write (case/when, regex, date math, window functions, the <code>is_incremental()</code> branch). Test edge cases that don't exist in prod yet.</li>
+      <li><strong>Data</strong>: assumptions about real data you don't control.</li>
+      <li>Run unit tests in dev/CI only. They test code, not data.</li></ul></div>
+</div>

@@ -1,0 +1,33 @@
+<h1>dbt mechanics, visually</h1>
+<p class="lead">One page per dbt topic. Each page has interactive simulators with concrete data and a "when to use what" section.
+Everything is written for two dbt Core versions at once: <span class="tag v18">1.8.6</span> (what you run today) and
+<span class="tag v112">1.12</span> (current v1). Use the switch at the top right to show one version or compare both.</p>
+
+<div class="cards">
+{{cards}}
+</div>
+
+<h2>What changed between 1.8.6 and 1.12 (for these topics)</h2>
+<div class="tbl-wrap card">
+<table class="prose">
+  <tr><th>Topic</th><th><span class="tag v18">1.8.6</span></th><th><span class="tag v112">1.12</span></th><th>Introduced in</th></tr>
+  <tr><td>Hard deletes in snapshots</td><td><code>invalidate_hard_deletes=true</code> (boolean)</td>
+      <td><code>hard_deletes: ignore | invalidate | new_record</code>, which adds the <code>dbt_is_deleted</code> column</td><td>1.9</td></tr>
+  <tr><td>Snapshot definition</td><td>SQL file with <code>{% snapshot %}</code> block, <code>target_schema</code> required</td>
+      <td>YAML snapshot (<code>relation: ref(...)</code>) or the legacy SQL block; <code>schema</code> optional (uses <code>generate_schema_name</code>)</td><td>1.9</td></tr>
+  <tr><td>Snapshot meta columns</td><td>Fixed names, <code>dbt_valid_to</code> null for current rows</td>
+      <td><code>snapshot_meta_column_names</code> to rename columns, <code>dbt_valid_to_current</code> to use a far-future date instead of null</td><td>1.9</td></tr>
+  <tr><td>Incremental strategies</td><td>append, merge, delete+insert, insert_overwrite (adapter-dependent)</td>
+      <td>+ <code>microbatch</code> (event_time, batch_size, begin, lookback, backfills, retry of failed batches)</td><td>1.9</td></tr>
+  <tr><td>Parallel microbatch</td><td>n/a</td><td><code>concurrent_batches</code>; parallel on Snowflake and BigQuery in 1.12</td><td>1.9 / 1.12</td></tr>
+  <tr><td>Tests</td><td><code>data_tests:</code> key (old <code>tests:</code> still accepted), <strong>unit tests introduced</strong></td>
+      <td>Same model, plus stricter YAML validation (custom keys under <code>meta</code>), generic-test <code>arguments:</code>, opt-in <code>sql_header</code> in test configs</td><td>1.8 / 1.10 / 1.12</td></tr>
+</table>
+</div>
+
+<div class="callout">
+  <b>How to regenerate the pages</b>
+  <p>Edit the sources in <code>src/pages/*.html</code> and <code>src/js/*.js</code>, then run <code>python build.py</code>
+  (or <code>python build.py --serve</code> to also serve them on <code>localhost:8800</code>).
+  To add a topic (for example "sources &amp; freshness" or "materializations"), add a fragment and one entry in <code>THEMATICS</code> in <code>build.py</code>.</p>
+</div>

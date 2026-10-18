@@ -1,0 +1,748 @@
+<!doctype html>
+<html lang="en" data-ver="both">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Incremental strategies</title>
+<style>
+:root {
+  --bg: #f7f6f2; --card: #ffffff; --ink: #1c1c1a; --muted: #6a6963; --line: #e3e1d9; --soft: #efede6;
+  --accent: #ff694a;            /* dbt orange */
+  --v18: #3a6fd0; --v18-bg: #e6eefb;
+  --v112: #1f9d6b; --v112-bg: #e2f5ec;
+  --new: #d8f3e3; --new-ink: #146c43;
+  --upd: #fff0c9; --upd-ink: #8a5a00;
+  --del: #fde0dc; --del-ink: #a8281b;
+  --gone: #ececec; --gone-ink: #8d8d8d;
+  --code-bg: #1e1f24; --code-ink: #e7e7ea;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #141413; --card: #1e1e1c; --ink: #ecebe6; --muted: #a3a29b; --line: #34332f; --soft: #262624;
+    --accent: #ff8a70;
+    --v18: #86aef0; --v18-bg: #1d2a42;
+    --v112: #5fd3a2; --v112-bg: #173328;
+    --new: #183d2a; --new-ink: #8fe0b3;
+    --upd: #3d3115; --upd-ink: #f3cf7a;
+    --del: #45201c; --del-ink: #ffa597;
+    --gone: #2b2b2a; --gone-ink: #7c7c78;
+    --code-bg: #0e0e10; --code-ink: #e7e7ea;
+  }
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--ink);
+       font: 15.5px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+a { color: var(--accent); }
+code { font: .88em/1.4 ui-monospace, "Cascadia Code", Consolas, monospace; background: var(--soft);
+       padding: 1px 5px; border-radius: 4px; }
+h1 { font-size: 2rem; line-height: 1.2; margin: 8px 0 6px; }
+h2 { font-size: 1.4rem; margin: 44px 0 10px; padding-top: 8px; border-top: 1px solid var(--line); }
+h3 { font-size: 1.1rem; margin: 26px 0 8px; }
+.lead { color: var(--muted); font-size: 1.05rem; margin: 0 0 22px; max-width: 70ch; }
+p, li { max-width: 78ch; }
+
+/* ---------- header ---------- */
+.top { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 88%, transparent);
+       backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+.top-inner { max-width: 1180px; margin: 0 auto; padding: 10px 16px; display: flex; gap: 18px;
+             align-items: center; flex-wrap: wrap; }
+.brand { font-weight: 800; font-size: 1.1rem; color: var(--ink); text-decoration: none; }
+.brand span { color: var(--accent); margin-left: 2px; }
+.nav { display: flex; gap: 4px; flex-wrap: wrap; flex: 1; }
+.nav a { color: var(--muted); text-decoration: none; padding: 5px 10px; border-radius: 7px; font-size: .92rem; }
+.nav a:hover { background: var(--soft); color: var(--ink); }
+.nav a.on { background: var(--soft); color: var(--ink); font-weight: 600; }
+.vswitch { display: flex; align-items: center; gap: 2px; background: var(--soft); padding: 3px; border-radius: 9px; }
+.vlabel { font-size: .78rem; color: var(--muted); padding: 0 6px; }
+.vswitch button { border: 0; background: transparent; color: var(--muted); font: 600 .85rem system-ui, sans-serif;
+                  padding: 5px 10px; border-radius: 7px; cursor: pointer; }
+.vswitch button.on { background: var(--card); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+.vswitch button[data-set-ver="v18"].on { color: var(--v18); }
+.vswitch button[data-set-ver="v112"].on { color: var(--v112); }
+
+main { max-width: 1180px; margin: 0 auto; padding: 24px 16px 40px; }
+.foot { max-width: 1180px; margin: 0 auto; padding: 20px 16px 40px; color: var(--muted); font-size: .85rem;
+        border-top: 1px solid var(--line); }
+
+/* ---------- version blocks ---------- */
+.tag { display: inline-block; font: 700 .72rem/1 system-ui, sans-serif; padding: 4px 7px; border-radius: 5px;
+       letter-spacing: .02em; vertical-align: middle; }
+.tag.v18 { background: var(--v18-bg); color: var(--v18); }
+.tag.v112 { background: var(--v112-bg); color: var(--v112); }
+.vgrid { display: grid; gap: 14px; grid-template-columns: 1fr; margin: 12px 0; }
+html[data-ver="both"] .vgrid { grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); }
+html[data-ver="v18"] .only-v112, html[data-ver="v112"] .only-v18 { display: none !important; }
+.vcol { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px;
+        border-top: 3px solid var(--line); min-width: 0; }
+.vcol.only-v18 { border-top-color: var(--v18); }
+.vcol.only-v112 { border-top-color: var(--v112); }
+.vcol > .tag:first-child { margin-bottom: 6px; }
+.vcol p:first-of-type { margin-top: 6px; }
+
+/* ---------- cards & callouts ---------- */
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
+.cards { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); margin: 14px 0; }
+a.theme-card { color: inherit; text-decoration: none; display: block; transition: border-color .15s, transform .15s; }
+a.theme-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+.theme-card h2 { border: 0; margin: 6px 0 4px; padding: 0; font-size: 1.15rem; color: var(--accent); }
+.theme-card p { margin: 0; color: var(--muted); font-size: .93rem; }
+.theme-icon { font-size: 1.6rem; }
+.callout { border-left: 4px solid var(--accent); background: var(--card); padding: 10px 14px; border-radius: 0 10px 10px 0;
+           margin: 14px 0; }
+.callout.tip { border-left-color: var(--v112); }
+.callout.warn { border-left-color: #d9a400; }
+.callout.danger { border-left-color: #d0402d; }
+.callout b:first-child { display: block; margin-bottom: 2px; }
+.callout p { margin: 4px 0; }
+.toc { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 6px; }
+.toc a { font-size: .88rem; text-decoration: none; padding: 4px 10px; border: 1px solid var(--line);
+         border-radius: 20px; color: var(--ink); background: var(--card); }
+.toc a:hover { border-color: var(--accent); }
+
+/* ---------- code ---------- */
+pre.code { background: var(--code-bg); color: var(--code-ink); border-radius: 10px; padding: 12px 14px; overflow-x: auto;
+           font: .82rem/1.55 ui-monospace, "Cascadia Code", Consolas, monospace; margin: 8px 0; }
+pre.code .c { color: #8b8fa3; }
+pre.code .k { color: #ff9a7a; }
+pre.code .s { color: #a5e0a0; }
+pre.code .h { background: rgba(255,214,102,.18); border-radius: 3px; padding: 0 2px; }
+.file { font: 600 .75rem ui-monospace, Consolas, monospace; color: var(--muted); margin-top: 10px; }
+
+/* ---------- tables ---------- */
+.tbl-wrap { overflow-x: auto; }
+table.dt { border-collapse: collapse; width: 100%; font: .82rem/1.35 ui-monospace, "Cascadia Code", Consolas, monospace; }
+table.dt th { text-align: left; color: var(--muted); font-weight: 600; padding: 6px 8px; border-bottom: 2px solid var(--line);
+              white-space: nowrap; }
+table.dt td { padding: 5px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; transition: background .5s; }
+table.dt tr.new td { background: var(--new); color: var(--new-ink); }
+table.dt tr.upd td { background: var(--upd); color: var(--upd-ink); }
+table.dt tr.del td { background: var(--del); color: var(--del-ink); }
+table.dt tr.gone td { background: var(--gone); color: var(--gone-ink); text-decoration: line-through; }
+table.dt td.cell-upd { background: var(--upd) !important; color: var(--upd-ink) !important; font-weight: 700; }
+table.dt td.meta { color: var(--muted); }
+table.dt td.null { color: var(--muted); font-style: italic; }
+table.dt tr.flash td { animation: flash 1.1s ease; }
+@keyframes flash { 0% { filter: brightness(1.35); transform: translateX(-6px); } 100% { filter: none; transform: none; } }
+table.prose { border-collapse: collapse; width: 100%; font-size: .9rem; }
+table.prose th, table.prose td { border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+table.prose th { color: var(--muted); font-weight: 600; }
+.yes { color: var(--v112); font-weight: 700; }
+.no { color: var(--muted); }
+
+/* ---------- simulators ---------- */
+.sim { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; margin: 16px 0; }
+.sim-head { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.sim-title { font-weight: 700; }
+.controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.ctl-label { font-size: .78rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-right: 2px; }
+.seg { display: inline-flex; background: var(--soft); border-radius: 9px; padding: 3px; gap: 2px; flex-wrap: wrap; }
+.seg button { border: 0; background: transparent; color: var(--muted); padding: 5px 10px; border-radius: 7px; cursor: pointer;
+              font: 600 .82rem ui-monospace, Consolas, monospace; }
+.seg button.on { background: var(--card); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+.seg button:disabled { opacity: .35; cursor: not-allowed; }
+.btn { border: 1px solid var(--line); background: var(--card); color: var(--ink); padding: 6px 12px; border-radius: 8px;
+       cursor: pointer; font: 600 .85rem system-ui, sans-serif; }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+.sim-cols { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr) minmax(0, 1.9fr); }
+@media (max-width: 860px) { .sim-cols { grid-template-columns: minmax(0, 1fr); } }
+.pane-title { font-size: .78rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 0 0 6px;
+              display: flex; justify-content: space-between; gap: 8px; }
+.narration { background: var(--soft); border-radius: 10px; padding: 10px 14px; margin: 12px 0 0; min-height: 3.2em; }
+.narration b { color: var(--accent); }
+.steps { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0 12px; }
+.step { border: 1px solid var(--line); background: var(--card); color: var(--muted); border-radius: 20px; padding: 4px 12px;
+        font: 600 .8rem system-ui, sans-serif; cursor: pointer; }
+.step.done { color: var(--ink); }
+.step.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: .78rem; color: var(--muted); margin-top: 10px; }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 4px; }
+.verdict { margin-top: 10px; padding: 10px 14px; border-radius: 10px; font-size: .9rem; }
+.verdict.ok { background: var(--new); color: var(--new-ink); }
+.verdict.bad { background: var(--del); color: var(--del-ink); }
+.verdict ul { margin: 4px 0 0; padding-left: 18px; }
+.sql-out { margin-top: 12px; }
+svg text { font-family: ui-monospace, Consolas, monospace; }
+.timeline-svg { width: 100%; height: auto; display: block; margin-top: 6px; }
+.badge { display: inline-block; font: 700 .7rem system-ui, sans-serif; padding: 2px 6px; border-radius: 4px;
+         background: var(--soft); color: var(--muted); }
+
+/* ---------- diagrams ---------- */
+.diagram { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin: 14px 0; overflow-x: auto; }
+.diagram svg { display: block; width: 100%; height: auto; min-width: 560px; }
+.d-box { fill: var(--soft); stroke: var(--line); }
+.d-txt { fill: var(--ink); font: 12px system-ui, sans-serif; }
+.d-mut { fill: var(--muted); font: 11px system-ui, sans-serif; }
+.d-line { stroke: var(--muted); stroke-width: 1.5; fill: none; }
+.d-acc { stroke: var(--accent); }
+.flow-dot { fill: var(--accent); }
+#incsim .sim-cols { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); }
+@media (max-width: 860px) { #incsim .sim-cols { grid-template-columns: minmax(0, 1fr); } }
+
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-inner">
+    <a class="brand" href="index.html">dbt<span>mechanics</span></a>
+    <nav class="nav">
+<a href="index.html" class="">Home</a>
+<a href="snapshots.html" class="">Snapshots & hard deletes</a>
+<a href="incremental.html" class="on">Incremental strategies</a>
+<a href="tests.html" class="">Data tests & unit tests</a>
+    </nav>
+    <div class="vswitch" role="group" aria-label="dbt version">
+      <span class="vlabel">dbt Core</span>
+      <button data-set-ver="v18">1.8.6</button>
+      <button data-set-ver="v112">1.12</button>
+      <button data-set-ver="both">Compare</button>
+    </div>
+  </div>
+</header>
+<main>
+<h1>Incremental strategies</h1>
+<p class="lead">An incremental model is built once in full, then on each run dbt only computes <em>new or changed</em> rows and folds them into the existing table.
+Two choices decide whether the result is correct: <strong>which rows your query selects</strong> (the <code>is_incremental()</code> filter) and
+<strong>how dbt writes them</strong> (the <code>incremental_strategy</code>). The simulator shows both on the same data.</p>
+
+<div class="toc">
+  <a href="#how">1 · Anatomy of an incremental run</a>
+  <a href="#sim">2 · Strategy simulator</a>
+  <a href="#strategies">3 · Each strategy</a>
+  <a href="#adapters">4 · Support per adapter</a>
+  <a href="#options">5 · Useful options</a>
+  <a href="#best">6 · Which one to choose</a>
+</div>
+
+<h2 id="how">1 · Anatomy of an incremental run</h2>
+<div class="diagram">
+<svg viewBox="0 0 900 200" role="img" aria-label="Incremental run flow">
+  <rect class="d-box" x="10" y="70" width="150" height="60" rx="10"/>
+  <text class="d-txt" x="85" y="96" text-anchor="middle" font-weight="700">source / ref</text>
+  <text class="d-mut" x="85" y="114" text-anchor="middle">all the data</text>
+  <rect class="d-box" x="215" y="55" width="200" height="90" rx="10" style="stroke:var(--accent)"/>
+  <text class="d-txt" x="315" y="82" text-anchor="middle" font-weight="700">your model's select</text>
+  <text class="d-mut" x="315" y="102" text-anchor="middle">{% if is_incremental() %}</text>
+  <text class="d-mut" x="315" y="118" text-anchor="middle">where … &gt; (select max(…) from {{ this }})</text>
+  <rect class="d-box" x="470" y="70" width="150" height="60" rx="10"/>
+  <text class="d-txt" x="545" y="96" text-anchor="middle" font-weight="700">temp relation</text>
+  <text class="d-mut" x="545" y="114" text-anchor="middle">model__dbt_tmp</text>
+  <rect x="675" y="55" width="215" height="90" rx="10" fill="var(--new)"/>
+  <text class="d-txt" x="782" y="82" text-anchor="middle" font-weight="700">incremental_strategy</text>
+  <text class="d-mut" x="782" y="100" text-anchor="middle">append · merge · delete+insert</text>
+  <text class="d-mut" x="782" y="116" text-anchor="middle">insert_overwrite · microbatch</text>
+  <text class="d-mut" x="782" y="132" text-anchor="middle">→ DML into {{ this }}</text>
+  <path id="i1" class="d-line" d="M160 100 L215 100"/>
+  <path id="i2" class="d-line" d="M415 100 L470 100"/>
+  <path id="i3" class="d-line" d="M620 100 L675 100"/>
+  <path class="d-line" d="M782 145 C782 185 315 185 315 145" stroke-dasharray="4 4"/>
+  <text class="d-mut" x="548" y="182" text-anchor="middle">{{ this }} is read to compute the filter (high-water mark)</text>
+  <text class="d-mut" x="315" y="40" text-anchor="middle">① which rows?</text>
+  <text class="d-mut" x="782" y="40" text-anchor="middle">② how are they written?</text>
+  <circle r="5" class="flow-dot"><animateMotion dur="1.2s" repeatCount="indefinite"><mpath href="#i1"/></animateMotion></circle>
+  <circle r="5" class="flow-dot"><animateMotion dur="1.2s" begin=".4s" repeatCount="indefinite"><mpath href="#i2"/></animateMotion></circle>
+  <circle r="5" class="flow-dot"><animateMotion dur="1.2s" begin=".8s" repeatCount="indefinite"><mpath href="#i3"/></animateMotion></circle>
+</svg>
+</div>
+<p>The first run (or <code>--full-refresh</code>) ignores the filter and builds the whole table. <code>is_incremental()</code> is true only when the table exists,
+the model is incremental, and it isn't a full refresh. <code>on_schema_change</code> (<code>ignore</code> by default, or <code>fail</code>, <code>append_new_columns</code>,
+<code>sync_all_columns</code>) decides what happens when the columns of the select change.</p>
+
+<h2 id="sim">2 · Strategy simulator</h2>
+<p>Table <code>fct_orders</code>, partitioned by <code>event_date</code>, unique key <code>id</code>. Today (01-04) the source has two corrected amounts, two new orders,
+and a <strong>late-arriving</strong> order dated 01-01. A full refresh would give exactly the source table. Does your strategy get there?</p>
+
+<div class="sim" id="incsim">
+  <div class="controls" style="margin-bottom:8px"><span class="ctl-label">Strategy</span><div id="inc-strat"></div></div>
+  <div class="controls" style="margin-bottom:8px" id="inc-filter-wrap"><span class="ctl-label">is_incremental() filter</span><div id="inc-filter"></div></div>
+  <div class="controls" style="margin-bottom:8px;display:none" id="inc-lookback-wrap"><span class="ctl-label">lookback (batches)</span><div id="inc-lookback"></div></div>
+  <div class="sim-cols">
+    <div>
+      <div class="pane-title"><span>source: stg_orders (today)</span></div>
+      <div id="inc-source"></div>
+      <div class="pane-title" style="margin-top:14px"><span id="inc-input-title">input</span></div>
+      <div id="inc-input"></div>
+    </div>
+    <div>
+      <div class="pane-title"><span>target: fct_orders</span><button class="btn" id="inc-play">▶ Animate</button></div>
+      <div class="steps" id="inc-steps"></div>
+      <div id="inc-target"></div>
+      <div class="narration" id="inc-narr"></div>
+      <div id="inc-verdict"></div>
+    </div>
+  </div>
+  <div class="vgrid" style="grid-template-columns:repeat(auto-fit,minmax(340px,1fr))">
+    <div id="inc-model"></div>
+    <div id="inc-sql"></div>
+  </div>
+  <div class="legend">
+    <span><i style="background:var(--new)"></i>inserted</span>
+    <span><i style="background:var(--upd)"></i>updated (changed cells bold)</span>
+    <span><i style="background:var(--gone)"></i>deleted / overwritten</span>
+  </div>
+</div>
+
+<div class="callout tip"><b>Things to try</b>
+  <p>• <code>append</code>: ids 3 and 5 are duplicated. append only works for immutable events.</p>
+  <p>• <code>insert_overwrite</code> + "updated_at &gt; max" filter: partitions 01-01 and 01-02 are replaced by <em>only the changed rows</em>, so ids 1, 2 and 4 are lost.
+     Switch to the "event_date window" filter: now only the late row is missed.</p>
+  <p>• <code>merge</code> + "event_date window": the late order 8 (dated 01-01) is outside the window and is never loaded.</p>
+  <p class="only-v112">• <code>microbatch</code>: raise <code>lookback</code> to 3 to catch the late order. Each extra batch costs one more query.</p>
+</div>
+
+<h2 id="strategies">3 · Each strategy in one sentence (plus the trap)</h2>
+<div class="cards">
+  <div class="card"><h3 style="margin-top:0">append</h3>
+    <p>Inserts the input rows. Never updates or deletes.</p>
+    <p><strong>Trap</strong>: re-processing a row creates a duplicate. Use it only for immutable, exactly-once data (logs, events) and keep the filter strict.</p></div>
+  <div class="card"><h3 style="margin-top:0">merge</h3>
+    <p><code>MERGE</code> on <code>unique_key</code>: update matches, insert the rest. Without <code>unique_key</code> it behaves like append.</p>
+    <p><strong>Trap</strong>: duplicate keys <em>in the input</em> make the merge fail ("non-deterministic"). On huge tables it scans the whole target unless you add <code>incremental_predicates</code>.</p></div>
+  <div class="card"><h3 style="margin-top:0">delete+insert</h3>
+    <p>Deletes target rows whose key is in the input, then inserts the input. Same result as merge in two statements.</p>
+    <p><strong>Trap</strong>: it is not atomic on every warehouse. Useful when merge is unavailable (Postgres &lt; 15) or slow, or with a coarse key like <code>date_day</code> to replace whole days.</p></div>
+  <div class="card"><h3 style="margin-top:0">insert_overwrite</h3>
+    <p>Replaces <strong>entire partitions</strong> touched by the input (BigQuery, Spark, Databricks). No key matching, so it's cheap on big partitioned tables.</p>
+    <p><strong>Trap</strong>: the select must return the <em>complete</em> contents of each partition it touches, or the missing rows are deleted.
+      (On Snowflake, insert_overwrite rewrites the whole table.)</p></div>
+  <div class="card only-v112"><h3 style="margin-top:0">microbatch <span class="tag v112">1.9+</span></h3>
+    <p>dbt splits the work into time batches (<code>event_time</code>, <code>batch_size</code>) and replaces each batch. You write the query for one batch, with no <code>is_incremental()</code>.</p>
+    <p><strong>Trap</strong>: every upstream model needs <code>event_time</code> or it's fully scanned for every batch. Late data older than <code>lookback</code> is missed.</p></div>
+</div>
+
+<h2 id="adapters">4 · Support per adapter</h2>
+<div class="tbl-wrap card">
+<table class="prose">
+  <tr><th>Adapter</th><th>append</th><th>merge</th><th>delete+insert</th><th>insert_overwrite</th><th class="only-v112">microbatch <span class="tag v112">1.9+</span> → implemented as</th><th>Default</th></tr>
+  <tr><td>Postgres</td><td class="yes">✓</td><td class="yes">✓ (PG 15+)</td><td class="yes">✓</td><td class="no">–</td><td class="only-v112">merge (needs <code>unique_key</code>)</td><td>append, or delete+insert if <code>unique_key</code></td></tr>
+  <tr><td>Redshift</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">–</td><td class="only-v112">delete+insert</td><td>append, or delete+insert if <code>unique_key</code></td></tr>
+  <tr><td>Snowflake</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓ whole table</td><td class="only-v112">delete+insert (parallel batches)</td><td>merge</td></tr>
+  <tr><td>BigQuery</td><td class="no">–</td><td class="yes">✓</td><td class="no">–</td><td class="yes">✓ partitions</td><td class="only-v112">insert_overwrite (needs <code>partition_by</code>; parallel in 1.12)</td><td>merge</td></tr>
+  <tr><td>Databricks</td><td class="yes">✓</td><td class="yes">✓ (Delta)</td><td class="yes">✓ (recent)</td><td class="yes">✓ partitions</td><td class="only-v112">replace_where</td><td>merge</td></tr>
+  <tr><td>Spark</td><td class="yes">✓</td><td class="yes">✓ (Delta/Iceberg/Hudi)</td><td class="no">–</td><td class="yes">✓ partitions</td><td class="only-v112">insert_overwrite (needs <code>partition_by</code>)</td><td>append</td></tr>
+</table>
+</div>
+<p style="font-size:.85rem;color:var(--muted)">Support depends on the adapter version, not only on dbt Core. Check your adapter's page when in doubt.
+Databricks also has <code>replace_where</code> (replace the rows matching a predicate). You can write a custom strategy with a <code>get_incremental_&lt;name&gt;_sql</code> macro (not on BigQuery or Spark).</p>
+
+<h2 id="options">5 · Useful options</h2>
+<div class="vgrid">
+  <div class="vcol only-v18"><span class="tag v18">1.8.6</span>
+<div class="file">models/fct_orders.sql: merge with options</div>
+<pre class="code">{{ config(
+    materialized=<span class="s">'incremental'</span>,
+    incremental_strategy=<span class="s">'merge'</span>,
+    unique_key=<span class="s">'id'</span>,                 <span class="c">-- or a list: ['id', 'line_no']</span>
+    merge_exclude_columns=[<span class="s">'created_at'</span>], <span class="c">-- or merge_update_columns=[...]</span>
+    incremental_predicates=[
+      <span class="s">"DBT_INTERNAL_DEST.event_date &gt;= dateadd(day, -7, current_date)"</span>
+    ],
+    on_schema_change=<span class="s">'append_new_columns'</span>
+) }}
+select * from {{ ref(<span class="s">'stg_orders'</span>) }}
+<span class="k">{% if is_incremental() %}</span>
+  <span class="c">-- small overlap (>=, minus a margin) catches late rows; merge dedups them</span>
+  where updated_at &gt;= (select dateadd(hour, -3, max(updated_at)) from {{ this }})
+<span class="k">{% endif %}</span></pre>
+    <p>A late-data <strong>backfill</strong> means a manual <code>dbt run --full-refresh -s fct_orders</code>, or a var-driven filter
+       (<code>where event_date &gt;= '{{ var("from") }}'</code>).</p>
+  </div>
+  <div class="vcol only-v112"><span class="tag v112">1.12</span>
+    <p>Everything on the left still applies. For time-series models, microbatch adds:</p>
+<div class="file">models/staging/stg_orders.yml: enable upstream filtering</div>
+<pre class="code">models:
+  - name: stg_orders
+    config:
+      event_time: event_date</pre>
+<div class="file">models/fct_orders.sql</div>
+<pre class="code">{{ config(
+    materialized=<span class="s">'incremental'</span>,
+    incremental_strategy=<span class="s">'microbatch'</span>,
+    event_time=<span class="s">'event_date'</span>,
+    batch_size=<span class="s">'day'</span>,          <span class="c">-- hour | day | month | year</span>
+    begin=<span class="s">'2024-01-01'</span>,         <span class="c">-- start for the first build</span>
+    lookback=<span class="s">3</span>,                <span class="c">-- reprocess 3 previous batches</span>
+    concurrent_batches=<span class="k">true</span>,    <span class="c">-- optional, auto-detected</span>
+    full_refresh=<span class="k">false</span>          <span class="c">-- recommended: backfill instead</span>
+) }}
+select * from {{ ref(<span class="s">'stg_orders'</span>) }}</pre>
+<pre class="code"><span class="c"># targeted backfill, one query per day</span>
+dbt run -s fct_orders --event-time-start <span class="s">"2024-09-01"</span> --event-time-end <span class="s">"2024-09-04"</span>
+<span class="c"># only re-run the batches that failed</span>
+dbt retry</pre>
+    <p>All event times are treated as UTC. Use <code>ref('x').render()</code> to opt one input out of filtering (for example a small dimension).</p>
+  </div>
+</div>
+
+<h2 id="best">6 · Which one to choose</h2>
+<div class="tbl-wrap card">
+<table class="prose">
+  <tr><th>Your data looks like…</th><th>Choose</th><th>Why</th></tr>
+  <tr><td>Immutable events, never updated, loaded exactly once</td><td><code>append</code></td><td>Cheapest: no lookup in the target. Add a <code>unique</code> test to catch replays.</td></tr>
+  <tr><td>Rows updated in place, with a reliable primary key, small to medium table</td><td><code>merge</code></td><td>Upsert semantics, safe to re-run (idempotent), tolerant of overlapping filters.</td></tr>
+  <tr><td>Same, but very large target</td><td><code>merge</code> + <code>incremental_predicates</code> / clustering, or <code>delete+insert</code></td><td>Limits the scan of the target to recent data.</td></tr>
+  <tr><td>Recompute whole days at a time (aggregates by day)</td><td><code>delete+insert</code> with <code>unique_key='date_day'</code>, or <code>insert_overwrite</code></td><td>Replaces a full slice: no per-row matching, handles deletions inside the slice.</td></tr>
+  <tr><td>Big partitioned table on BigQuery / Spark / Databricks</td><td><code>insert_overwrite</code></td><td>Partition swaps are much cheaper than MERGE. The query must return full partitions.</td></tr>
+  <tr class="only-v112"><td>Big time-series fact, late data, regular backfills</td><td><code>microbatch</code> <span class="tag v112">1.9+</span></td><td>Batches are idempotent and retryable, backfills are a CLI flag, and the batch query is simple to read.</td></tr>
+  <tr class="only-v18"><td>Big time-series fact, late data, regular backfills</td><td><code>insert_overwrite</code> / <code>delete+insert</code> on a date key + a lookback window in the filter <span class="tag v18">1.8.6</span></td><td>This is what microbatch automates in 1.9+.</td></tr>
+  <tr><td>Rows can be hard-deleted in the source</td><td>None of them handles this on its own</td><td>Use a full refresh, a slice replacement (<code>insert_overwrite</code>/<code>delete+insert</code> by date), or a snapshot.</td></tr>
+</table>
+</div>
+
+<ul>
+  <li><strong>Make re-runs safe</strong>: prefer strategies where running the same input twice gives the same table (merge, delete+insert, insert_overwrite, microbatch).</li>
+  <li><strong>Overlap your filter</strong> (<code>&gt;=</code>, minus a margin) rather than using a strict <code>&gt;</code>, and let the strategy deduplicate. Rows sharing the max timestamp, or late rows, are then not lost.</li>
+  <li><strong>Deduplicate the input</strong> on <code>unique_key</code> (<code>qualify row_number() … = 1</code>) before a merge.</li>
+  <li><strong>Test</strong>: <code>unique</code> + <code>not_null</code> on the key, and periodically compare to a full refresh (row counts and sums per day).</li>
+  <li><strong>Schedule a full refresh</strong> (weekly or monthly) if the model can drift. With microbatch, prefer a backfill over the period instead.</li>
+</ul>
+
+</main>
+<footer class="foot">
+  Built with <code>python build.py</code>. Version-specific blocks are tagged
+  <span class="tag v18">1.8.6</span> and <span class="tag v112">1.12</span>; use the switch at the top to show one or compare both.
+</footer>
+<script>
+// ---------- version switch (shared by every page) ----------
+const VER_KEY = "dbt-mechanics-version";
+function getVer() { return document.documentElement.dataset.ver; }
+function setVer(v) {
+  document.documentElement.dataset.ver = v;
+  document.querySelectorAll("[data-set-ver]").forEach(b => b.classList.toggle("on", b.dataset.setVer === v));
+  try { localStorage.setItem(VER_KEY, v); } catch (e) { /* storage unavailable: fine */ }
+  document.dispatchEvent(new CustomEvent("verchange", { detail: v }));
+}
+document.querySelectorAll("[data-set-ver]").forEach(b => b.addEventListener("click", () => setVer(b.dataset.setVer)));
+let savedVer = "both";
+try { savedVer = localStorage.getItem(VER_KEY) || "both"; } catch (e) { /* ignore */ }
+setVer(savedVer);
+
+// ---------- small helpers ----------
+function $(sel, root = document) { return root.querySelector(sel); }
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+
+// Build a segmented control. options: [{value, label, disabled, title}]
+function segmented(container, options, value, onChange) {
+  container.innerHTML = "";
+  container.classList.add("seg");
+  options.forEach(o => {
+    const b = document.createElement("button");
+    b.textContent = o.label; b.dataset.value = o.value;
+    if (o.title) b.title = o.title;
+    b.disabled = !!o.disabled;
+    b.classList.toggle("on", o.value === value);
+    b.addEventListener("click", () => {
+      container.querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b));
+      onChange(o.value);
+    });
+    container.appendChild(b);
+  });
+}
+
+// Render rows as a table. cols: [{key, label, cls?, fmt?}], rows carry an optional _cls and _cellCls {key: cls}
+function renderTable(el, cols, rows, opts = {}) {
+  const head = "<tr>" + cols.map(c => `<th>${esc(c.label)}</th>`).join("") + "</tr>";
+  const body = rows.map(r => {
+    const tds = cols.map(c => {
+      const v = r[c.key];
+      const isNull = v === null || v === undefined;
+      const cls = [c.cls || "", isNull ? "null" : "", (r._cellCls && r._cellCls[c.key]) || ""].join(" ").trim();
+      const shown = isNull ? "null" : (c.fmt ? c.fmt(v, r) : v);
+      return `<td class="${cls}">${esc(shown)}</td>`;
+    }).join("");
+    return `<tr class="${r._cls || ""} ${r._flash ? "flash" : ""}">${tds}</tr>`;
+  }).join("");
+  el.innerHTML = `<div class="tbl-wrap"><table class="dt">${head}${body || `<tr><td colspan="${cols.length}" class="null">${opts.empty || "(empty)"}</td></tr>`}</table></div>`;
+}
+
+// =====================================================================
+// Incremental strategy simulator: same target table + same source,
+// each strategy applies its own DML. Phases are animated, and the final table
+// is checked against the source ("what a full refresh would give").
+// =====================================================================
+(function () {
+  const root = document.getElementById("incsim");
+  if (!root) return;
+
+  const r = (id, event_date, amount, updated_at) => ({ id, event_date, amount, updated_at });
+  const TARGET = [
+    r(1, "01-01", 10, "01-01"), r(2, "01-01", 20, "01-01"),
+    r(3, "01-02", 30, "01-02"), r(4, "01-02", 40, "01-02"),
+    r(5, "01-03", 50, "01-03"),
+  ];
+  const SOURCE = [
+    r(1, "01-01", 10, "01-01"), r(2, "01-01", 20, "01-01"),
+    r(3, "01-02", 35, "01-04"), r(4, "01-02", 40, "01-02"),
+    r(5, "01-03", 55, "01-04"), r(6, "01-03", 60, "01-04"),
+    r(7, "01-04", 70, "01-04"),
+    r(8, "01-01", 80, "01-04"),  // late-arriving event
+  ];
+  const SRC_NOTE = { 3: "amount corrected 30→35", 5: "amount corrected 50→55", 6: "new", 7: "new (today)", 8: "new, LATE: event of 01-01 arriving today" };
+
+  const STRATS = [
+    { id: "append", label: "append" },
+    { id: "merge", label: "merge" },
+    { id: "delete+insert", label: "delete+insert" },
+    { id: "insert_overwrite", label: "insert_overwrite" },
+    { id: "microbatch", label: "microbatch", ver: "v112" },
+  ];
+  const FILTERS = [
+    { id: "changed", label: "updated_at > max(updated_at)" },
+    { id: "window", label: "event_date >= max(event_date) - 1 day" },
+  ];
+
+  const st = { strat: "merge", filter: "changed", lookback: 1, phase: 0, timer: null };
+  const els = {
+    strat: $("#inc-strat", root), filter: $("#inc-filter", root), lookback: $("#inc-lookback", root),
+    filterWrap: $("#inc-filter-wrap", root), lookbackWrap: $("#inc-lookback-wrap", root),
+    source: $("#inc-source", root), input: $("#inc-input", root), inputTitle: $("#inc-input-title", root),
+    target: $("#inc-target", root), steps: $("#inc-steps", root), narr: $("#inc-narr", root),
+    verdict: $("#inc-verdict", root), model: $("#inc-model", root), sql: $("#inc-sql", root),
+    play: $("#inc-play", root),
+  };
+
+  const key = x => `${x.id}|${x.event_date}|${x.amount}`;
+  const clone = rows => rows.map(x => ({ id: x.id, event_date: x.event_date, amount: x.amount, updated_at: x.updated_at }));
+  const sortRows = rows => rows.sort((a, b) => a.id - b.id || (a._order || 0) - (b._order || 0));
+  const dayMinus = (d, n) => { const day = parseInt(d.slice(3), 10) - n; return "01-" + String(day).padStart(2, "0"); };
+
+  function modelInput() {
+    if (st.strat === "microbatch") return null; // per batch
+    if (st.filter === "changed") {
+      const mx = TARGET.map(x => x.updated_at).sort().pop();
+      return SOURCE.filter(x => x.updated_at > mx);
+    }
+    const mx = TARGET.map(x => x.event_date).sort().pop();
+    return SOURCE.filter(x => x.event_date >= dayMinus(mx, 1));
+  }
+
+  function batches() { // run "today" = 01-04, batch_size = day
+    const out = [];
+    for (let i = st.lookback; i >= 0; i--) out.push(dayMinus("01-04", i));
+    return out;
+  }
+
+  // Build phases: [{title, text, rows}] where rows carry display classes
+  function phases() {
+    const base = clone(TARGET);
+    const P = [{ title: "Before", text: "Target table as left by the previous run (yesterday).", rows: base.map(x => ({ ...x })) }];
+    const input = modelInput();
+    const s = st.strat;
+
+    if (s === "append") {
+      const after = base.map(x => ({ ...x })).concat(input.map(x => ({ ...x, _cls: "new", _flash: true })));
+      P.push({ title: "INSERT", text: `All ${input.length} input rows are inserted as-is. Existing rows are never looked at, so changed rows become duplicates.`, rows: sortRows(after) });
+    }
+
+    if (s === "merge") {
+      const byId = new Map(base.map(x => [x.id, { ...x }]));
+      let upd = 0, ins = 0;
+      input.forEach(n => {
+        const cur = byId.get(n.id);
+        if (cur) {
+          const cc = {};
+          ["event_date", "amount", "updated_at"].forEach(k => { if (cur[k] !== n[k]) cc[k] = "cell-upd"; });
+          Object.assign(cur, n, { _cls: Object.keys(cc).length ? "upd" : "", _cellCls: cc, _flash: true }); upd++;
+        } else { byId.set(n.id, { ...n, _cls: "new", _flash: true }); ins++; }
+      });
+      P.push({ title: "MERGE", text: `One statement: ${upd} input rows matched on unique_key → UPDATE, ${ins} not matched → INSERT. Rows that aren't in the input are left alone.`, rows: sortRows([...byId.values()]) });
+    }
+
+    if (s === "delete+insert") {
+      const ids = new Set(input.map(x => x.id));
+      const marked = base.map(x => ids.has(x.id) ? { ...x, _cls: "gone" } : { ...x });
+      P.push({ title: "1 · DELETE", text: `delete from target where id in (select id from tmp): ${marked.filter(x => x._cls).length} rows removed.`, rows: marked });
+      const after = base.filter(x => !ids.has(x.id)).concat(input.map(x => ({ ...x, _cls: "new", _flash: true })));
+      P.push({ title: "2 · INSERT", text: `insert into target select * from tmp: ${input.length} rows inserted. Same result as merge here, but done in 2 statements.`, rows: sortRows(after) });
+    }
+
+    if (s === "insert_overwrite") {
+      const parts = [...new Set(input.map(x => x.event_date))].sort();
+      const marked = base.map(x => parts.includes(x.event_date) ? { ...x, _cls: "gone" } : { ...x });
+      P.push({ title: "1 · DROP partitions", text: `The input touches partitions ${parts.join(", ")}. EVERY existing row in those partitions is removed, whether or not it is in the input.`, rows: marked });
+      const after = base.filter(x => !parts.includes(x.event_date)).concat(input.map(x => ({ ...x, _cls: "new", _flash: true })));
+      P.push({ title: "2 · WRITE partitions", text: `Partitions ${parts.join(", ")} now contain only the input rows. Other partitions are untouched.`, rows: sortRows(after) });
+    }
+
+    if (s === "microbatch") {
+      let cur = base.map(x => ({ ...x }));
+      batches().forEach(b => {
+        const batchRows = SOURCE.filter(x => x.event_date === b);
+        const marked = cur.map(x => ({ ...x, _cls: x.event_date === b ? "gone" : "", _flash: false, _cellCls: {} }));
+        P.push({ title: `batch ${b} · delete`, text: `Batch [${b}, ${dayMinus(b, -1)}): upstream refs are filtered automatically on event_time. Rows of this batch already in the target are replaced.`, rows: marked });
+        cur = cur.filter(x => x.event_date !== b).map(x => ({ ...x, _cls: "", _flash: false, _cellCls: {} }))
+          .concat(batchRows.map(x => ({ ...x, _cls: "new", _flash: true })));
+        sortRows(cur);
+        P.push({ title: `batch ${b} · insert`, text: `${batchRows.length} source rows with event_date in ${b} written. Each batch is an independent query that can be retried alone.`, rows: cur.map(x => ({ ...x })) });
+      });
+    }
+    return P;
+  }
+
+  function verdict(rows) {
+    const issues = [];
+    SOURCE.forEach(s => {
+      const got = rows.filter(x => x.id === s.id);
+      if (!got.length) issues.push(`id ${s.id} is missing${TARGET.some(t => t.id === s.id) ? " (it was in the target before: data loss)" : " (never loaded)"}`);
+      else if (got.length > 1) issues.push(`id ${s.id} is duplicated (${got.map(g => g.amount).join(" and ")})`);
+      else if (got[0].amount !== s.amount) issues.push(`id ${s.id} is stale: ${got[0].amount} instead of ${s.amount}`);
+    });
+    return issues;
+  }
+
+  const COLS = [{ key: "id", label: "id" }, { key: "event_date", label: "event_date" }, { key: "amount", label: "amount" }, { key: "updated_at", label: "updated_at", cls: "meta" }];
+
+  function modelSql() {
+    const s = st.strat;
+    if (s === "microbatch") {
+      return `<div class="file">models/fct_orders.sql · dbt 1.9+</div><pre class="code">{{ config(
+    materialized=<span class="s">'incremental'</span>,
+    incremental_strategy=<span class="s">'microbatch'</span>,
+    event_time=<span class="s">'event_date'</span>,
+    batch_size=<span class="s">'day'</span>,
+    begin=<span class="s">'2024-01-01'</span>,
+    <span class="h">lookback=${st.lookback}</span>${getVer() !== "v18" ? `,
+    unique_key=<span class="s">'id'</span>  <span class="c">-- required on Postgres only</span>` : ""}
+) }}
+<span class="c">-- no is_incremental() block: dbt filters the ref below per batch
+-- because stg_orders has event_time configured</span>
+select id, event_date, amount, updated_at
+from {{ ref(<span class="s">'stg_orders'</span>) }}</pre>`;
+    }
+    const cfg = {
+      "append": "",
+      "merge": `,\n    unique_key=<span class="s">'id'</span>`,
+      "delete+insert": `,\n    unique_key=<span class="s">'id'</span>`,
+      "insert_overwrite": `,\n    partition_by={<span class="s">'field'</span>: <span class="s">'event_date'</span>, <span class="s">'data_type'</span>: <span class="s">'date'</span>}`,
+    }[s];
+    const where = st.filter === "changed"
+      ? `where updated_at &gt; (select max(updated_at) from {{ this }})`
+      : `where event_date &gt;= (select max(event_date) - interval '1 day' from {{ this }})`;
+    return `<div class="file">models/fct_orders.sql</div><pre class="code">{{ config(
+    materialized=<span class="s">'incremental'</span>,
+    <span class="h">incremental_strategy=<span class="s">'${s}'</span></span>${cfg}
+) }}
+select id, event_date, amount, updated_at
+from {{ ref(<span class="s">'stg_orders'</span>) }}
+<span class="k">{% if is_incremental() %}</span>
+<span class="h">${where}</span>
+<span class="k">{% endif %}</span></pre>`;
+  }
+
+  function dmlSql() {
+    const s = st.strat;
+    const t = "analytics.fct_orders", tmp = "fct_orders__dbt_tmp";
+    const m = {
+      "append": `insert into ${t} (id, event_date, amount, updated_at)
+select id, event_date, amount, updated_at from ${tmp};`,
+      "merge": `merge into ${t} as DBT_INTERNAL_DEST
+using ${tmp} as DBT_INTERNAL_SOURCE
+  on DBT_INTERNAL_SOURCE.id = DBT_INTERNAL_DEST.id
+when matched then update set
+  event_date = DBT_INTERNAL_SOURCE.event_date,
+  amount = DBT_INTERNAL_SOURCE.amount, updated_at = DBT_INTERNAL_SOURCE.updated_at
+when not matched then insert (id, event_date, amount, updated_at)
+  values (DBT_INTERNAL_SOURCE.id, …);`,
+      "delete+insert": `delete from ${t}
+where (id) in (select distinct id from ${tmp});
+
+insert into ${t} (id, event_date, amount, updated_at)
+select id, event_date, amount, updated_at from ${tmp};`,
+      "insert_overwrite": `<span class="c">-- Spark / Databricks (dynamic partition overwrite)</span>
+insert overwrite table ${t}
+partition (event_date)
+select id, amount, updated_at, event_date from ${tmp};
+
+<span class="c">-- BigQuery: merge … on FALSE
+--   when not matched by source and event_date in unnest(dbt_partitions_for_replacement) then delete
+--   when not matched then insert …</span>`,
+      "microbatch": batches().map(b => `<span class="c">-- batch ${b} (Snowflake/Redshift use delete+insert, Postgres merge,
+--  BigQuery/Spark insert_overwrite, Databricks replace_where)</span>
+delete from ${t}
+where event_date &gt;= '2024-${b}' and event_date &lt; '2024-${dayMinus(b, -1)}';
+insert into ${t} select … from stg_orders
+where event_date &gt;= '2024-${b}' and event_date &lt; '2024-${dayMinus(b, -1)}';`).join("\n\n"),
+    };
+    return `<div class="file">what dbt runs (simplified)</div><pre class="code">${m[s]}</pre>`;
+  }
+
+  function stratsForVer() {
+    return STRATS.map(x => ({ value: x.id, label: x.label + (x.ver && getVer() === "both" ? " (1.9+)" : ""), disabled: x.ver === "v112" && getVer() === "v18",
+      title: x.ver === "v112" && getVer() === "v18" ? "microbatch arrives in dbt 1.9" : "" }));
+  }
+
+  function render() {
+    stopPlay();
+    if (getVer() === "v18" && st.strat === "microbatch") st.strat = "merge";
+    segmented(els.strat, stratsForVer(), st.strat, v => { st.strat = v; st.phase = 99; render(); });
+    segmented(els.filter, FILTERS.map(f => ({ value: f.id, label: f.label })), st.filter, v => { st.filter = v; st.phase = 99; render(); });
+    segmented(els.lookback, [1, 2, 3].map(n => ({ value: n, label: String(n) })), st.lookback, v => { st.lookback = v; st.phase = 99; render(); });
+    const mb = st.strat === "microbatch";
+    els.filterWrap.style.display = mb ? "none" : "";
+    els.lookbackWrap.style.display = mb ? "" : "none";
+
+    // source with notes
+    renderTable(els.source, COLS.concat([{ key: "note", label: "" }]), SOURCE.map(x => {
+      const tgt = TARGET.find(t => t.id === x.id);
+      return { ...x, note: SRC_NOTE[x.id] || "", _cls: !tgt ? "new" : tgt.amount !== x.amount ? "upd" : "" };
+    }));
+
+    // model input
+    const input = modelInput();
+    if (mb) {
+      els.inputTitle.textContent = `input: one query per batch (${batches().join(", ")})`;
+      renderTable(els.input, COLS.concat([{ key: "batch", label: "batch" }]),
+        SOURCE.filter(x => batches().includes(x.event_date)).map(x => ({ ...x, batch: x.event_date })).sort((a, b) => a.event_date < b.event_date ? -1 : 1));
+    } else {
+      els.inputTitle.textContent = `input: the model's select (is_incremental() = true) → ${input.length} rows`;
+      renderTable(els.input, COLS, input);
+    }
+
+    const P = phases();
+    if (st.phase >= P.length) st.phase = P.length - 1;
+    els.steps.innerHTML = "";
+    P.forEach((p, i) => {
+      const b = document.createElement("button");
+      b.className = "step" + (i === st.phase ? " on" : i < st.phase ? " done" : "");
+      b.textContent = p.title;
+      b.addEventListener("click", () => { stopPlay(); st.phase = i; render(); });
+      els.steps.appendChild(b);
+    });
+    const ph = P[st.phase];
+    renderTable(els.target, COLS, ph.rows);
+    els.narr.innerHTML = `<b>${esc(ph.title)}</b>: ${esc(ph.text)}`;
+
+    const final = P[P.length - 1].rows;
+    const issues = verdict(final);
+    if (st.phase === P.length - 1) {
+      els.verdict.className = "verdict " + (issues.length ? "bad" : "ok");
+      els.verdict.innerHTML = issues.length
+        ? `✗ Result differs from a full refresh (${final.length} rows vs ${SOURCE.length}):<ul>${issues.map(i => `<li>${esc(i)}</li>`).join("")}</ul>`
+        : `✓ Result equals a full refresh (${SOURCE.length} rows)`;
+    } else { els.verdict.className = "verdict"; els.verdict.innerHTML = ""; }
+    els.model.innerHTML = modelSql();
+    els.sql.innerHTML = dmlSql();
+  }
+
+  function stopPlay() { if (st.timer) { clearInterval(st.timer); st.timer = null; els.play.textContent = "▶ Animate"; } }
+  els.play.addEventListener("click", () => {
+    if (st.timer) { stopPlay(); return; }
+    const n = phases().length;
+    st.phase = 0; render();
+    els.play.textContent = "■ Stop";
+    const timer = setInterval(() => {
+      if (st.phase >= n - 1) { stopPlay(); return; }
+      st.phase += 1; st.timer = null; render(); st.timer = timer; els.play.textContent = "■ Stop";
+    }, 1500);
+    st.timer = timer;
+  });
+  document.addEventListener("verchange", () => render());
+  st.phase = 99;
+  render();
+})();
+
+</script>
+</body>
+</html>

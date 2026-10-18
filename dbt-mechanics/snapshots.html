@@ -1,0 +1,795 @@
+<!doctype html>
+<html lang="en" data-ver="both">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Snapshots & hard deletes</title>
+<style>
+:root {
+  --bg: #f7f6f2; --card: #ffffff; --ink: #1c1c1a; --muted: #6a6963; --line: #e3e1d9; --soft: #efede6;
+  --accent: #ff694a;            /* dbt orange */
+  --v18: #3a6fd0; --v18-bg: #e6eefb;
+  --v112: #1f9d6b; --v112-bg: #e2f5ec;
+  --new: #d8f3e3; --new-ink: #146c43;
+  --upd: #fff0c9; --upd-ink: #8a5a00;
+  --del: #fde0dc; --del-ink: #a8281b;
+  --gone: #ececec; --gone-ink: #8d8d8d;
+  --code-bg: #1e1f24; --code-ink: #e7e7ea;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #141413; --card: #1e1e1c; --ink: #ecebe6; --muted: #a3a29b; --line: #34332f; --soft: #262624;
+    --accent: #ff8a70;
+    --v18: #86aef0; --v18-bg: #1d2a42;
+    --v112: #5fd3a2; --v112-bg: #173328;
+    --new: #183d2a; --new-ink: #8fe0b3;
+    --upd: #3d3115; --upd-ink: #f3cf7a;
+    --del: #45201c; --del-ink: #ffa597;
+    --gone: #2b2b2a; --gone-ink: #7c7c78;
+    --code-bg: #0e0e10; --code-ink: #e7e7ea;
+  }
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--ink);
+       font: 15.5px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+a { color: var(--accent); }
+code { font: .88em/1.4 ui-monospace, "Cascadia Code", Consolas, monospace; background: var(--soft);
+       padding: 1px 5px; border-radius: 4px; }
+h1 { font-size: 2rem; line-height: 1.2; margin: 8px 0 6px; }
+h2 { font-size: 1.4rem; margin: 44px 0 10px; padding-top: 8px; border-top: 1px solid var(--line); }
+h3 { font-size: 1.1rem; margin: 26px 0 8px; }
+.lead { color: var(--muted); font-size: 1.05rem; margin: 0 0 22px; max-width: 70ch; }
+p, li { max-width: 78ch; }
+
+/* ---------- header ---------- */
+.top { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 88%, transparent);
+       backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+.top-inner { max-width: 1180px; margin: 0 auto; padding: 10px 16px; display: flex; gap: 18px;
+             align-items: center; flex-wrap: wrap; }
+.brand { font-weight: 800; font-size: 1.1rem; color: var(--ink); text-decoration: none; }
+.brand span { color: var(--accent); margin-left: 2px; }
+.nav { display: flex; gap: 4px; flex-wrap: wrap; flex: 1; }
+.nav a { color: var(--muted); text-decoration: none; padding: 5px 10px; border-radius: 7px; font-size: .92rem; }
+.nav a:hover { background: var(--soft); color: var(--ink); }
+.nav a.on { background: var(--soft); color: var(--ink); font-weight: 600; }
+.vswitch { display: flex; align-items: center; gap: 2px; background: var(--soft); padding: 3px; border-radius: 9px; }
+.vlabel { font-size: .78rem; color: var(--muted); padding: 0 6px; }
+.vswitch button { border: 0; background: transparent; color: var(--muted); font: 600 .85rem system-ui, sans-serif;
+                  padding: 5px 10px; border-radius: 7px; cursor: pointer; }
+.vswitch button.on { background: var(--card); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+.vswitch button[data-set-ver="v18"].on { color: var(--v18); }
+.vswitch button[data-set-ver="v112"].on { color: var(--v112); }
+
+main { max-width: 1180px; margin: 0 auto; padding: 24px 16px 40px; }
+.foot { max-width: 1180px; margin: 0 auto; padding: 20px 16px 40px; color: var(--muted); font-size: .85rem;
+        border-top: 1px solid var(--line); }
+
+/* ---------- version blocks ---------- */
+.tag { display: inline-block; font: 700 .72rem/1 system-ui, sans-serif; padding: 4px 7px; border-radius: 5px;
+       letter-spacing: .02em; vertical-align: middle; }
+.tag.v18 { background: var(--v18-bg); color: var(--v18); }
+.tag.v112 { background: var(--v112-bg); color: var(--v112); }
+.vgrid { display: grid; gap: 14px; grid-template-columns: 1fr; margin: 12px 0; }
+html[data-ver="both"] .vgrid { grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); }
+html[data-ver="v18"] .only-v112, html[data-ver="v112"] .only-v18 { display: none !important; }
+.vcol { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px;
+        border-top: 3px solid var(--line); min-width: 0; }
+.vcol.only-v18 { border-top-color: var(--v18); }
+.vcol.only-v112 { border-top-color: var(--v112); }
+.vcol > .tag:first-child { margin-bottom: 6px; }
+.vcol p:first-of-type { margin-top: 6px; }
+
+/* ---------- cards & callouts ---------- */
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
+.cards { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); margin: 14px 0; }
+a.theme-card { color: inherit; text-decoration: none; display: block; transition: border-color .15s, transform .15s; }
+a.theme-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+.theme-card h2 { border: 0; margin: 6px 0 4px; padding: 0; font-size: 1.15rem; color: var(--accent); }
+.theme-card p { margin: 0; color: var(--muted); font-size: .93rem; }
+.theme-icon { font-size: 1.6rem; }
+.callout { border-left: 4px solid var(--accent); background: var(--card); padding: 10px 14px; border-radius: 0 10px 10px 0;
+           margin: 14px 0; }
+.callout.tip { border-left-color: var(--v112); }
+.callout.warn { border-left-color: #d9a400; }
+.callout.danger { border-left-color: #d0402d; }
+.callout b:first-child { display: block; margin-bottom: 2px; }
+.callout p { margin: 4px 0; }
+.toc { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 6px; }
+.toc a { font-size: .88rem; text-decoration: none; padding: 4px 10px; border: 1px solid var(--line);
+         border-radius: 20px; color: var(--ink); background: var(--card); }
+.toc a:hover { border-color: var(--accent); }
+
+/* ---------- code ---------- */
+pre.code { background: var(--code-bg); color: var(--code-ink); border-radius: 10px; padding: 12px 14px; overflow-x: auto;
+           font: .82rem/1.55 ui-monospace, "Cascadia Code", Consolas, monospace; margin: 8px 0; }
+pre.code .c { color: #8b8fa3; }
+pre.code .k { color: #ff9a7a; }
+pre.code .s { color: #a5e0a0; }
+pre.code .h { background: rgba(255,214,102,.18); border-radius: 3px; padding: 0 2px; }
+.file { font: 600 .75rem ui-monospace, Consolas, monospace; color: var(--muted); margin-top: 10px; }
+
+/* ---------- tables ---------- */
+.tbl-wrap { overflow-x: auto; }
+table.dt { border-collapse: collapse; width: 100%; font: .82rem/1.35 ui-monospace, "Cascadia Code", Consolas, monospace; }
+table.dt th { text-align: left; color: var(--muted); font-weight: 600; padding: 6px 8px; border-bottom: 2px solid var(--line);
+              white-space: nowrap; }
+table.dt td { padding: 5px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; transition: background .5s; }
+table.dt tr.new td { background: var(--new); color: var(--new-ink); }
+table.dt tr.upd td { background: var(--upd); color: var(--upd-ink); }
+table.dt tr.del td { background: var(--del); color: var(--del-ink); }
+table.dt tr.gone td { background: var(--gone); color: var(--gone-ink); text-decoration: line-through; }
+table.dt td.cell-upd { background: var(--upd) !important; color: var(--upd-ink) !important; font-weight: 700; }
+table.dt td.meta { color: var(--muted); }
+table.dt td.null { color: var(--muted); font-style: italic; }
+table.dt tr.flash td { animation: flash 1.1s ease; }
+@keyframes flash { 0% { filter: brightness(1.35); transform: translateX(-6px); } 100% { filter: none; transform: none; } }
+table.prose { border-collapse: collapse; width: 100%; font-size: .9rem; }
+table.prose th, table.prose td { border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+table.prose th { color: var(--muted); font-weight: 600; }
+.yes { color: var(--v112); font-weight: 700; }
+.no { color: var(--muted); }
+
+/* ---------- simulators ---------- */
+.sim { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; margin: 16px 0; }
+.sim-head { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.sim-title { font-weight: 700; }
+.controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.ctl-label { font-size: .78rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-right: 2px; }
+.seg { display: inline-flex; background: var(--soft); border-radius: 9px; padding: 3px; gap: 2px; flex-wrap: wrap; }
+.seg button { border: 0; background: transparent; color: var(--muted); padding: 5px 10px; border-radius: 7px; cursor: pointer;
+              font: 600 .82rem ui-monospace, Consolas, monospace; }
+.seg button.on { background: var(--card); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+.seg button:disabled { opacity: .35; cursor: not-allowed; }
+.btn { border: 1px solid var(--line); background: var(--card); color: var(--ink); padding: 6px 12px; border-radius: 8px;
+       cursor: pointer; font: 600 .85rem system-ui, sans-serif; }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+.sim-cols { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr) minmax(0, 1.9fr); }
+@media (max-width: 860px) { .sim-cols { grid-template-columns: minmax(0, 1fr); } }
+.pane-title { font-size: .78rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 0 0 6px;
+              display: flex; justify-content: space-between; gap: 8px; }
+.narration { background: var(--soft); border-radius: 10px; padding: 10px 14px; margin: 12px 0 0; min-height: 3.2em; }
+.narration b { color: var(--accent); }
+.steps { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0 12px; }
+.step { border: 1px solid var(--line); background: var(--card); color: var(--muted); border-radius: 20px; padding: 4px 12px;
+        font: 600 .8rem system-ui, sans-serif; cursor: pointer; }
+.step.done { color: var(--ink); }
+.step.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: .78rem; color: var(--muted); margin-top: 10px; }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 4px; }
+.verdict { margin-top: 10px; padding: 10px 14px; border-radius: 10px; font-size: .9rem; }
+.verdict.ok { background: var(--new); color: var(--new-ink); }
+.verdict.bad { background: var(--del); color: var(--del-ink); }
+.verdict ul { margin: 4px 0 0; padding-left: 18px; }
+.sql-out { margin-top: 12px; }
+svg text { font-family: ui-monospace, Consolas, monospace; }
+.timeline-svg { width: 100%; height: auto; display: block; margin-top: 6px; }
+.badge { display: inline-block; font: 700 .7rem system-ui, sans-serif; padding: 2px 6px; border-radius: 4px;
+         background: var(--soft); color: var(--muted); }
+
+/* ---------- diagrams ---------- */
+.diagram { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin: 14px 0; overflow-x: auto; }
+.diagram svg { display: block; width: 100%; height: auto; min-width: 560px; }
+.d-box { fill: var(--soft); stroke: var(--line); }
+.d-txt { fill: var(--ink); font: 12px system-ui, sans-serif; }
+.d-mut { fill: var(--muted); font: 11px system-ui, sans-serif; }
+.d-line { stroke: var(--muted); stroke-width: 1.5; fill: none; }
+.d-acc { stroke: var(--accent); }
+.flow-dot { fill: var(--accent); }
+#incsim .sim-cols { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); }
+@media (max-width: 860px) { #incsim .sim-cols { grid-template-columns: minmax(0, 1fr); } }
+
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-inner">
+    <a class="brand" href="index.html">dbt<span>mechanics</span></a>
+    <nav class="nav">
+<a href="index.html" class="">Home</a>
+<a href="snapshots.html" class="on">Snapshots & hard deletes</a>
+<a href="incremental.html" class="">Incremental strategies</a>
+<a href="tests.html" class="">Data tests & unit tests</a>
+    </nav>
+    <div class="vswitch" role="group" aria-label="dbt version">
+      <span class="vlabel">dbt Core</span>
+      <button data-set-ver="v18">1.8.6</button>
+      <button data-set-ver="v112">1.12</button>
+      <button data-set-ver="both">Compare</button>
+    </div>
+  </div>
+</header>
+<main>
+<h1>Snapshots &amp; hard deletes</h1>
+<p class="lead">A snapshot turns a mutable source table into a <strong>type 2 slowly changing dimension</strong>: every time a row changes,
+the old version is closed and a new version is inserted. The tricky part is rows that <em>disappear</em> from the source.
+That is what <code>invalidate_hard_deletes</code> (1.8.6) and <code>hard_deletes</code> (1.9+, so 1.12) control.</p>
+
+<div class="toc">
+  <a href="#how">1 · How a snapshot run works</a>
+  <a href="#config">2 · Configuration</a>
+  <a href="#strategies">3 · timestamp vs check</a>
+  <a href="#sim">4 · Hard delete simulator</a>
+  <a href="#modes">5 · The modes compared</a>
+  <a href="#best">6 · Best practices</a>
+</div>
+
+<h2 id="how">1 · How a snapshot run works</h2>
+<p>On every <code>dbt snapshot</code>, dbt compares the result of your <code>select</code> with the <strong>current</strong> rows of the
+snapshot table (the rows where <code>dbt_valid_to is null</code>), matched on <code>unique_key</code>. Then it merges three (or four) kinds of changes:</p>
+
+<div class="diagram">
+<svg viewBox="0 0 900 270" role="img" aria-label="Snapshot run flow">
+  <rect class="d-box" x="10" y="95" width="160" height="70" rx="10"/>
+  <text class="d-txt" x="90" y="124" text-anchor="middle" font-weight="700">select … from source</text>
+  <text class="d-mut" x="90" y="144" text-anchor="middle">today's state</text>
+  <rect class="d-box" x="10" y="190" width="160" height="60" rx="10"/>
+  <text class="d-txt" x="90" y="215" text-anchor="middle" font-weight="700">snapshot table</text>
+  <text class="d-mut" x="90" y="233" text-anchor="middle">where dbt_valid_to is null</text>
+  <rect class="d-box" x="250" y="120" width="170" height="90" rx="10" style="stroke:var(--accent)"/>
+  <text class="d-txt" x="335" y="155" text-anchor="middle" font-weight="700">full outer compare</text>
+  <text class="d-mut" x="335" y="175" text-anchor="middle">on unique_key</text>
+  <path class="d-line" d="M170 130 C210 130 210 150 250 150"/>
+  <path class="d-line" d="M170 220 C210 220 210 185 250 185"/>
+  <path id="f1" class="d-line" d="M420 140 C470 140 470 30 520 30"/>
+  <path id="f2" class="d-line" d="M420 155 C470 155 470 95 520 95"/>
+  <path id="f3" class="d-line" d="M420 175 C470 175 470 165 520 165"/>
+  <path id="f4" class="d-line" d="M420 195 C470 195 470 235 520 235"/>
+  <rect x="520" y="8" width="370" height="44" rx="8" fill="var(--new)"/>
+  <text class="d-txt" x="532" y="27" font-weight="700">new key → INSERT</text>
+  <text class="d-mut" x="532" y="43">dbt_valid_from = updated_at, dbt_valid_to = null</text>
+  <rect x="520" y="73" width="370" height="44" rx="8" fill="var(--upd)"/>
+  <text class="d-txt" x="532" y="92" font-weight="700">changed key → CLOSE old row + INSERT new row</text>
+  <text class="d-mut" x="532" y="108">old.dbt_valid_to = new updated_at</text>
+  <rect x="520" y="143" width="370" height="44" rx="8" fill="var(--gone)"/>
+  <text class="d-txt" x="532" y="162" font-weight="700">unchanged key → nothing</text>
+  <text class="d-mut" x="532" y="178">timestamp: updated_at not newer · check: check_cols equal</text>
+  <rect x="520" y="213" width="370" height="44" rx="8" fill="var(--del)"/>
+  <text class="d-txt" x="532" y="232" font-weight="700">key missing from source → depends on hard-delete mode</text>
+  <text class="d-mut" x="532" y="248">ignore: nothing · invalidate: close · new_record: close + marker</text>
+  <circle r="5" class="flow-dot"><animateMotion dur="3s" repeatCount="indefinite"><mpath href="#f1"/></animateMotion></circle>
+  <circle r="5" class="flow-dot"><animateMotion dur="3s" begin=".75s" repeatCount="indefinite"><mpath href="#f2"/></animateMotion></circle>
+  <circle r="5" class="flow-dot"><animateMotion dur="3s" begin="1.5s" repeatCount="indefinite"><mpath href="#f3"/></animateMotion></circle>
+  <circle r="5" class="flow-dot"><animateMotion dur="3s" begin="2.25s" repeatCount="indefinite"><mpath href="#f4"/></animateMotion></circle>
+</svg>
+</div>
+
+<table class="prose card">
+  <tr><th>Meta column</th><th>Meaning</th></tr>
+  <tr><td><code>dbt_scd_id</code></td><td>Hash that identifies one version of a row (unique per row of the snapshot).</td></tr>
+  <tr><td><code>dbt_updated_at</code></td><td>The <code>updated_at</code> value of the source row (timestamp strategy), or the snapshot time (check strategy and delete markers).</td></tr>
+  <tr><td><code>dbt_valid_from</code> / <code>dbt_valid_to</code></td><td>Validity window. <code>dbt_valid_to is null</code> means "current version".
+      <span class="only-v112">In 1.12 you can set <code>dbt_valid_to_current: "to_date('9999-12-31')"</code> to get a far-future date instead of null.</span></td></tr>
+  <tr class="only-v112"><td><code>dbt_is_deleted</code> <span class="tag v112">1.9+</span></td><td>Only with <code>hard_deletes: new_record</code>. The strings <code>'True'</code> (deletion marker) or <code>'False'</code>.</td></tr>
+</table>
+
+<h2 id="config">2 · Configuration</h2>
+<div class="vgrid">
+  <div class="vcol only-v18">
+    <span class="tag v18">1.8.6</span>
+    <p>Snapshots are defined only in SQL, inside a <code>{% snapshot %}</code> block. <code>target_schema</code> is required, and
+      <code>generate_schema_name</code> is <em>not</em> applied (the same schema in dev and prod unless you use Jinja).</p>
+<div class="file">snapshots/orders_snapshot.sql</div>
+<pre class="code"><span class="k">{% snapshot</span> orders_snapshot <span class="k">%}</span>
+{{
+  config(
+    target_schema=<span class="s">'snapshots'</span>,
+    unique_key=<span class="s">'id'</span>,
+    strategy=<span class="s">'timestamp'</span>,
+    updated_at=<span class="s">'updated_at'</span>,
+    <span class="h">invalidate_hard_deletes=True</span>
+  )
+}}
+select * from {{ source(<span class="s">'shop'</span>, <span class="s">'orders'</span>) }}
+<span class="k">{% endsnapshot %}</span></pre>
+  </div>
+  <div class="vcol only-v112">
+    <span class="tag v112">1.12</span>
+    <p>Snapshots can be defined in YAML (recommended, since 1.9). The legacy SQL block still works. <code>schema</code>/<code>database</code>
+      are optional and follow <code>generate_schema_name</code> like models do. <code>invalidate_hard_deletes</code> still works for
+      existing snapshots, but <strong>cannot be combined</strong> with <code>hard_deletes</code>.</p>
+<div class="file">snapshots/orders_snapshot.yml</div>
+<pre class="code">snapshots:
+  - name: orders_snapshot
+    relation: source(<span class="s">'shop'</span>, <span class="s">'orders'</span>)
+    config:
+      unique_key: id
+      strategy: timestamp
+      updated_at: updated_at
+      <span class="h">hard_deletes: new_record</span>   <span class="c"># ignore | invalidate | new_record</span>
+      dbt_valid_to_current: <span class="s">"to_date('9999-12-31')"</span>  <span class="c"># optional</span>
+      snapshot_meta_column_names:            <span class="c"># optional renames</span>
+        dbt_valid_from: valid_from
+        dbt_valid_to: valid_to</pre>
+    <p>If you need transformation logic, put it in an ephemeral model and use <code>relation: ref('stg_orders_for_snapshot')</code>.</p>
+  </div>
+</div>
+
+<h2 id="strategies">3 · timestamp vs check</h2>
+<div class="cards">
+  <div class="card"><h3 style="margin-top:0">strategy: timestamp</h3>
+    <p>A row has changed if <code>source.updated_at &gt; current.dbt_valid_from</code>.</p>
+    <p><strong>Use when</strong> the source has a reliable <code>updated_at</code> that changes on <em>every</em> update. It is cheap (one column compared)
+      and gives accurate validity windows (they come from the source, not from the run time).</p>
+  </div>
+  <div class="card"><h3 style="margin-top:0">strategy: check</h3>
+    <p>A row has changed if any column in <code>check_cols</code> differs (<code>'all'</code> = every column). Validity windows use the <strong>run time</strong>.</p>
+    <p><strong>Use when</strong> there is no trustworthy <code>updated_at</code>. Prefer an explicit column list (or a hash column) over <code>'all'</code> on wide tables.
+      A change made and then reverted between two runs is invisible.</p>
+  </div>
+</div>
+<div class="callout warn"><b>Hard deletes work with both strategies</b>
+  <p>Deletion detection happens on <code>unique_key</code> only, whatever the strategy. The closing time of a deleted row is always the <strong>snapshot run time</strong>
+  (<code>snapshot_get_time()</code>), because the source no longer tells you when the row disappeared.</p></div>
+
+<h2 id="sim">4 · Hard delete simulator</h2>
+<p>Source table <code>shop.orders</code> over 5 daily runs: order 1 gets shipped, order 2 is deleted and then comes back, order 3 is deleted.
+Choose a mode and step through the runs. The timeline shows the validity windows. The "as of" query checks whether the snapshot can rebuild the past correctly.</p>
+
+<div class="sim" id="snapsim">
+  <div class="sim-head">
+    <div class="controls"><span class="ctl-label">Mode</span><div id="snap-mode"></div></div>
+  </div>
+  <div class="controls" style="margin-bottom:6px"><span class="ctl-label">Order 2 comes back</span><div id="snap-scenario"></div></div>
+  <div class="steps" id="snap-steps"></div>
+  <div class="controls" style="margin-bottom:12px">
+    <button class="btn" id="snap-prev">◀ Prev run</button>
+    <button class="btn primary" id="snap-next">Next run ▶</button>
+    <button class="btn" id="snap-play">▶ Play</button>
+    <button class="btn" id="snap-reset">Reset</button>
+  </div>
+  <div class="sim-cols">
+    <div>
+      <div class="pane-title"><span>source: shop.orders</span></div>
+      <div id="snap-source"></div>
+      <div id="snap-config"></div>
+    </div>
+    <div>
+      <div class="pane-title"><span>snapshots.orders_snapshot</span></div>
+      <div id="snap-table"></div>
+      <div class="pane-title" style="margin-top:14px"><span>Validity timeline</span></div>
+      <div id="snap-timeline"></div>
+    </div>
+  </div>
+  <div class="narration" id="snap-narr"></div>
+  <div class="pane-title" style="margin-top:14px"><span>Point-in-time query: which orders existed on…</span></div>
+  <div id="snap-asof"></div>
+  <div id="snap-asof-out" class="sql-out"></div>
+  <div class="legend">
+    <span><i style="background:var(--new)"></i>inserted this run</span>
+    <span><i style="background:var(--upd)"></i>dbt_valid_to set this run</span>
+    <span><i style="background:var(--del)"></i>deletion marker (new_record)</span>
+    <span><i style="background:var(--gone)"></i>row removed from source</span>
+  </div>
+</div>
+
+<div class="callout tip"><b>Things to try</b>
+  <p>• Run 5 with <code>ignore</code>: query "as of 01-05" and order 3 is still there, a <em>ghost</em> row that never closes.</p>
+  <p>• Run 4 with <code>invalidate</code>: order 2 has a <em>gap</em> between 01-03 and 01-04. Correct, but the snapshot never says "deleted".</p>
+  <p>• Switch "order 2 comes back" to <em>unchanged</em>: with <code>invalidate</code> the returning row restarts at its old <code>updated_at</code>
+     and <strong>overlaps</strong> its earlier window, so the "as of 01-02" query returns order 2 twice.</p>
+</div>
+
+<h2 id="modes">5 · The modes compared</h2>
+<div class="tbl-wrap card">
+<table class="prose">
+  <tr><th>Mode</th><th>Version</th><th>Order deleted from source</th><th>Order comes back</th><th>Current rows <code>where dbt_valid_to is null</code></th></tr>
+  <tr><td><code>invalidate_hard_deletes=false</code><br><code>hard_deletes: ignore</code></td><td><span class="tag v18">1.8.6</span> default<br><span class="tag v112">1.12</span> default</td>
+      <td>Nothing. The row stays current forever.</td><td>Treated as an ordinary update if <code>updated_at</code> is newer, otherwise nothing.</td>
+      <td>Include deleted orders ✗</td></tr>
+  <tr><td><code>invalidate_hard_deletes=true</code><br><code>hard_deletes: invalidate</code></td><td><span class="tag v18">1.8.6</span><br><span class="tag v112">1.12</span> (same behaviour)</td>
+      <td>Current row closed: <code>dbt_valid_to = run time</code>.</td><td>Inserted as a brand new row (<code>dbt_valid_from = updated_at</code>). This leaves a gap, or an overlap if <code>updated_at</code> is old.</td>
+      <td>Correct ✓ (deleted rows have no current row)</td></tr>
+  <tr><td><code>hard_deletes: new_record</code></td><td><span class="tag v112">1.9+ only</span></td>
+      <td>Current row closed <strong>and</strong> a marker row inserted: same values, <code>dbt_is_deleted = 'True'</code>, valid from run time, current.</td>
+      <td>Marker closed, new row with <code>dbt_is_deleted = 'False'</code>. History stays continuous.</td>
+      <td>Include markers → filter <code>dbt_is_deleted = 'False'</code></td></tr>
+</table>
+</div>
+
+<div class="vgrid">
+  <div class="vcol only-v18"><span class="tag v18">1.8.6</span>
+    <p><strong>Find deleted orders</strong>: there is no flag, so you infer it. An order is deleted when it has no current row:</p>
+<pre class="code">select id, max(dbt_valid_to) as deleted_at
+from {{ ref(<span class="s">'orders_snapshot'</span>) }}
+group by id
+having count(case when dbt_valid_to is null then 1 end) = 0</pre>
+    <p>This cannot tell you how many times an order was deleted and restored without comparing consecutive windows (looking for gaps).</p>
+  </div>
+  <div class="vcol only-v112"><span class="tag v112">1.12</span>
+    <p><strong>Find deleted orders</strong> with <code>new_record</code>: the marker row says it directly.</p>
+<pre class="code">select id, dbt_valid_from as deleted_at
+from {{ ref(<span class="s">'orders_snapshot'</span>) }}
+where dbt_is_deleted = <span class="s">'True'</span>
+  and dbt_valid_to is null      <span class="c">-- still deleted today</span></pre>
+    <p>Drop the last line to list every deletion event, including orders that came back later.</p>
+  </div>
+</div>
+
+<h2 id="best">6 · Best practices: when to use which</h2>
+<div class="cards">
+  <div class="card"><h3 style="margin-top:0">Use <code>ignore</code> when…</h3>
+    <ul><li>the source never hard-deletes (soft deletes via a status column), or</li>
+      <li>the snapshot selects a <strong>subset</strong> of the source (a <code>where</code> clause, incremental extract) where "missing" doesn't mean "deleted".</li></ul>
+  </div>
+  <div class="card"><h3 style="margin-top:0">Use <code>invalidate</code> when…</h3>
+    <ul><li>you are on <span class="tag v18">1.8.6</span> and the source hard-deletes rows (it is your only option),</li>
+      <li>consumers only need "current rows" and as-of queries, not "when/how often was it deleted".</li></ul>
+  </div>
+  <div class="card"><h3 style="margin-top:0">Use <code>new_record</code> when…</h3>
+    <ul><li>deletions are business events (churned customer, cancelled contract) you need to report on,</li>
+      <li>you need continuous history with no gaps, and rows can come back.</li>
+      <li>Start it on a <strong>new</strong> snapshot: dbt does not migrate an existing table to it automatically.</li></ul>
+  </div>
+</div>
+
+<div class="callout danger"><b>The #1 hard-delete trap: the select must return the FULL source</b>
+  <p>Detection works by "key is missing from the select". If your snapshot query filters
+  (<code>where updated_at &gt; current_date - 7</code>, a partial extract, a source that only lands deltas), every row outside the filter looks deleted
+  and gets invalidated on every run. Hard-delete detection requires a complete extract each time.</p></div>
+
+<ul>
+  <li><strong>Test the unique_key</strong>: add <code>unique</code> + <code>not_null</code> tests on the source column. Duplicate keys corrupt the snapshot (several current rows per key).</li>
+  <li><strong>Snapshot sources, not marts</strong>: keep the select close to raw data (light renames and casts only). Logic changes later would otherwise rewrite history.</li>
+  <li><strong>Run frequency = granularity</strong>: changes that happen and get reverted between two runs are lost. Snapshot at least as often as you need history.</li>
+  <li><strong>Timestamps</strong>: with <code>invalidate</code>/<code>new_record</code>, <code>dbt_valid_to</code> mixes source <code>updated_at</code> values and the warehouse's
+      <code>current_timestamp</code>. Keep both in the same type and timezone (1.9+ warns when the data types differ).</li>
+  <li><strong>Never full-refresh</strong> a snapshot: the history only exists in that table. Back it up before changing its config.</li>
+  <li class="only-v112"><strong>Migrating 1.8 → 1.12</strong>: <code>invalidate_hard_deletes=true</code> → <code>hard_deletes: invalidate</code> is a drop-in rename.
+      Moving to <code>new_record</code> adds the <code>dbt_is_deleted</code> column, and past deletions won't have markers, so plan a migration or start fresh.</li>
+</ul>
+
+</main>
+<footer class="foot">
+  Built with <code>python build.py</code>. Version-specific blocks are tagged
+  <span class="tag v18">1.8.6</span> and <span class="tag v112">1.12</span>; use the switch at the top to show one or compare both.
+</footer>
+<script>
+// ---------- version switch (shared by every page) ----------
+const VER_KEY = "dbt-mechanics-version";
+function getVer() { return document.documentElement.dataset.ver; }
+function setVer(v) {
+  document.documentElement.dataset.ver = v;
+  document.querySelectorAll("[data-set-ver]").forEach(b => b.classList.toggle("on", b.dataset.setVer === v));
+  try { localStorage.setItem(VER_KEY, v); } catch (e) { /* storage unavailable: fine */ }
+  document.dispatchEvent(new CustomEvent("verchange", { detail: v }));
+}
+document.querySelectorAll("[data-set-ver]").forEach(b => b.addEventListener("click", () => setVer(b.dataset.setVer)));
+let savedVer = "both";
+try { savedVer = localStorage.getItem(VER_KEY) || "both"; } catch (e) { /* ignore */ }
+setVer(savedVer);
+
+// ---------- small helpers ----------
+function $(sel, root = document) { return root.querySelector(sel); }
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+
+// Build a segmented control. options: [{value, label, disabled, title}]
+function segmented(container, options, value, onChange) {
+  container.innerHTML = "";
+  container.classList.add("seg");
+  options.forEach(o => {
+    const b = document.createElement("button");
+    b.textContent = o.label; b.dataset.value = o.value;
+    if (o.title) b.title = o.title;
+    b.disabled = !!o.disabled;
+    b.classList.toggle("on", o.value === value);
+    b.addEventListener("click", () => {
+      container.querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b));
+      onChange(o.value);
+    });
+    container.appendChild(b);
+  });
+}
+
+// Render rows as a table. cols: [{key, label, cls?, fmt?}], rows carry an optional _cls and _cellCls {key: cls}
+function renderTable(el, cols, rows, opts = {}) {
+  const head = "<tr>" + cols.map(c => `<th>${esc(c.label)}</th>`).join("") + "</tr>";
+  const body = rows.map(r => {
+    const tds = cols.map(c => {
+      const v = r[c.key];
+      const isNull = v === null || v === undefined;
+      const cls = [c.cls || "", isNull ? "null" : "", (r._cellCls && r._cellCls[c.key]) || ""].join(" ").trim();
+      const shown = isNull ? "null" : (c.fmt ? c.fmt(v, r) : v);
+      return `<td class="${cls}">${esc(shown)}</td>`;
+    }).join("");
+    return `<tr class="${r._cls || ""} ${r._flash ? "flash" : ""}">${tds}</tr>`;
+  }).join("");
+  el.innerHTML = `<div class="tbl-wrap"><table class="dt">${head}${body || `<tr><td colspan="${cols.length}" class="null">${opts.empty || "(empty)"}</td></tr>`}</table></div>`;
+}
+
+// =====================================================================
+// Snapshot simulator: replays dbt's snapshot_staging_table logic
+// (timestamp strategy) run by run, for each hard-delete mode.
+// Rules mirrored from dbt-adapters macros/materializations/snapshots/helpers.sql:
+//   * "current" rows = dbt_valid_to is null
+//   * new key                -> insert, dbt_valid_from = updated_at
+//   * updated_at > valid_from-> close current (valid_to = new updated_at) + insert
+//   * key missing in source  -> invalidate/new_record: valid_to = run time
+//   * new_record             -> also insert a marker row: valid_from = run time,
+//                               dbt_is_deleted = 'True', valid_to null
+//   * key returns (new_record) -> marker closed, new row with dbt_is_deleted='False'
+// =====================================================================
+(function () {
+  const root = document.getElementById("snapsim");
+  if (!root) return;
+
+  const MODES = [
+    { id: "v18_false", ver: "v18", hd: "ignore", label: "invalidate_hard_deletes=false", note: "default" },
+    { id: "v18_true", ver: "v18", hd: "invalidate", label: "invalidate_hard_deletes=true" },
+    { id: "v112_ignore", ver: "v112", hd: "ignore", label: "hard_deletes='ignore'", note: "default" },
+    { id: "v112_invalidate", ver: "v112", hd: "invalidate", label: "hard_deletes='invalidate'" },
+    { id: "v112_new_record", ver: "v112", hd: "new_record", label: "hard_deletes='new_record'" },
+  ];
+
+  const o = (id, status, updated_at) => ({ id, status, updated_at });
+  function buildRuns(scenario) {
+    const back = scenario === "changed" ? o(2, "cancelled", "2024-01-04") : o(2, "placed", "2024-01-01");
+    return [
+      { ts: "2024-01-01", title: "Run 1 · first load", source: [o(1, "placed", "2024-01-01"), o(2, "placed", "2024-01-01"), o(3, "placed", "2024-01-01")] },
+      { ts: "2024-01-02", title: "Run 2 · order 1 shipped", source: [o(1, "shipped", "2024-01-02"), o(2, "placed", "2024-01-01"), o(3, "placed", "2024-01-01")] },
+      { ts: "2024-01-03", title: "Run 3 · order 2 hard-deleted", source: [o(1, "shipped", "2024-01-02"), o(3, "placed", "2024-01-01")] },
+      { ts: "2024-01-04", title: "Run 4 · order 2 comes back", source: [o(1, "shipped", "2024-01-02"), back, o(3, "placed", "2024-01-01")] },
+      { ts: "2024-01-05", title: "Run 5 · order 3 hard-deleted", source: [o(1, "shipped", "2024-01-02"), { ...back }] },
+    ];
+  }
+
+  function scdId(r) { // fake md5(id || valid_from || run) — just to look like dbt_scd_id
+    let h = 2166136261; const s = `${r.id}|${r.dbt_valid_from}|${r.dbt_is_deleted || ""}`;
+    for (const c of s) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); }
+    return (h >>> 0).toString(16).padStart(8, "0") + "…";
+  }
+
+  // Run the snapshot logic for one run. Returns {rows, events}
+  function snapshotRun(prev, source, ts, hd) {
+    const rows = prev.map(r => ({ ...r, _cls: "", _cellCls: {}, _flash: false }));
+    const events = [];
+    const current = new Map(rows.filter(r => r.dbt_valid_to === null).map(r => [r.id, r]));
+    const inserts = [];
+    for (const s of source) {
+      const cur = current.get(s.id);
+      const isMarker = hd === "new_record" && cur && cur.dbt_is_deleted === "True";
+      if (!cur || cur.dbt_valid_from < s.updated_at || isMarker) {
+        if (cur) {
+          cur.dbt_valid_to = s.updated_at; cur._cellCls = { dbt_valid_to: "cell-upd" };
+          events.push(isMarker
+            ? `order ${s.id} is back: its deletion marker is closed (dbt_valid_to = ${s.updated_at}) and a new row with dbt_is_deleted='False' is inserted`
+            : `order ${s.id} changed (${cur.status} → ${s.status}): old version closed with dbt_valid_to = updated_at = ${s.updated_at}`);
+          if (cur.dbt_valid_from > s.updated_at) events.push(`⚠ order ${s.id}: the new row starts (${s.updated_at}) BEFORE the row it closes (${cur.dbt_valid_from}), so their validity windows overlap`);
+        } else {
+          const wasSeen = rows.some(r => r.id === s.id);
+          events.push(wasSeen
+            ? `order ${s.id} has no current row (it was invalidated), so it is inserted as if it were new, with dbt_valid_from = updated_at = ${s.updated_at}`
+            : `order ${s.id} is new: inserted with dbt_valid_from = updated_at = ${s.updated_at}`);
+          if (wasSeen) {
+            const lastClose = rows.filter(r => r.id === s.id).map(r => r.dbt_valid_to).sort().pop();
+            if (lastClose && s.updated_at < lastClose) events.push(`⚠ order ${s.id} came back with an old updated_at (${s.updated_at}): the new row overlaps the previous window that ended ${lastClose}`);
+          }
+        }
+        const n = { ...s, dbt_updated_at: s.updated_at, dbt_valid_from: s.updated_at, dbt_valid_to: null, _cls: "new", _flash: true, _cellCls: {} };
+        if (hd === "new_record") n.dbt_is_deleted = "False";
+        inserts.push(n);
+      } else if (cur && cur.dbt_valid_from >= s.updated_at && !isMarker) {
+        // unchanged: nothing to do
+      }
+    }
+    const inSource = new Set(source.map(s => s.id));
+    for (const [id, cur] of current) {
+      if (inSource.has(id)) continue;
+      if (hd === "ignore") {
+        if (!cur._ghostNoted) events.push(`order ${id} is gone from the source but nothing happens: its row stays "current" (dbt_valid_to is null) forever`);
+        continue;
+      }
+      if (hd === "new_record" && cur.dbt_is_deleted === "True") { events.push(`order ${id} is still deleted: the marker row is already current, nothing to do`); continue; }
+      cur.dbt_valid_to = ts; cur._cellCls = { dbt_valid_to: "cell-upd" };
+      if (hd === "invalidate") {
+        events.push(`order ${id} is gone from the source: its current row is closed with dbt_valid_to = snapshot time (${ts}). No row says "deleted"; the history just stops`);
+      } else {
+        events.push(`order ${id} is gone from the source: current row closed at ${ts} AND a marker row is inserted (dbt_is_deleted='True', dbt_valid_from = ${ts}, dbt_updated_at = ${ts})`);
+        inserts.push({ id, status: cur.status, updated_at: cur.updated_at, dbt_updated_at: ts, dbt_valid_from: ts, dbt_valid_to: null,
+          dbt_is_deleted: "True", _cls: "del", _flash: true, _cellCls: {} });
+      }
+    }
+    inserts.forEach(r => { r.dbt_scd_id = scdId(r); });
+    const all = rows.concat(inserts).sort((a, b) => a.id - b.id || (a.dbt_valid_from < b.dbt_valid_from ? -1 : a.dbt_valid_from > b.dbt_valid_from ? 1 : 0));
+    if (!events.length) events.push("nothing changed in the source, so the snapshot is untouched");
+    return { rows: all, events };
+  }
+
+  // ---------- state ----------
+  const st = { mode: "v18_true", scenario: "changed", run: 0, asOf: null, timer: null };
+  const els = {
+    mode: $("#snap-mode", root), scenario: $("#snap-scenario", root), steps: $("#snap-steps", root),
+    source: $("#snap-source", root), snap: $("#snap-table", root), narr: $("#snap-narr", root),
+    tl: $("#snap-timeline", root), asof: $("#snap-asof", root), asofOut: $("#snap-asof-out", root),
+    cfg: $("#snap-config", root), prev: $("#snap-prev", root), next: $("#snap-next", root), play: $("#snap-play", root),
+  };
+
+  function modesForVer() {
+    const v = getVer();
+    return MODES.filter(m => v === "both" || m.ver === v);
+  }
+  function mode() { return MODES.find(m => m.id === st.mode); }
+
+  function computeAll() {
+    const runs = buildRuns(st.scenario);
+    const states = []; let rows = [];
+    runs.forEach(r => { const res = snapshotRun(rows, r.source, r.ts, mode().hd); rows = res.rows; states.push(res); });
+    return { runs, states };
+  }
+
+  function renderControls() {
+    const opts = modesForVer();
+    if (!opts.some(m => m.id === st.mode)) {
+      // keep the same behaviour when switching version
+      const hd = mode().hd; st.mode = (opts.find(m => m.hd === hd) || opts[0]).id;
+    }
+    segmented(els.mode, opts.map(m => ({ value: m.id, label: (getVer() === "both" ? (m.ver === "v18" ? "1.8 · " : "1.12 · ") : "") + m.label })), st.mode,
+      v => { st.mode = v; render(); });
+    segmented(els.scenario, [
+      { value: "changed", label: "with a new updated_at" },
+      { value: "same", label: "unchanged (old updated_at)" },
+    ], st.scenario, v => { st.scenario = v; render(); });
+  }
+
+  function configSnippet() {
+    const m = mode();
+    if (m.ver === "v18") {
+      return `<div class="file">snapshots/orders_snapshot.sql · dbt 1.8.6</div><pre class="code"><span class="k">{% snapshot</span> orders_snapshot <span class="k">%}</span>
+{{ config(
+    target_schema=<span class="s">'snapshots'</span>,
+    unique_key=<span class="s">'id'</span>,
+    strategy=<span class="s">'timestamp'</span>,
+    updated_at=<span class="s">'updated_at'</span>,
+    <span class="h">invalidate_hard_deletes=${m.hd === "invalidate" ? "True" : "False"}</span>
+) }}
+select id, status, updated_at from {{ source(<span class="s">'shop'</span>, <span class="s">'orders'</span>) }}
+<span class="k">{% endsnapshot %}</span></pre>`;
+    }
+    return `<div class="file">snapshots/orders_snapshot.yml · dbt 1.12</div><pre class="code">snapshots:
+  - name: orders_snapshot
+    relation: source(<span class="s">'shop'</span>, <span class="s">'orders'</span>)
+    config:
+      schema: snapshots
+      unique_key: id
+      strategy: timestamp
+      updated_at: updated_at
+      <span class="h">hard_deletes: ${m.hd}</span></pre>`;
+  }
+
+  function cols() {
+    const c = [
+      { key: "id", label: "id" }, { key: "status", label: "status" }, { key: "updated_at", label: "updated_at" },
+      { key: "dbt_scd_id", label: "dbt_scd_id", cls: "meta" }, { key: "dbt_updated_at", label: "dbt_updated_at", cls: "meta" },
+      { key: "dbt_valid_from", label: "dbt_valid_from" }, { key: "dbt_valid_to", label: "dbt_valid_to" },
+    ];
+    if (mode().hd === "new_record") c.push({ key: "dbt_is_deleted", label: "dbt_is_deleted" });
+    return c;
+  }
+
+  function render() {
+    stop();
+    renderControls();
+    const { runs, states } = computeAll();
+    if (st.run >= runs.length) st.run = runs.length - 1;
+    els.cfg.innerHTML = configSnippet();
+
+    els.steps.innerHTML = "";
+    runs.forEach((r, i) => {
+      const b = document.createElement("button");
+      b.className = "step" + (i === st.run ? " on" : i < st.run ? " done" : "");
+      b.textContent = r.title;
+      b.addEventListener("click", () => { stop(); st.run = i; st.asOf = null; render(); });
+      els.steps.appendChild(b);
+    });
+    els.prev.disabled = st.run === 0; els.next.disabled = st.run === runs.length - 1;
+
+    // source table, diffed with the previous run
+    const prevSrc = st.run > 0 ? runs[st.run - 1].source : [];
+    const cur = runs[st.run].source;
+    const srcRows = cur.map(s => {
+      const p = prevSrc.find(x => x.id === s.id);
+      const cls = st.run === 0 ? "" : !p ? "new" : (p.updated_at !== s.updated_at || p.status !== s.status) ? "upd" : "";
+      return { ...s, _cls: cls };
+    });
+    prevSrc.filter(p => !cur.some(s => s.id === p.id)).forEach(p => srcRows.push({ ...p, _cls: "gone" }));
+    srcRows.sort((a, b) => a.id - b.id);
+    renderTable(els.source, [{ key: "id", label: "id" }, { key: "status", label: "status" }, { key: "updated_at", label: "updated_at" }], srcRows);
+
+    const state = states[st.run];
+    renderTable(els.snap, cols(), state.rows);
+    els.narr.innerHTML = `<b>${esc(runs[st.run].title)}</b> (snapshot time = ${runs[st.run].ts})<ul style="margin:6px 0 0;padding-left:18px">` +
+      state.events.map(e => `<li>${esc(e)}</li>`).join("") + "</ul>";
+
+    drawTimeline(state.rows, runs[st.run].ts);
+    renderAsOf(runs, states);
+  }
+
+  // ---------- timeline (one lane per validity window) ----------
+  const COLORS = { placed: "#3a6fd0", shipped: "#1f9d6b", cancelled: "#d99a00", deleted: "#d0402d" };
+  function drawTimeline(rows, nowTs) {
+    const days = ["2024-01-01", "2024-01-02", "2024-01-03", "2024-01-04", "2024-01-05", "2024-01-06"];
+    const W = 760, left = 70, right = 20, dayW = (W - left - right) / (days.length - 1);
+    const x = d => left + days.indexOf(d) * dayW;
+    const nowX = x(nowTs) + dayW * 0.6;
+    const ids = [...new Set(rows.map(r => r.id))].sort();
+    let y = 34; const parts = [];
+    days.forEach(d => {
+      parts.push(`<line x1="${x(d)}" x2="${x(d)}" y1="22" y2="1000" stroke="var(--line)" />`);
+      parts.push(`<text x="${x(d)}" y="14" text-anchor="middle" font-size="11" fill="var(--muted)">${d.slice(5)}</text>`);
+    });
+    ids.forEach(id => {
+      const mine = rows.filter(r => r.id === id);
+      const lanes = [];
+      mine.forEach(r => {
+        const a = x(r.dbt_valid_from), b = r.dbt_valid_to ? x(r.dbt_valid_to) : nowX;
+        let lane = lanes.findIndex(end => end <= a + 0.5);
+        if (lane === -1) { lane = lanes.length; lanes.push(b); } else lanes[lane] = b;
+        r._lane = lane; r._a = a; r._b = b;
+      });
+      const laneH = 22, h = Math.max(1, lanes.length) * laneH;
+      parts.push(`<text x="8" y="${y + h / 2 + 4}" font-size="12" fill="var(--ink)">order ${id}</text>`);
+      mine.forEach(r => {
+        const del = r.dbt_is_deleted === "True";
+        const col = del ? COLORS.deleted : COLORS[r.status];
+        const yy = y + r._lane * laneH + 2, w = Math.max(3, r._b - r._a);
+        parts.push(`<rect x="${r._a}" y="${yy}" width="${w}" height="${laneH - 6}" rx="4" fill="${col}" fill-opacity="${del ? .25 : .85}" stroke="${col}" ${del ? 'stroke-dasharray="4 3"' : ""}/>`);
+        parts.push(`<text x="${r._a + 6}" y="${yy + 12}" font-size="10.5" fill="${del ? col : "#fff"}">${del ? "deleted" : r.status}${r.dbt_valid_to ? "" : " →"}</text>`);
+      });
+      if (!rows.some(r => r.id === id && r.dbt_valid_to === null)) {
+        const end = Math.max(...mine.map(r => r._b));
+        parts.push(`<text x="${end + 4}" y="${y + 13}" font-size="10" fill="var(--muted)">(no current row)</text>`);
+      }
+      y += h + 8;
+    });
+    parts.push(`<line x1="${nowX}" x2="${nowX}" y1="22" y2="${y}" stroke="var(--accent)" stroke-dasharray="3 3"/><text x="${nowX + 3}" y="${y - 2}" font-size="10" fill="var(--accent)">now</text>`);
+    els.tl.innerHTML = `<svg class="timeline-svg" viewBox="0 0 ${W} ${y + 6}">${parts.join("")}</svg>`;
+  }
+
+  // ---------- point-in-time query ----------
+  function renderAsOf(runs, states) {
+    const available = runs.slice(0, st.run + 1).map(r => r.ts);
+    if (!st.asOf || !available.includes(st.asOf)) st.asOf = available[available.length - 1];
+    segmented(els.asof, available.map(d => ({ value: d, label: d.slice(5) })), st.asOf, v => { st.asOf = v; renderAsOf(runs, states); });
+    const rows = states[st.run].rows;
+    const nr = mode().hd === "new_record";
+    const hit = rows.filter(r => r.dbt_valid_from <= st.asOf && (r.dbt_valid_to === null || st.asOf < r.dbt_valid_to) && (!nr || r.dbt_is_deleted === "False"));
+    const truth = runs.find(r => r.ts === st.asOf).source;
+    const problems = [];
+    truth.forEach(t => {
+      const h = hit.filter(r => r.id === t.id);
+      if (!h.length) problems.push(`order ${t.id} existed (${t.status}) but is missing`);
+      else if (h.length > 1) problems.push(`order ${t.id} comes back ${h.length} times (overlapping windows)`);
+      else if (h[0].status !== t.status) problems.push(`order ${t.id} shows '${h[0].status}' but was '${t.status}'`);
+    });
+    hit.filter(r => !truth.some(t => t.id === r.id)).forEach(r => problems.push(`order ${r.id} is returned but was deleted at that date`));
+    const sql = `select id, status from orders_snapshot
+where dbt_valid_from &lt;= '${st.asOf}'
+  and (dbt_valid_to &gt; '${st.asOf}' or dbt_valid_to is null)${nr ? `\n  <span class="h">and dbt_is_deleted = 'False'</span>` : ""}`;
+    els.asofOut.innerHTML = `<pre class="code">${sql}</pre>
+      <div>Result: ${hit.length ? [...new Set(hit.map(r => r.id))].map(id => hit.filter(r => r.id === id).map(r => `order ${r.id} (${r.status})`).join(" + ")).join(", ") : "no rows"}</div>
+      <div class="verdict ${problems.length ? "bad" : "ok"}">${problems.length ? "✗ Doesn't match what the source looked like on " + st.asOf + ":<ul>" + problems.map(p => `<li>${esc(p)}</li>`).join("") + "</ul>" : "✓ Matches what the source looked like on " + st.asOf}</div>`;
+  }
+
+  function stop() { if (st.timer) { clearInterval(st.timer); st.timer = null; els.play.textContent = "▶ Play"; } }
+  els.prev.addEventListener("click", () => { st.run = Math.max(0, st.run - 1); st.asOf = null; render(); });
+  els.next.addEventListener("click", () => { st.run += 1; st.asOf = null; render(); });
+  $("#snap-reset", root).addEventListener("click", () => { st.run = 0; st.asOf = null; render(); });
+  els.play.addEventListener("click", () => {
+    if (st.timer) { stop(); return; }
+    st.run = 0; st.asOf = null; render();
+    els.play.textContent = "■ Stop";
+    st.timer = setInterval(() => {
+      if (st.run >= 4) { stop(); return; }
+      st.run += 1; st.asOf = null;
+      const t = st.timer; st.timer = null; render(); st.timer = t; els.play.textContent = "■ Stop";
+    }, 2200);
+  });
+  document.addEventListener("verchange", () => render());
+  render();
+})();
+
+</script>
+</body>
+</html>

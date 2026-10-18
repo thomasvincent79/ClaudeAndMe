@@ -1,0 +1,238 @@
+<h1>Snapshots &amp; hard deletes</h1>
+<p class="lead">A snapshot turns a mutable source table into a <strong>type 2 slowly changing dimension</strong>: every time a row changes,
+the old version is closed and a new version is inserted. The tricky part is rows that <em>disappear</em> from the source.
+That is what <code>invalidate_hard_deletes</code> (1.8.6) and <code>hard_deletes</code> (1.9+, so 1.12) control.</p>
+
+<div class="toc">
+  <a href="#how">1 · How a snapshot run works</a>
+  <a href="#config">2 · Configuration</a>
+  <a href="#strategies">3 · timestamp vs check</a>
+  <a href="#sim">4 · Hard delete simulator</a>
+  <a href="#modes">5 · The modes compared</a>
+  <a href="#best">6 · Best practices</a>
+</div>
+
+<h2 id="how">1 · How a snapshot run works</h2>
+<p>On every <code>dbt snapshot</code>, dbt compares the result of your <code>select</code> with the <strong>current</strong> rows of the
+snapshot table (the rows where <code>dbt_valid_to is null</code>), matched on <code>unique_key</code>. Then it merges three (or four) kinds of changes:</p>
+
+<div class="diagram">
+<svg viewBox="0 0 900 270" role="img" aria-label="Snapshot run flow">
+  <rect class="d-box" x="10" y="95" width="160" height="70" rx="10"/>
+  <text class="d-txt" x="90" y="124" text-anchor="middle" font-weight="700">select … from source</text>
+  <text class="d-mut" x="90" y="144" text-anchor="middle">today's state</text>
+  <rect class="d-box" x="10" y="190" width="160" height="60" rx="10"/>
+  <text class="d-txt" x="90" y="215" text-anchor="middle" font-weight="700">snapshot table</text>
+  <text class="d-mut" x="90" y="233" text-anchor="middle">where dbt_valid_to is null</text>
+  <rect class="d-box" x="250" y="120" width="170" height="90" rx="10" style="stroke:var(--accent)"/>
+  <text class="d-txt" x="335" y="155" text-anchor="middle" font-weight="700">full outer compare</text>
+  <text class="d-mut" x="335" y="175" text-anchor="middle">on unique_key</text>
+  <path class="d-line" d="M170 130 C210 130 210 150 250 150"/>
+  <path class="d-line" d="M170 220 C210 220 210 185 250 185"/>
+  <path id="f1" class="d-line" d="M420 140 C470 140 470 30 520 30"/>
+  <path id="f2" class="d-line" d="M420 155 C470 155 470 95 520 95"/>
+  <path id="f3" class="d-line" d="M420 175 C470 175 470 165 520 165"/>
+  <path id="f4" class="d-line" d="M420 195 C470 195 470 235 520 235"/>
+  <rect x="520" y="8" width="370" height="44" rx="8" fill="var(--new)"/>
+  <text class="d-txt" x="532" y="27" font-weight="700">new key → INSERT</text>
+  <text class="d-mut" x="532" y="43">dbt_valid_from = updated_at, dbt_valid_to = null</text>
+  <rect x="520" y="73" width="370" height="44" rx="8" fill="var(--upd)"/>
+  <text class="d-txt" x="532" y="92" font-weight="700">changed key → CLOSE old row + INSERT new row</text>
+  <text class="d-mut" x="532" y="108">old.dbt_valid_to = new updated_at</text>
+  <rect x="520" y="143" width="370" height="44" rx="8" fill="var(--gone)"/>
+  <text class="d-txt" x="532" y="162" font-weight="700">unchanged key → nothing</text>
+  <text class="d-mut" x="532" y="178">timestamp: updated_at not newer · check: check_cols equal</text>
+  <rect x="520" y="213" width="370" height="44" rx="8" fill="var(--del)"/>
+  <text class="d-txt" x="532" y="232" font-weight="700">key missing from source → depends on hard-delete mode</text>
+  <text class="d-mut" x="532" y="248">ignore: nothing · invalidate: close · new_record: close + marker</text>
+  <circle r="5" class="flow-dot"><animateMotion dur="3s" repeatCount="indefinite"><mpath href="#f1"/></animateMotion></circle>
+  <circle r="5" class="flow-dot"><animateMotion dur="3s" begin=".75s" repeatCount="indefinite"><mpath href="#f2"/></animateMotion></circle>
+  <circle r="5" class="flow-dot"><animateMotion dur="3s" begin="1.5s" repeatCount="indefinite"><mpath href="#f3"/></animateMotion></circle>
+  <circle r="5" class="flow-dot"><animateMotion dur="3s" begin="2.25s" repeatCount="indefinite"><mpath href="#f4"/></animateMotion></circle>
+</svg>
+</div>
+
+<table class="prose card">
+  <tr><th>Meta column</th><th>Meaning</th></tr>
+  <tr><td><code>dbt_scd_id</code></td><td>Hash that identifies one version of a row (unique per row of the snapshot).</td></tr>
+  <tr><td><code>dbt_updated_at</code></td><td>The <code>updated_at</code> value of the source row (timestamp strategy), or the snapshot time (check strategy and delete markers).</td></tr>
+  <tr><td><code>dbt_valid_from</code> / <code>dbt_valid_to</code></td><td>Validity window. <code>dbt_valid_to is null</code> means "current version".
+      <span class="only-v112">In 1.12 you can set <code>dbt_valid_to_current: "to_date('9999-12-31')"</code> to get a far-future date instead of null.</span></td></tr>
+  <tr class="only-v112"><td><code>dbt_is_deleted</code> <span class="tag v112">1.9+</span></td><td>Only with <code>hard_deletes: new_record</code>. The strings <code>'True'</code> (deletion marker) or <code>'False'</code>.</td></tr>
+</table>
+
+<h2 id="config">2 · Configuration</h2>
+<div class="vgrid">
+  <div class="vcol only-v18">
+    <span class="tag v18">1.8.6</span>
+    <p>Snapshots are defined only in SQL, inside a <code>{% snapshot %}</code> block. <code>target_schema</code> is required, and
+      <code>generate_schema_name</code> is <em>not</em> applied (the same schema in dev and prod unless you use Jinja).</p>
+<div class="file">snapshots/orders_snapshot.sql</div>
+<pre class="code"><span class="k">{% snapshot</span> orders_snapshot <span class="k">%}</span>
+{{
+  config(
+    target_schema=<span class="s">'snapshots'</span>,
+    unique_key=<span class="s">'id'</span>,
+    strategy=<span class="s">'timestamp'</span>,
+    updated_at=<span class="s">'updated_at'</span>,
+    <span class="h">invalidate_hard_deletes=True</span>
+  )
+}}
+select * from {{ source(<span class="s">'shop'</span>, <span class="s">'orders'</span>) }}
+<span class="k">{% endsnapshot %}</span></pre>
+  </div>
+  <div class="vcol only-v112">
+    <span class="tag v112">1.12</span>
+    <p>Snapshots can be defined in YAML (recommended, since 1.9). The legacy SQL block still works. <code>schema</code>/<code>database</code>
+      are optional and follow <code>generate_schema_name</code> like models do. <code>invalidate_hard_deletes</code> still works for
+      existing snapshots, but <strong>cannot be combined</strong> with <code>hard_deletes</code>.</p>
+<div class="file">snapshots/orders_snapshot.yml</div>
+<pre class="code">snapshots:
+  - name: orders_snapshot
+    relation: source(<span class="s">'shop'</span>, <span class="s">'orders'</span>)
+    config:
+      unique_key: id
+      strategy: timestamp
+      updated_at: updated_at
+      <span class="h">hard_deletes: new_record</span>   <span class="c"># ignore | invalidate | new_record</span>
+      dbt_valid_to_current: <span class="s">"to_date('9999-12-31')"</span>  <span class="c"># optional</span>
+      snapshot_meta_column_names:            <span class="c"># optional renames</span>
+        dbt_valid_from: valid_from
+        dbt_valid_to: valid_to</pre>
+    <p>If you need transformation logic, put it in an ephemeral model and use <code>relation: ref('stg_orders_for_snapshot')</code>.</p>
+  </div>
+</div>
+
+<h2 id="strategies">3 · timestamp vs check</h2>
+<div class="cards">
+  <div class="card"><h3 style="margin-top:0">strategy: timestamp</h3>
+    <p>A row has changed if <code>source.updated_at &gt; current.dbt_valid_from</code>.</p>
+    <p><strong>Use when</strong> the source has a reliable <code>updated_at</code> that changes on <em>every</em> update. It is cheap (one column compared)
+      and gives accurate validity windows (they come from the source, not from the run time).</p>
+  </div>
+  <div class="card"><h3 style="margin-top:0">strategy: check</h3>
+    <p>A row has changed if any column in <code>check_cols</code> differs (<code>'all'</code> = every column). Validity windows use the <strong>run time</strong>.</p>
+    <p><strong>Use when</strong> there is no trustworthy <code>updated_at</code>. Prefer an explicit column list (or a hash column) over <code>'all'</code> on wide tables.
+      A change made and then reverted between two runs is invisible.</p>
+  </div>
+</div>
+<div class="callout warn"><b>Hard deletes work with both strategies</b>
+  <p>Deletion detection happens on <code>unique_key</code> only, whatever the strategy. The closing time of a deleted row is always the <strong>snapshot run time</strong>
+  (<code>snapshot_get_time()</code>), because the source no longer tells you when the row disappeared.</p></div>
+
+<h2 id="sim">4 · Hard delete simulator</h2>
+<p>Source table <code>shop.orders</code> over 5 daily runs: order 1 gets shipped, order 2 is deleted and then comes back, order 3 is deleted.
+Choose a mode and step through the runs. The timeline shows the validity windows. The "as of" query checks whether the snapshot can rebuild the past correctly.</p>
+
+<div class="sim" id="snapsim">
+  <div class="sim-head">
+    <div class="controls"><span class="ctl-label">Mode</span><div id="snap-mode"></div></div>
+  </div>
+  <div class="controls" style="margin-bottom:6px"><span class="ctl-label">Order 2 comes back</span><div id="snap-scenario"></div></div>
+  <div class="steps" id="snap-steps"></div>
+  <div class="controls" style="margin-bottom:12px">
+    <button class="btn" id="snap-prev">◀ Prev run</button>
+    <button class="btn primary" id="snap-next">Next run ▶</button>
+    <button class="btn" id="snap-play">▶ Play</button>
+    <button class="btn" id="snap-reset">Reset</button>
+  </div>
+  <div class="sim-cols">
+    <div>
+      <div class="pane-title"><span>source: shop.orders</span></div>
+      <div id="snap-source"></div>
+      <div id="snap-config"></div>
+    </div>
+    <div>
+      <div class="pane-title"><span>snapshots.orders_snapshot</span></div>
+      <div id="snap-table"></div>
+      <div class="pane-title" style="margin-top:14px"><span>Validity timeline</span></div>
+      <div id="snap-timeline"></div>
+    </div>
+  </div>
+  <div class="narration" id="snap-narr"></div>
+  <div class="pane-title" style="margin-top:14px"><span>Point-in-time query: which orders existed on…</span></div>
+  <div id="snap-asof"></div>
+  <div id="snap-asof-out" class="sql-out"></div>
+  <div class="legend">
+    <span><i style="background:var(--new)"></i>inserted this run</span>
+    <span><i style="background:var(--upd)"></i>dbt_valid_to set this run</span>
+    <span><i style="background:var(--del)"></i>deletion marker (new_record)</span>
+    <span><i style="background:var(--gone)"></i>row removed from source</span>
+  </div>
+</div>
+
+<div class="callout tip"><b>Things to try</b>
+  <p>• Run 5 with <code>ignore</code>: query "as of 01-05" and order 3 is still there, a <em>ghost</em> row that never closes.</p>
+  <p>• Run 4 with <code>invalidate</code>: order 2 has a <em>gap</em> between 01-03 and 01-04. Correct, but the snapshot never says "deleted".</p>
+  <p>• Switch "order 2 comes back" to <em>unchanged</em>: with <code>invalidate</code> the returning row restarts at its old <code>updated_at</code>
+     and <strong>overlaps</strong> its earlier window, so the "as of 01-02" query returns order 2 twice.</p>
+</div>
+
+<h2 id="modes">5 · The modes compared</h2>
+<div class="tbl-wrap card">
+<table class="prose">
+  <tr><th>Mode</th><th>Version</th><th>Order deleted from source</th><th>Order comes back</th><th>Current rows <code>where dbt_valid_to is null</code></th></tr>
+  <tr><td><code>invalidate_hard_deletes=false</code><br><code>hard_deletes: ignore</code></td><td><span class="tag v18">1.8.6</span> default<br><span class="tag v112">1.12</span> default</td>
+      <td>Nothing. The row stays current forever.</td><td>Treated as an ordinary update if <code>updated_at</code> is newer, otherwise nothing.</td>
+      <td>Include deleted orders ✗</td></tr>
+  <tr><td><code>invalidate_hard_deletes=true</code><br><code>hard_deletes: invalidate</code></td><td><span class="tag v18">1.8.6</span><br><span class="tag v112">1.12</span> (same behaviour)</td>
+      <td>Current row closed: <code>dbt_valid_to = run time</code>.</td><td>Inserted as a brand new row (<code>dbt_valid_from = updated_at</code>). This leaves a gap, or an overlap if <code>updated_at</code> is old.</td>
+      <td>Correct ✓ (deleted rows have no current row)</td></tr>
+  <tr><td><code>hard_deletes: new_record</code></td><td><span class="tag v112">1.9+ only</span></td>
+      <td>Current row closed <strong>and</strong> a marker row inserted: same values, <code>dbt_is_deleted = 'True'</code>, valid from run time, current.</td>
+      <td>Marker closed, new row with <code>dbt_is_deleted = 'False'</code>. History stays continuous.</td>
+      <td>Include markers → filter <code>dbt_is_deleted = 'False'</code></td></tr>
+</table>
+</div>
+
+<div class="vgrid">
+  <div class="vcol only-v18"><span class="tag v18">1.8.6</span>
+    <p><strong>Find deleted orders</strong>: there is no flag, so you infer it. An order is deleted when it has no current row:</p>
+<pre class="code">select id, max(dbt_valid_to) as deleted_at
+from {{ ref(<span class="s">'orders_snapshot'</span>) }}
+group by id
+having count(case when dbt_valid_to is null then 1 end) = 0</pre>
+    <p>This cannot tell you how many times an order was deleted and restored without comparing consecutive windows (looking for gaps).</p>
+  </div>
+  <div class="vcol only-v112"><span class="tag v112">1.12</span>
+    <p><strong>Find deleted orders</strong> with <code>new_record</code>: the marker row says it directly.</p>
+<pre class="code">select id, dbt_valid_from as deleted_at
+from {{ ref(<span class="s">'orders_snapshot'</span>) }}
+where dbt_is_deleted = <span class="s">'True'</span>
+  and dbt_valid_to is null      <span class="c">-- still deleted today</span></pre>
+    <p>Drop the last line to list every deletion event, including orders that came back later.</p>
+  </div>
+</div>
+
+<h2 id="best">6 · Best practices: when to use which</h2>
+<div class="cards">
+  <div class="card"><h3 style="margin-top:0">Use <code>ignore</code> when…</h3>
+    <ul><li>the source never hard-deletes (soft deletes via a status column), or</li>
+      <li>the snapshot selects a <strong>subset</strong> of the source (a <code>where</code> clause, incremental extract) where "missing" doesn't mean "deleted".</li></ul>
+  </div>
+  <div class="card"><h3 style="margin-top:0">Use <code>invalidate</code> when…</h3>
+    <ul><li>you are on <span class="tag v18">1.8.6</span> and the source hard-deletes rows (it is your only option),</li>
+      <li>consumers only need "current rows" and as-of queries, not "when/how often was it deleted".</li></ul>
+  </div>
+  <div class="card"><h3 style="margin-top:0">Use <code>new_record</code> when…</h3>
+    <ul><li>deletions are business events (churned customer, cancelled contract) you need to report on,</li>
+      <li>you need continuous history with no gaps, and rows can come back.</li>
+      <li>Start it on a <strong>new</strong> snapshot: dbt does not migrate an existing table to it automatically.</li></ul>
+  </div>
+</div>
+
+<div class="callout danger"><b>The #1 hard-delete trap: the select must return the FULL source</b>
+  <p>Detection works by "key is missing from the select". If your snapshot query filters
+  (<code>where updated_at &gt; current_date - 7</code>, a partial extract, a source that only lands deltas), every row outside the filter looks deleted
+  and gets invalidated on every run. Hard-delete detection requires a complete extract each time.</p></div>
+
+<ul>
+  <li><strong>Test the unique_key</strong>: add <code>unique</code> + <code>not_null</code> tests on the source column. Duplicate keys corrupt the snapshot (several current rows per key).</li>
+  <li><strong>Snapshot sources, not marts</strong>: keep the select close to raw data (light renames and casts only). Logic changes later would otherwise rewrite history.</li>
+  <li><strong>Run frequency = granularity</strong>: changes that happen and get reverted between two runs are lost. Snapshot at least as often as you need history.</li>
+  <li><strong>Timestamps</strong>: with <code>invalidate</code>/<code>new_record</code>, <code>dbt_valid_to</code> mixes source <code>updated_at</code> values and the warehouse's
+      <code>current_timestamp</code>. Keep both in the same type and timezone (1.9+ warns when the data types differ).</li>
+  <li><strong>Never full-refresh</strong> a snapshot: the history only exists in that table. Back it up before changing its config.</li>
+  <li class="only-v112"><strong>Migrating 1.8 → 1.12</strong>: <code>invalidate_hard_deletes=true</code> → <code>hard_deletes: invalidate</code> is a drop-in rename.
+      Moving to <code>new_record</code> adds the <code>dbt_is_deleted</code> column, and past deletions won't have markers, so plan a migration or start fresh.</li>
+</ul>

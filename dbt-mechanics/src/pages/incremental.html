@@ -1,0 +1,196 @@
+<h1>Incremental strategies</h1>
+<p class="lead">An incremental model is built once in full, then on each run dbt only computes <em>new or changed</em> rows and folds them into the existing table.
+Two choices decide whether the result is correct: <strong>which rows your query selects</strong> (the <code>is_incremental()</code> filter) and
+<strong>how dbt writes them</strong> (the <code>incremental_strategy</code>). The simulator shows both on the same data.</p>
+
+<div class="toc">
+  <a href="#how">1 · Anatomy of an incremental run</a>
+  <a href="#sim">2 · Strategy simulator</a>
+  <a href="#strategies">3 · Each strategy</a>
+  <a href="#adapters">4 · Support per adapter</a>
+  <a href="#options">5 · Useful options</a>
+  <a href="#best">6 · Which one to choose</a>
+</div>
+
+<h2 id="how">1 · Anatomy of an incremental run</h2>
+<div class="diagram">
+<svg viewBox="0 0 900 200" role="img" aria-label="Incremental run flow">
+  <rect class="d-box" x="10" y="70" width="150" height="60" rx="10"/>
+  <text class="d-txt" x="85" y="96" text-anchor="middle" font-weight="700">source / ref</text>
+  <text class="d-mut" x="85" y="114" text-anchor="middle">all the data</text>
+  <rect class="d-box" x="215" y="55" width="200" height="90" rx="10" style="stroke:var(--accent)"/>
+  <text class="d-txt" x="315" y="82" text-anchor="middle" font-weight="700">your model's select</text>
+  <text class="d-mut" x="315" y="102" text-anchor="middle">{% if is_incremental() %}</text>
+  <text class="d-mut" x="315" y="118" text-anchor="middle">where … &gt; (select max(…) from {{ this }})</text>
+  <rect class="d-box" x="470" y="70" width="150" height="60" rx="10"/>
+  <text class="d-txt" x="545" y="96" text-anchor="middle" font-weight="700">temp relation</text>
+  <text class="d-mut" x="545" y="114" text-anchor="middle">model__dbt_tmp</text>
+  <rect x="675" y="55" width="215" height="90" rx="10" fill="var(--new)"/>
+  <text class="d-txt" x="782" y="82" text-anchor="middle" font-weight="700">incremental_strategy</text>
+  <text class="d-mut" x="782" y="100" text-anchor="middle">append · merge · delete+insert</text>
+  <text class="d-mut" x="782" y="116" text-anchor="middle">insert_overwrite · microbatch</text>
+  <text class="d-mut" x="782" y="132" text-anchor="middle">→ DML into {{ this }}</text>
+  <path id="i1" class="d-line" d="M160 100 L215 100"/>
+  <path id="i2" class="d-line" d="M415 100 L470 100"/>
+  <path id="i3" class="d-line" d="M620 100 L675 100"/>
+  <path class="d-line" d="M782 145 C782 185 315 185 315 145" stroke-dasharray="4 4"/>
+  <text class="d-mut" x="548" y="182" text-anchor="middle">{{ this }} is read to compute the filter (high-water mark)</text>
+  <text class="d-mut" x="315" y="40" text-anchor="middle">① which rows?</text>
+  <text class="d-mut" x="782" y="40" text-anchor="middle">② how are they written?</text>
+  <circle r="5" class="flow-dot"><animateMotion dur="1.2s" repeatCount="indefinite"><mpath href="#i1"/></animateMotion></circle>
+  <circle r="5" class="flow-dot"><animateMotion dur="1.2s" begin=".4s" repeatCount="indefinite"><mpath href="#i2"/></animateMotion></circle>
+  <circle r="5" class="flow-dot"><animateMotion dur="1.2s" begin=".8s" repeatCount="indefinite"><mpath href="#i3"/></animateMotion></circle>
+</svg>
+</div>
+<p>The first run (or <code>--full-refresh</code>) ignores the filter and builds the whole table. <code>is_incremental()</code> is true only when the table exists,
+the model is incremental, and it isn't a full refresh. <code>on_schema_change</code> (<code>ignore</code> by default, or <code>fail</code>, <code>append_new_columns</code>,
+<code>sync_all_columns</code>) decides what happens when the columns of the select change.</p>
+
+<h2 id="sim">2 · Strategy simulator</h2>
+<p>Table <code>fct_orders</code>, partitioned by <code>event_date</code>, unique key <code>id</code>. Today (01-04) the source has two corrected amounts, two new orders,
+and a <strong>late-arriving</strong> order dated 01-01. A full refresh would give exactly the source table. Does your strategy get there?</p>
+
+<div class="sim" id="incsim">
+  <div class="controls" style="margin-bottom:8px"><span class="ctl-label">Strategy</span><div id="inc-strat"></div></div>
+  <div class="controls" style="margin-bottom:8px" id="inc-filter-wrap"><span class="ctl-label">is_incremental() filter</span><div id="inc-filter"></div></div>
+  <div class="controls" style="margin-bottom:8px;display:none" id="inc-lookback-wrap"><span class="ctl-label">lookback (batches)</span><div id="inc-lookback"></div></div>
+  <div class="sim-cols">
+    <div>
+      <div class="pane-title"><span>source: stg_orders (today)</span></div>
+      <div id="inc-source"></div>
+      <div class="pane-title" style="margin-top:14px"><span id="inc-input-title">input</span></div>
+      <div id="inc-input"></div>
+    </div>
+    <div>
+      <div class="pane-title"><span>target: fct_orders</span><button class="btn" id="inc-play">▶ Animate</button></div>
+      <div class="steps" id="inc-steps"></div>
+      <div id="inc-target"></div>
+      <div class="narration" id="inc-narr"></div>
+      <div id="inc-verdict"></div>
+    </div>
+  </div>
+  <div class="vgrid" style="grid-template-columns:repeat(auto-fit,minmax(340px,1fr))">
+    <div id="inc-model"></div>
+    <div id="inc-sql"></div>
+  </div>
+  <div class="legend">
+    <span><i style="background:var(--new)"></i>inserted</span>
+    <span><i style="background:var(--upd)"></i>updated (changed cells bold)</span>
+    <span><i style="background:var(--gone)"></i>deleted / overwritten</span>
+  </div>
+</div>
+
+<div class="callout tip"><b>Things to try</b>
+  <p>• <code>append</code>: ids 3 and 5 are duplicated. append only works for immutable events.</p>
+  <p>• <code>insert_overwrite</code> + "updated_at &gt; max" filter: partitions 01-01 and 01-02 are replaced by <em>only the changed rows</em>, so ids 1, 2 and 4 are lost.
+     Switch to the "event_date window" filter: now only the late row is missed.</p>
+  <p>• <code>merge</code> + "event_date window": the late order 8 (dated 01-01) is outside the window and is never loaded.</p>
+  <p class="only-v112">• <code>microbatch</code>: raise <code>lookback</code> to 3 to catch the late order. Each extra batch costs one more query.</p>
+</div>
+
+<h2 id="strategies">3 · Each strategy in one sentence (plus the trap)</h2>
+<div class="cards">
+  <div class="card"><h3 style="margin-top:0">append</h3>
+    <p>Inserts the input rows. Never updates or deletes.</p>
+    <p><strong>Trap</strong>: re-processing a row creates a duplicate. Use it only for immutable, exactly-once data (logs, events) and keep the filter strict.</p></div>
+  <div class="card"><h3 style="margin-top:0">merge</h3>
+    <p><code>MERGE</code> on <code>unique_key</code>: update matches, insert the rest. Without <code>unique_key</code> it behaves like append.</p>
+    <p><strong>Trap</strong>: duplicate keys <em>in the input</em> make the merge fail ("non-deterministic"). On huge tables it scans the whole target unless you add <code>incremental_predicates</code>.</p></div>
+  <div class="card"><h3 style="margin-top:0">delete+insert</h3>
+    <p>Deletes target rows whose key is in the input, then inserts the input. Same result as merge in two statements.</p>
+    <p><strong>Trap</strong>: it is not atomic on every warehouse. Useful when merge is unavailable (Postgres &lt; 15) or slow, or with a coarse key like <code>date_day</code> to replace whole days.</p></div>
+  <div class="card"><h3 style="margin-top:0">insert_overwrite</h3>
+    <p>Replaces <strong>entire partitions</strong> touched by the input (BigQuery, Spark, Databricks). No key matching, so it's cheap on big partitioned tables.</p>
+    <p><strong>Trap</strong>: the select must return the <em>complete</em> contents of each partition it touches, or the missing rows are deleted.
+      (On Snowflake, insert_overwrite rewrites the whole table.)</p></div>
+  <div class="card only-v112"><h3 style="margin-top:0">microbatch <span class="tag v112">1.9+</span></h3>
+    <p>dbt splits the work into time batches (<code>event_time</code>, <code>batch_size</code>) and replaces each batch. You write the query for one batch, with no <code>is_incremental()</code>.</p>
+    <p><strong>Trap</strong>: every upstream model needs <code>event_time</code> or it's fully scanned for every batch. Late data older than <code>lookback</code> is missed.</p></div>
+</div>
+
+<h2 id="adapters">4 · Support per adapter</h2>
+<div class="tbl-wrap card">
+<table class="prose">
+  <tr><th>Adapter</th><th>append</th><th>merge</th><th>delete+insert</th><th>insert_overwrite</th><th class="only-v112">microbatch <span class="tag v112">1.9+</span> → implemented as</th><th>Default</th></tr>
+  <tr><td>Postgres</td><td class="yes">✓</td><td class="yes">✓ (PG 15+)</td><td class="yes">✓</td><td class="no">–</td><td class="only-v112">merge (needs <code>unique_key</code>)</td><td>append, or delete+insert if <code>unique_key</code></td></tr>
+  <tr><td>Redshift</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">–</td><td class="only-v112">delete+insert</td><td>append, or delete+insert if <code>unique_key</code></td></tr>
+  <tr><td>Snowflake</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓ whole table</td><td class="only-v112">delete+insert (parallel batches)</td><td>merge</td></tr>
+  <tr><td>BigQuery</td><td class="no">–</td><td class="yes">✓</td><td class="no">–</td><td class="yes">✓ partitions</td><td class="only-v112">insert_overwrite (needs <code>partition_by</code>; parallel in 1.12)</td><td>merge</td></tr>
+  <tr><td>Databricks</td><td class="yes">✓</td><td class="yes">✓ (Delta)</td><td class="yes">✓ (recent)</td><td class="yes">✓ partitions</td><td class="only-v112">replace_where</td><td>merge</td></tr>
+  <tr><td>Spark</td><td class="yes">✓</td><td class="yes">✓ (Delta/Iceberg/Hudi)</td><td class="no">–</td><td class="yes">✓ partitions</td><td class="only-v112">insert_overwrite (needs <code>partition_by</code>)</td><td>append</td></tr>
+</table>
+</div>
+<p style="font-size:.85rem;color:var(--muted)">Support depends on the adapter version, not only on dbt Core. Check your adapter's page when in doubt.
+Databricks also has <code>replace_where</code> (replace the rows matching a predicate). You can write a custom strategy with a <code>get_incremental_&lt;name&gt;_sql</code> macro (not on BigQuery or Spark).</p>
+
+<h2 id="options">5 · Useful options</h2>
+<div class="vgrid">
+  <div class="vcol only-v18"><span class="tag v18">1.8.6</span>
+<div class="file">models/fct_orders.sql: merge with options</div>
+<pre class="code">{{ config(
+    materialized=<span class="s">'incremental'</span>,
+    incremental_strategy=<span class="s">'merge'</span>,
+    unique_key=<span class="s">'id'</span>,                 <span class="c">-- or a list: ['id', 'line_no']</span>
+    merge_exclude_columns=[<span class="s">'created_at'</span>], <span class="c">-- or merge_update_columns=[...]</span>
+    incremental_predicates=[
+      <span class="s">"DBT_INTERNAL_DEST.event_date &gt;= dateadd(day, -7, current_date)"</span>
+    ],
+    on_schema_change=<span class="s">'append_new_columns'</span>
+) }}
+select * from {{ ref(<span class="s">'stg_orders'</span>) }}
+<span class="k">{% if is_incremental() %}</span>
+  <span class="c">-- small overlap (>=, minus a margin) catches late rows; merge dedups them</span>
+  where updated_at &gt;= (select dateadd(hour, -3, max(updated_at)) from {{ this }})
+<span class="k">{% endif %}</span></pre>
+    <p>A late-data <strong>backfill</strong> means a manual <code>dbt run --full-refresh -s fct_orders</code>, or a var-driven filter
+       (<code>where event_date &gt;= '{{ var("from") }}'</code>).</p>
+  </div>
+  <div class="vcol only-v112"><span class="tag v112">1.12</span>
+    <p>Everything on the left still applies. For time-series models, microbatch adds:</p>
+<div class="file">models/staging/stg_orders.yml: enable upstream filtering</div>
+<pre class="code">models:
+  - name: stg_orders
+    config:
+      event_time: event_date</pre>
+<div class="file">models/fct_orders.sql</div>
+<pre class="code">{{ config(
+    materialized=<span class="s">'incremental'</span>,
+    incremental_strategy=<span class="s">'microbatch'</span>,
+    event_time=<span class="s">'event_date'</span>,
+    batch_size=<span class="s">'day'</span>,          <span class="c">-- hour | day | month | year</span>
+    begin=<span class="s">'2024-01-01'</span>,         <span class="c">-- start for the first build</span>
+    lookback=<span class="s">3</span>,                <span class="c">-- reprocess 3 previous batches</span>
+    concurrent_batches=<span class="k">true</span>,    <span class="c">-- optional, auto-detected</span>
+    full_refresh=<span class="k">false</span>          <span class="c">-- recommended: backfill instead</span>
+) }}
+select * from {{ ref(<span class="s">'stg_orders'</span>) }}</pre>
+<pre class="code"><span class="c"># targeted backfill, one query per day</span>
+dbt run -s fct_orders --event-time-start <span class="s">"2024-09-01"</span> --event-time-end <span class="s">"2024-09-04"</span>
+<span class="c"># only re-run the batches that failed</span>
+dbt retry</pre>
+    <p>All event times are treated as UTC. Use <code>ref('x').render()</code> to opt one input out of filtering (for example a small dimension).</p>
+  </div>
+</div>
+
+<h2 id="best">6 · Which one to choose</h2>
+<div class="tbl-wrap card">
+<table class="prose">
+  <tr><th>Your data looks like…</th><th>Choose</th><th>Why</th></tr>
+  <tr><td>Immutable events, never updated, loaded exactly once</td><td><code>append</code></td><td>Cheapest: no lookup in the target. Add a <code>unique</code> test to catch replays.</td></tr>
+  <tr><td>Rows updated in place, with a reliable primary key, small to medium table</td><td><code>merge</code></td><td>Upsert semantics, safe to re-run (idempotent), tolerant of overlapping filters.</td></tr>
+  <tr><td>Same, but very large target</td><td><code>merge</code> + <code>incremental_predicates</code> / clustering, or <code>delete+insert</code></td><td>Limits the scan of the target to recent data.</td></tr>
+  <tr><td>Recompute whole days at a time (aggregates by day)</td><td><code>delete+insert</code> with <code>unique_key='date_day'</code>, or <code>insert_overwrite</code></td><td>Replaces a full slice: no per-row matching, handles deletions inside the slice.</td></tr>
+  <tr><td>Big partitioned table on BigQuery / Spark / Databricks</td><td><code>insert_overwrite</code></td><td>Partition swaps are much cheaper than MERGE. The query must return full partitions.</td></tr>
+  <tr class="only-v112"><td>Big time-series fact, late data, regular backfills</td><td><code>microbatch</code> <span class="tag v112">1.9+</span></td><td>Batches are idempotent and retryable, backfills are a CLI flag, and the batch query is simple to read.</td></tr>
+  <tr class="only-v18"><td>Big time-series fact, late data, regular backfills</td><td><code>insert_overwrite</code> / <code>delete+insert</code> on a date key + a lookback window in the filter <span class="tag v18">1.8.6</span></td><td>This is what microbatch automates in 1.9+.</td></tr>
+  <tr><td>Rows can be hard-deleted in the source</td><td>None of them handles this on its own</td><td>Use a full refresh, a slice replacement (<code>insert_overwrite</code>/<code>delete+insert</code> by date), or a snapshot.</td></tr>
+</table>
+</div>
+
+<ul>
+  <li><strong>Make re-runs safe</strong>: prefer strategies where running the same input twice gives the same table (merge, delete+insert, insert_overwrite, microbatch).</li>
+  <li><strong>Overlap your filter</strong> (<code>&gt;=</code>, minus a margin) rather than using a strict <code>&gt;</code>, and let the strategy deduplicate. Rows sharing the max timestamp, or late rows, are then not lost.</li>
+  <li><strong>Deduplicate the input</strong> on <code>unique_key</code> (<code>qualify row_number() … = 1</code>) before a merge.</li>
+  <li><strong>Test</strong>: <code>unique</code> + <code>not_null</code> on the key, and periodically compare to a full refresh (row counts and sums per day).</li>
+  <li><strong>Schedule a full refresh</strong> (weekly or monthly) if the model can drift. With microbatch, prefer a backfill over the period instead.</li>
+</ul>

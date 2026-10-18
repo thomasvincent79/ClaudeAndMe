@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en" data-ver="both">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>dbt mechanics</title>
+<style>
+:root {
+  --bg: #f7f6f2; --card: #ffffff; --ink: #1c1c1a; --muted: #6a6963; --line: #e3e1d9; --soft: #efede6;
+  --accent: #ff694a;            /* dbt orange */
+  --v18: #3a6fd0; --v18-bg: #e6eefb;
+  --v112: #1f9d6b; --v112-bg: #e2f5ec;
+  --new: #d8f3e3; --new-ink: #146c43;
+  --upd: #fff0c9; --upd-ink: #8a5a00;
+  --del: #fde0dc; --del-ink: #a8281b;
+  --gone: #ececec; --gone-ink: #8d8d8d;
+  --code-bg: #1e1f24; --code-ink: #e7e7ea;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #141413; --card: #1e1e1c; --ink: #ecebe6; --muted: #a3a29b; --line: #34332f; --soft: #262624;
+    --accent: #ff8a70;
+    --v18: #86aef0; --v18-bg: #1d2a42;
+    --v112: #5fd3a2; --v112-bg: #173328;
+    --new: #183d2a; --new-ink: #8fe0b3;
+    --upd: #3d3115; --upd-ink: #f3cf7a;
+    --del: #45201c; --del-ink: #ffa597;
+    --gone: #2b2b2a; --gone-ink: #7c7c78;
+    --code-bg: #0e0e10; --code-ink: #e7e7ea;
+  }
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--ink);
+       font: 15.5px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+a { color: var(--accent); }
+code { font: .88em/1.4 ui-monospace, "Cascadia Code", Consolas, monospace; background: var(--soft);
+       padding: 1px 5px; border-radius: 4px; }
+h1 { font-size: 2rem; line-height: 1.2; margin: 8px 0 6px; }
+h2 { font-size: 1.4rem; margin: 44px 0 10px; padding-top: 8px; border-top: 1px solid var(--line); }
+h3 { font-size: 1.1rem; margin: 26px 0 8px; }
+.lead { color: var(--muted); font-size: 1.05rem; margin: 0 0 22px; max-width: 70ch; }
+p, li { max-width: 78ch; }
+
+/* ---------- header ---------- */
+.top { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 88%, transparent);
+       backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+.top-inner { max-width: 1180px; margin: 0 auto; padding: 10px 16px; display: flex; gap: 18px;
+             align-items: center; flex-wrap: wrap; }
+.brand { font-weight: 800; font-size: 1.1rem; color: var(--ink); text-decoration: none; }
+.brand span { color: var(--accent); margin-left: 2px; }
+.nav { display: flex; gap: 4px; flex-wrap: wrap; flex: 1; }
+.nav a { color: var(--muted); text-decoration: none; padding: 5px 10px; border-radius: 7px; font-size: .92rem; }
+.nav a:hover { background: var(--soft); color: var(--ink); }
+.nav a.on { background: var(--soft); color: var(--ink); font-weight: 600; }
+.vswitch { display: flex; align-items: center; gap: 2px; background: var(--soft); padding: 3px; border-radius: 9px; }
+.vlabel { font-size: .78rem; color: var(--muted); padding: 0 6px; }
+.vswitch button { border: 0; background: transparent; color: var(--muted); font: 600 .85rem system-ui, sans-serif;
+                  padding: 5px 10px; border-radius: 7px; cursor: pointer; }
+.vswitch button.on { background: var(--card); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+.vswitch button[data-set-ver="v18"].on { color: var(--v18); }
+.vswitch button[data-set-ver="v112"].on { color: var(--v112); }
+
+main { max-width: 1180px; margin: 0 auto; padding: 24px 16px 40px; }
+.foot { max-width: 1180px; margin: 0 auto; padding: 20px 16px 40px; color: var(--muted); font-size: .85rem;
+        border-top: 1px solid var(--line); }
+
+/* ---------- version blocks ---------- */
+.tag { display: inline-block; font: 700 .72rem/1 system-ui, sans-serif; padding: 4px 7px; border-radius: 5px;
+       letter-spacing: .02em; vertical-align: middle; }
+.tag.v18 { background: var(--v18-bg); color: var(--v18); }
+.tag.v112 { background: var(--v112-bg); color: var(--v112); }
+.vgrid { display: grid; gap: 14px; grid-template-columns: 1fr; margin: 12px 0; }
+html[data-ver="both"] .vgrid { grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); }
+html[data-ver="v18"] .only-v112, html[data-ver="v112"] .only-v18 { display: none !important; }
+.vcol { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px;
+        border-top: 3px solid var(--line); min-width: 0; }
+.vcol.only-v18 { border-top-color: var(--v18); }
+.vcol.only-v112 { border-top-color: var(--v112); }
+.vcol > .tag:first-child { margin-bottom: 6px; }
+.vcol p:first-of-type { margin-top: 6px; }
+
+/* ---------- cards & callouts ---------- */
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
+.cards { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); margin: 14px 0; }
+a.theme-card { color: inherit; text-decoration: none; display: block; transition: border-color .15s, transform .15s; }
+a.theme-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+.theme-card h2 { border: 0; margin: 6px 0 4px; padding: 0; font-size: 1.15rem; color: var(--accent); }
+.theme-card p { margin: 0; color: var(--muted); font-size: .93rem; }
+.theme-icon { font-size: 1.6rem; }
+.callout { border-left: 4px solid var(--accent); background: var(--card); padding: 10px 14px; border-radius: 0 10px 10px 0;
+           margin: 14px 0; }
+.callout.tip { border-left-color: var(--v112); }
+.callout.warn { border-left-color: #d9a400; }
+.callout.danger { border-left-color: #d0402d; }
+.callout b:first-child { display: block; margin-bottom: 2px; }
+.callout p { margin: 4px 0; }
+.toc { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 6px; }
+.toc a { font-size: .88rem; text-decoration: none; padding: 4px 10px; border: 1px solid var(--line);
+         border-radius: 20px; color: var(--ink); background: var(--card); }
+.toc a:hover { border-color: var(--accent); }
+
+/* ---------- code ---------- */
+pre.code { background: var(--code-bg); color: var(--code-ink); border-radius: 10px; padding: 12px 14px; overflow-x: auto;
+           font: .82rem/1.55 ui-monospace, "Cascadia Code", Consolas, monospace; margin: 8px 0; }
+pre.code .c { color: #8b8fa3; }
+pre.code .k { color: #ff9a7a; }
+pre.code .s { color: #a5e0a0; }
+pre.code .h { background: rgba(255,214,102,.18); border-radius: 3px; padding: 0 2px; }
+.file { font: 600 .75rem ui-monospace, Consolas, monospace; color: var(--muted); margin-top: 10px; }
+
+/* ---------- tables ---------- */
+.tbl-wrap { overflow-x: auto; }
+table.dt { border-collapse: collapse; width: 100%; font: .82rem/1.35 ui-monospace, "Cascadia Code", Consolas, monospace; }
+table.dt th { text-align: left; color: var(--muted); font-weight: 600; padding: 6px 8px; border-bottom: 2px solid var(--line);
+              white-space: nowrap; }
+table.dt td { padding: 5px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; transition: background .5s; }
+table.dt tr.new td { background: var(--new); color: var(--new-ink); }
+table.dt tr.upd td { background: var(--upd); color: var(--upd-ink); }
+table.dt tr.del td { background: var(--del); color: var(--del-ink); }
+table.dt tr.gone td { background: var(--gone); color: var(--gone-ink); text-decoration: line-through; }
+table.dt td.cell-upd { background: var(--upd) !important; color: var(--upd-ink) !important; font-weight: 700; }
+table.dt td.meta { color: var(--muted); }
+table.dt td.null { color: var(--muted); font-style: italic; }
+table.dt tr.flash td { animation: flash 1.1s ease; }
+@keyframes flash { 0% { filter: brightness(1.35); transform: translateX(-6px); } 100% { filter: none; transform: none; } }
+table.prose { border-collapse: collapse; width: 100%; font-size: .9rem; }
+table.prose th, table.prose td { border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+table.prose th { color: var(--muted); font-weight: 600; }
+.yes { color: var(--v112); font-weight: 700; }
+.no { color: var(--muted); }
+
+/* ---------- simulators ---------- */
+.sim { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; margin: 16px 0; }
+.sim-head { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.sim-title { font-weight: 700; }
+.controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.ctl-label { font-size: .78rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-right: 2px; }
+.seg { display: inline-flex; background: var(--soft); border-radius: 9px; padding: 3px; gap: 2px; flex-wrap: wrap; }
+.seg button { border: 0; background: transparent; color: var(--muted); padding: 5px 10px; border-radius: 7px; cursor: pointer;
+              font: 600 .82rem ui-monospace, Consolas, monospace; }
+.seg button.on { background: var(--card); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+.seg button:disabled { opacity: .35; cursor: not-allowed; }
+.btn { border: 1px solid var(--line); background: var(--card); color: var(--ink); padding: 6px 12px; border-radius: 8px;
+       cursor: pointer; font: 600 .85rem system-ui, sans-serif; }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+.sim-cols { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr) minmax(0, 1.9fr); }
+@media (max-width: 860px) { .sim-cols { grid-template-columns: minmax(0, 1fr); } }
+.pane-title { font-size: .78rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 0 0 6px;
+              display: flex; justify-content: space-between; gap: 8px; }
+.narration { background: var(--soft); border-radius: 10px; padding: 10px 14px; margin: 12px 0 0; min-height: 3.2em; }
+.narration b { color: var(--accent); }
+.steps { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0 12px; }
+.step { border: 1px solid var(--line); background: var(--card); color: var(--muted); border-radius: 20px; padding: 4px 12px;
+        font: 600 .8rem system-ui, sans-serif; cursor: pointer; }
+.step.done { color: var(--ink); }
+.step.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: .78rem; color: var(--muted); margin-top: 10px; }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 4px; }
+.verdict { margin-top: 10px; padding: 10px 14px; border-radius: 10px; font-size: .9rem; }
+.verdict.ok { background: var(--new); color: var(--new-ink); }
+.verdict.bad { background: var(--del); color: var(--del-ink); }
+.verdict ul { margin: 4px 0 0; padding-left: 18px; }
+.sql-out { margin-top: 12px; }
+svg text { font-family: ui-monospace, Consolas, monospace; }
+.timeline-svg { width: 100%; height: auto; display: block; margin-top: 6px; }
+.badge { display: inline-block; font: 700 .7rem system-ui, sans-serif; padding: 2px 6px; border-radius: 4px;
+         background: var(--soft); color: var(--muted); }
+
+/* ---------- diagrams ---------- */
+.diagram { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin: 14px 0; overflow-x: auto; }
+.diagram svg { display: block; width: 100%; height: auto; min-width: 560px; }
+.d-box { fill: var(--soft); stroke: var(--line); }
+.d-txt { fill: var(--ink); font: 12px system-ui, sans-serif; }
+.d-mut { fill: var(--muted); font: 11px system-ui, sans-serif; }
+.d-line { stroke: var(--muted); stroke-width: 1.5; fill: none; }
+.d-acc { stroke: var(--accent); }
+.flow-dot { fill: var(--accent); }
+#incsim .sim-cols { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); }
+@media (max-width: 860px) { #incsim .sim-cols { grid-template-columns: minmax(0, 1fr); } }
+
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-inner">
+    <a class="brand" href="index.html">dbt<span>mechanics</span></a>
+    <nav class="nav">
+<a href="index.html" class="on">Home</a>
+<a href="snapshots.html" class="">Snapshots & hard deletes</a>
+<a href="incremental.html" class="">Incremental strategies</a>
+<a href="tests.html" class="">Data tests & unit tests</a>
+    </nav>
+    <div class="vswitch" role="group" aria-label="dbt version">
+      <span class="vlabel">dbt Core</span>
+      <button data-set-ver="v18">1.8.6</button>
+      <button data-set-ver="v112">1.12</button>
+      <button data-set-ver="both">Compare</button>
+    </div>
+  </div>
+</header>
+<main>
+<h1>dbt mechanics, visually</h1>
+<p class="lead">One page per dbt topic. Each page has interactive simulators with concrete data and a "when to use what" section.
+Everything is written for two dbt Core versions at once: <span class="tag v18">1.8.6</span> (what you run today) and
+<span class="tag v112">1.12</span> (current v1). Use the switch at the top right to show one version or compare both.</p>
+
+<div class="cards">
+<a class="card theme-card" href="snapshots.html">
+  <div class="theme-icon">🕰️</div>
+  <h2>Snapshots & hard deletes</h2>
+  <p>SCD type 2 with timestamp/check strategies. invalidate_hard_deletes (1.8) vs hard_deletes: ignore / invalidate / new_record (1.9+).</p>
+</a>
+<a class="card theme-card" href="incremental.html">
+  <div class="theme-icon">➕</div>
+  <h2>Incremental strategies</h2>
+  <p>append, merge, delete+insert, insert_overwrite and microbatch (1.9+). Same input, different outcomes, side by side.</p>
+</a>
+<a class="card theme-card" href="tests.html">
+  <div class="theme-icon">✅</div>
+  <h2>Data tests & unit tests</h2>
+  <p>Generic, singular and unit tests, severity thresholds, store_failures, and what changed between 1.8 and 1.12.</p>
+</a>
+</div>
+
+<h2>What changed between 1.8.6 and 1.12 (for these topics)</h2>
+<div class="tbl-wrap card">
+<table class="prose">
+  <tr><th>Topic</th><th><span class="tag v18">1.8.6</span></th><th><span class="tag v112">1.12</span></th><th>Introduced in</th></tr>
+  <tr><td>Hard deletes in snapshots</td><td><code>invalidate_hard_deletes=true</code> (boolean)</td>
+      <td><code>hard_deletes: ignore | invalidate | new_record</code>, which adds the <code>dbt_is_deleted</code> column</td><td>1.9</td></tr>
+  <tr><td>Snapshot definition</td><td>SQL file with <code>{% snapshot %}</code> block, <code>target_schema</code> required</td>
+      <td>YAML snapshot (<code>relation: ref(...)</code>) or the legacy SQL block; <code>schema</code> optional (uses <code>generate_schema_name</code>)</td><td>1.9</td></tr>
+  <tr><td>Snapshot meta columns</td><td>Fixed names, <code>dbt_valid_to</code> null for current rows</td>
+      <td><code>snapshot_meta_column_names</code> to rename columns, <code>dbt_valid_to_current</code> to use a far-future date instead of null</td><td>1.9</td></tr>
+  <tr><td>Incremental strategies</td><td>append, merge, delete+insert, insert_overwrite (adapter-dependent)</td>
+      <td>+ <code>microbatch</code> (event_time, batch_size, begin, lookback, backfills, retry of failed batches)</td><td>1.9</td></tr>
+  <tr><td>Parallel microbatch</td><td>n/a</td><td><code>concurrent_batches</code>; parallel on Snowflake and BigQuery in 1.12</td><td>1.9 / 1.12</td></tr>
+  <tr><td>Tests</td><td><code>data_tests:</code> key (old <code>tests:</code> still accepted), <strong>unit tests introduced</strong></td>
+      <td>Same model, plus stricter YAML validation (custom keys under <code>meta</code>), generic-test <code>arguments:</code>, opt-in <code>sql_header</code> in test configs</td><td>1.8 / 1.10 / 1.12</td></tr>
+</table>
+</div>
+
+<div class="callout">
+  <b>How to regenerate the pages</b>
+  <p>Edit the sources in <code>src/pages/*.html</code> and <code>src/js/*.js</code>, then run <code>python build.py</code>
+  (or <code>python build.py --serve</code> to also serve them on <code>localhost:8800</code>).
+  To add a topic (for example "sources &amp; freshness" or "materializations"), add a fragment and one entry in <code>THEMATICS</code> in <code>build.py</code>.</p>
+</div>
+
+</main>
+<footer class="foot">
+  Built with <code>python build.py</code>. Version-specific blocks are tagged
+  <span class="tag v18">1.8.6</span> and <span class="tag v112">1.12</span>; use the switch at the top to show one or compare both.
+</footer>
+<script>
+// ---------- version switch (shared by every page) ----------
+const VER_KEY = "dbt-mechanics-version";
+function getVer() { return document.documentElement.dataset.ver; }
+function setVer(v) {
+  document.documentElement.dataset.ver = v;
+  document.querySelectorAll("[data-set-ver]").forEach(b => b.classList.toggle("on", b.dataset.setVer === v));
+  try { localStorage.setItem(VER_KEY, v); } catch (e) { /* storage unavailable: fine */ }
+  document.dispatchEvent(new CustomEvent("verchange", { detail: v }));
+}
+document.querySelectorAll("[data-set-ver]").forEach(b => b.addEventListener("click", () => setVer(b.dataset.setVer)));
+let savedVer = "both";
+try { savedVer = localStorage.getItem(VER_KEY) || "both"; } catch (e) { /* ignore */ }
+setVer(savedVer);
+
+// ---------- small helpers ----------
+function $(sel, root = document) { return root.querySelector(sel); }
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+
+// Build a segmented control. options: [{value, label, disabled, title}]
+function segmented(container, options, value, onChange) {
+  container.innerHTML = "";
+  container.classList.add("seg");
+  options.forEach(o => {
+    const b = document.createElement("button");
+    b.textContent = o.label; b.dataset.value = o.value;
+    if (o.title) b.title = o.title;
+    b.disabled = !!o.disabled;
+    b.classList.toggle("on", o.value === value);
+    b.addEventListener("click", () => {
+      container.querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b));
+      onChange(o.value);
+    });
+    container.appendChild(b);
+  });
+}
+
+// Render rows as a table. cols: [{key, label, cls?, fmt?}], rows carry an optional _cls and _cellCls {key: cls}
+function renderTable(el, cols, rows, opts = {}) {
+  const head = "<tr>" + cols.map(c => `<th>${esc(c.label)}</th>`).join("") + "</tr>";
+  const body = rows.map(r => {
+    const tds = cols.map(c => {
+      const v = r[c.key];
+      const isNull = v === null || v === undefined;
+      const cls = [c.cls || "", isNull ? "null" : "", (r._cellCls && r._cellCls[c.key]) || ""].join(" ").trim();
+      const shown = isNull ? "null" : (c.fmt ? c.fmt(v, r) : v);
+      return `<td class="${cls}">${esc(shown)}</td>`;
+    }).join("");
+    return `<tr class="${r._cls || ""} ${r._flash ? "flash" : ""}">${tds}</tr>`;
+  }).join("");
+  el.innerHTML = `<div class="tbl-wrap"><table class="dt">${head}${body || `<tr><td colspan="${cols.length}" class="null">${opts.empty || "(empty)"}</td></tr>`}</table></div>`;
+}
+
+</script>
+</body>
+</html>

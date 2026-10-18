@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en" data-ver="both">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{title}}</title>
+<style>
+{{css}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-inner">
+    <a class="brand" href="index.html">dbt<span>mechanics</span></a>
+    <nav class="nav">
+{{nav}}
+    </nav>
+    <div class="vswitch" role="group" aria-label="dbt version">
+      <span class="vlabel">dbt Core</span>
+      <button data-set-ver="v18">{{v18}}</button>
+      <button data-set-ver="v112">{{v112}}</button>
+      <button data-set-ver="both">Compare</button>
+    </div>
+  </div>
+</header>
+<main>
+{{content}}
+</main>
+<footer class="foot">
+  Built with <code>python build.py</code>. Version-specific blocks are tagged
+  <span class="tag v18">{{v18}}</span> and <span class="tag v112">{{v112}}</span>; use the switch at the top to show one or compare both.
+</footer>
+<script>
+{{js}}
+</script>
+</body>
+</html>
