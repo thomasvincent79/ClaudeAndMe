@@ -1,0 +1,1063 @@
+<!doctype html>
+<html lang="en" data-ver="both">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CLI flags</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23ff5f3f'/%3E%3Cpath d='M9 22l7-12 7 12' stroke='white' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<script>
+  // apply saved theme/version before paint (no flash)
+  try {
+    const t = localStorage.getItem("dbt-mechanics-theme"); if (t) document.documentElement.dataset.theme = t;
+    const v = localStorage.getItem("dbt-mechanics-version"); if (v) document.documentElement.dataset.ver = v;
+  } catch (e) {}
+</script>
+<style>
+/* ================= tokens ================= */
+:root {
+  --bg: #f6f5f2; --bg2: #efede7; --card: #ffffff; --ink: #17171a; --muted: #686873; --line: #e4e2db; --soft: #f0eee8;
+  --accent: #ff5f3f; --accent2: #ff9f43; --accent-ink: #fff;
+  --grad: linear-gradient(120deg, #ff5f3f 0%, #ff9f43 45%, #7c5cff 100%);
+  --v18: #3a6fd0; --v18-bg: #e6eefb;
+  --v112: #12946a; --v112-bg: #ddf4ea;
+  --new: #d7f3e2; --new-ink: #136b42;
+  --upd: #fff0c4; --upd-ink: #855600;
+  --del: #fde0dc; --del-ink: #a8281b;
+  --gone: #ececea; --gone-ink: #8d8d8a;
+  --code-bg: #15161c; --code-ink: #e7e7ee; --code-bar: #20222b;
+  --shadow: 0 1px 2px rgba(20,20,30,.05), 0 8px 24px -12px rgba(20,20,30,.18);
+  --shadow-lg: 0 2px 6px rgba(20,20,30,.06), 0 24px 48px -20px rgba(20,20,30,.28);
+  --mesh1: rgba(255,95,63,.16); --mesh2: rgba(124,92,255,.14); --mesh3: rgba(255,159,67,.14);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f0f13; --bg2: #15151b; --card: #18181f; --ink: #ecebf1; --muted: #9c9ba8; --line: #2a2a34; --soft: #22222b;
+    --accent: #ff7a5c; --accent2: #ffb366;
+    --v18: #8cb2f4; --v18-bg: #1a2640;
+    --v112: #5fd6a5; --v112-bg: #13302a;
+    --new: #143524; --new-ink: #8fe0b3;
+    --upd: #3a2e12; --upd-ink: #f3cf7a;
+    --del: #42201c; --del-ink: #ffa597;
+    --gone: #24242b; --gone-ink: #74747e;
+    --code-bg: #0b0b0f; --code-ink: #e7e7ee; --code-bar: #16161d;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+    --shadow-lg: 0 2px 6px rgba(0,0,0,.4), 0 24px 48px -20px rgba(0,0,0,.8);
+    --mesh1: rgba(255,95,63,.18); --mesh2: rgba(124,92,255,.2); --mesh3: rgba(255,159,67,.1);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f0f13; --bg2: #15151b; --card: #18181f; --ink: #ecebf1; --muted: #9c9ba8; --line: #2a2a34; --soft: #22222b;
+  --accent: #ff7a5c; --accent2: #ffb366;
+  --v18: #8cb2f4; --v18-bg: #1a2640;
+  --v112: #5fd6a5; --v112-bg: #13302a;
+  --new: #143524; --new-ink: #8fe0b3;
+  --upd: #3a2e12; --upd-ink: #f3cf7a;
+  --del: #42201c; --del-ink: #ffa597;
+  --gone: #24242b; --gone-ink: #74747e;
+  --code-bg: #0b0b0f; --code-ink: #e7e7ee; --code-bar: #16161d;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+  --shadow-lg: 0 2px 6px rgba(0,0,0,.4), 0 24px 48px -20px rgba(0,0,0,.8);
+  --mesh1: rgba(255,95,63,.18); --mesh2: rgba(124,92,255,.2); --mesh3: rgba(255,159,67,.1);
+  color-scheme: dark;
+}
+
+/* ================= base ================= */
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 80px; }
+body { margin: 0; background: var(--bg); color: var(--ink);
+       font: 15.5px/1.65 "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+       -webkit-font-smoothing: antialiased; }
+body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background: radial-gradient(900px 500px at 8% -10%, var(--mesh1), transparent 60%),
+              radial-gradient(800px 500px at 100% 0%, var(--mesh2), transparent 60%),
+              radial-gradient(700px 600px at 50% 110%, var(--mesh3), transparent 60%); }
+a { color: var(--accent); text-underline-offset: 3px; }
+code { font: .86em/1.4 "JetBrains Mono", ui-monospace, "Cascadia Code", Consolas, monospace; background: var(--soft);
+       padding: 1px 6px; border-radius: 5px; border: 1px solid var(--line); overflow-wrap: anywhere; }
+h1 { font-size: clamp(2rem, 4.5vw, 3.1rem); line-height: 1.08; letter-spacing: -.03em; margin: 6px 0 12px; font-weight: 800; }
+h2 { font-size: 1.55rem; letter-spacing: -.02em; margin: 64px 0 12px; font-weight: 750; position: relative; padding-bottom: 10px; }
+h2::after { content: ""; position: absolute; left: 0; bottom: 0; width: 56px; height: 3px; border-radius: 3px; background: var(--grad); }
+h3 { font-size: 1.08rem; margin: 26px 0 8px; letter-spacing: -.01em; }
+.lead { color: var(--muted); font-size: 1.1rem; margin: 0 0 22px; max-width: 72ch; }
+p, li { max-width: 80ch; }
+::selection { background: color-mix(in srgb, var(--accent) 30%, transparent); }
+
+/* ================= header ================= */
+.progress { position: fixed; top: 0; left: 0; height: 3px; width: 0; background: var(--grad); z-index: 20; }
+.top { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 78%, transparent);
+       backdrop-filter: saturate(1.6) blur(14px); -webkit-backdrop-filter: saturate(1.6) blur(14px); border-bottom: 1px solid var(--line); }
+.top-inner { max-width: 1200px; margin: 0 auto; padding: 10px 16px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 1.05rem; color: var(--ink); text-decoration: none; letter-spacing: -.02em; }
+.brand svg { width: 26px; height: 26px; }
+.brand span { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.nav { display: flex; gap: 2px; flex-wrap: wrap; flex: 1; }
+.nav a { color: var(--muted); text-decoration: none; padding: 6px 11px; border-radius: 8px; font-size: .9rem; font-weight: 500; transition: .15s; }
+.nav a:hover { background: var(--soft); color: var(--ink); }
+.nav a.on { color: var(--ink); background: var(--card); box-shadow: var(--shadow); }
+.vswitch { display: flex; align-items: center; gap: 2px; background: var(--soft); padding: 3px; border-radius: 10px; border: 1px solid var(--line); }
+.vlabel { font-size: .74rem; color: var(--muted); padding: 0 6px; font-weight: 600; }
+.vswitch button, .theme-btn { border: 0; background: transparent; color: var(--muted); font: 600 .84rem "Inter", system-ui, sans-serif;
+                  padding: 5px 10px; border-radius: 7px; cursor: pointer; transition: .15s; }
+.vswitch button.on { background: var(--card); color: var(--ink); box-shadow: var(--shadow); }
+.vswitch button[data-set-ver="v18"].on { color: var(--v18); }
+.vswitch button[data-set-ver="v112"].on { color: var(--v112); }
+.theme-btn { font-size: 1rem; border: 1px solid var(--line); background: var(--soft); padding: 5px 9px; }
+.theme-btn:hover { color: var(--ink); }
+
+main { max-width: 1200px; margin: 0 auto; padding: 28px 16px 40px; }
+.foot { max-width: 1200px; margin: 40px auto 0; padding: 22px 16px 48px; color: var(--muted); font-size: .85rem; border-top: 1px solid var(--line); }
+
+/* ================= hero ================= */
+.hero { position: relative; overflow: hidden; border-radius: 22px; padding: 38px 34px 30px; margin: 4px 0 10px;
+        background: linear-gradient(160deg, color-mix(in srgb, var(--card) 92%, transparent), color-mix(in srgb, var(--card) 70%, transparent));
+        border: 1px solid var(--line); box-shadow: var(--shadow-lg); }
+.hero::before { content: ""; position: absolute; inset: -2px; z-index: 0; opacity: .55; pointer-events: none;
+  background: radial-gradient(500px 220px at 100% 0%, var(--mesh2), transparent 70%), radial-gradient(400px 200px at 0% 100%, var(--mesh1), transparent 70%); }
+.hero > * { position: relative; z-index: 1; }
+.eyebrow { display: inline-flex; align-items: center; gap: 8px; font: 700 .74rem "Inter", sans-serif; letter-spacing: .12em; text-transform: uppercase;
+           color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); padding: 5px 11px; border-radius: 30px; }
+.hero h1 .grad, .grad { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.hero .lead { color: var(--muted); margin-bottom: 18px; }
+.hero-art { position: absolute; right: 24px; top: 20px; width: 300px; opacity: .9; z-index: 0; }
+@media (max-width: 980px) { .hero-art { display: none; } }
+.hero.big { padding: 56px 40px 44px; }
+.hero.big h1 { font-size: clamp(2.4rem, 6vw, 4rem); max-width: 14ch; }
+.stats { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+.stat { background: var(--soft); border: 1px solid var(--line); border-radius: 12px; padding: 8px 14px; font-size: .85rem; color: var(--muted); }
+.stat b { color: var(--ink); font-size: 1.05rem; margin-right: 4px; }
+
+/* ================= version blocks ================= */
+.tag { display: inline-block; font: 700 .7rem/1 "Inter", system-ui, sans-serif; padding: 4px 8px; border-radius: 6px; letter-spacing: .02em; vertical-align: middle; }
+.tag.v18 { background: var(--v18-bg); color: var(--v18); }
+.tag.v112 { background: var(--v112-bg); color: var(--v112); }
+.vgrid { display: grid; gap: 16px; grid-template-columns: 1fr; margin: 14px 0; }
+html[data-ver="both"] .vgrid { grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); }
+html[data-ver="v18"] .only-v112, html[data-ver="v112"] .only-v18 { display: none !important; }
+.vcol { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px; box-shadow: var(--shadow);
+        position: relative; min-width: 0; overflow: hidden; }
+.vcol::before { content: ""; position: absolute; left: 0; top: 0; right: 0; height: 3px; background: var(--line); }
+.vcol.only-v18::before { background: linear-gradient(90deg, var(--v18), transparent); }
+.vcol.only-v112::before { background: linear-gradient(90deg, var(--v112), transparent); }
+.vcol > .tag:first-child { margin-bottom: 6px; }
+
+/* ================= cards & callouts ================= */
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; box-shadow: var(--shadow); }
+.cards { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(270px, 100%), 1fr)); margin: 16px 0; }
+.card h3:first-child { margin-top: 0; }
+a.theme-card { color: inherit; text-decoration: none; display: block; position: relative; transition: transform .2s, box-shadow .2s; overflow: hidden; }
+a.theme-card::after { content: ""; position: absolute; inset: 0; border-radius: 16px; padding: 1px; background: var(--grad); opacity: 0; transition: opacity .2s;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none; }
+a.theme-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
+a.theme-card:hover::after { opacity: 1; }
+.theme-card h2 { margin: 12px 0 6px; padding: 0; font-size: 1.15rem; }
+.theme-card h2::after { display: none; }
+.theme-card p { margin: 0; color: var(--muted); font-size: .92rem; }
+.theme-card .go { display: inline-block; margin-top: 12px; font-weight: 600; font-size: .88rem; color: var(--accent); }
+.theme-icon { width: 46px; height: 46px; display: grid; place-items: center; font-size: 1.4rem; border-radius: 12px;
+              background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 22%, transparent), color-mix(in srgb, #7c5cff 22%, transparent)); }
+.callout { border: 1px solid var(--line); border-left: 4px solid var(--accent); background: var(--card); padding: 12px 16px; border-radius: 12px; margin: 16px 0; box-shadow: var(--shadow); }
+.callout.tip { border-left-color: var(--v112); }
+.callout.warn { border-left-color: #e0a800; }
+.callout.danger { border-left-color: #e0442f; background: linear-gradient(90deg, color-mix(in srgb, var(--del) 60%, var(--card)), var(--card) 60%); }
+.callout b:first-child { display: block; margin-bottom: 2px; }
+.callout p { margin: 4px 0; }
+.toc { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0 0; }
+.toc a { font-size: .85rem; font-weight: 500; text-decoration: none; padding: 5px 12px; border: 1px solid var(--line);
+         border-radius: 30px; color: var(--ink); background: var(--card); transition: .15s; }
+.toc a:hover { border-color: var(--accent); color: var(--accent); transform: translateY(-1px); }
+
+/* ================= code ================= */
+.file { font: 600 .74rem "JetBrains Mono", ui-monospace, Consolas, monospace; color: #a9abb8; margin: 14px 0 0; background: var(--code-bar);
+        padding: 9px 14px 9px 62px; border-radius: 12px 12px 0 0; position: relative; }
+.file::before { content: ""; position: absolute; left: 14px; top: 50%; width: 10px; height: 10px; border-radius: 50%; transform: translateY(-50%);
+                background: #ff5f57; box-shadow: 15px 0 0 #febc2e, 30px 0 0 #28c840; }
+.file + pre.code { margin-top: 0; border-top-left-radius: 0; border-top-right-radius: 0; }
+pre.code { background: var(--code-bg); color: var(--code-ink); border-radius: 12px; padding: 14px 16px; overflow-x: auto;
+           font: .8rem/1.6 "JetBrains Mono", ui-monospace, "Cascadia Code", Consolas, monospace; margin: 10px 0; box-shadow: var(--shadow); }
+pre.code .c { color: #7d8196; }
+pre.code .k { color: #ff9a7a; }
+pre.code .s { color: #a5e0a0; }
+pre.code .f { color: #8cc4ff; }
+pre.code .h { background: rgba(255,214,102,.16); border-radius: 4px; padding: 0 3px; box-shadow: inset 0 0 0 1px rgba(255,214,102,.25); }
+
+/* ================= tables ================= */
+.tbl-wrap { overflow-x: auto; }
+table.dt { border-collapse: separate; border-spacing: 0; width: 100%; font: .8rem/1.35 "JetBrains Mono", ui-monospace, Consolas, monospace; }
+table.dt th { text-align: left; color: var(--muted); font: 600 .72rem "Inter", sans-serif; text-transform: uppercase; letter-spacing: .04em;
+              padding: 7px 9px; border-bottom: 1px solid var(--line); white-space: nowrap; background: var(--soft); }
+table.dt th:first-child { border-top-left-radius: 8px; } table.dt th:last-child { border-top-right-radius: 8px; }
+table.dt td { padding: 6px 9px; border-bottom: 1px solid var(--line); white-space: nowrap; transition: background .5s, color .5s; }
+table.dt tr.new td { background: var(--new); color: var(--new-ink); }
+table.dt tr.upd td { background: var(--upd); color: var(--upd-ink); }
+table.dt tr.del td { background: var(--del); color: var(--del-ink); }
+table.dt tr.gone td { background: var(--gone); color: var(--gone-ink); text-decoration: line-through; }
+table.dt td.cell-upd { background: var(--upd) !important; color: var(--upd-ink) !important; font-weight: 700; }
+table.dt td.meta { color: var(--muted); }
+table.dt td.null { color: var(--muted); font-style: italic; }
+table.dt tr.flash td { animation: flash 1s cubic-bezier(.2,.8,.2,1); }
+@keyframes flash { 0% { filter: brightness(1.4) saturate(1.4); transform: translateX(-10px); opacity: .2; } 100% { filter: none; transform: none; opacity: 1; } }
+table.prose { border-collapse: collapse; width: 100%; font-size: .9rem; }
+table.prose th, table.prose td { border-bottom: 1px solid var(--line); padding: 10px 12px; text-align: left; vertical-align: top; }
+table.prose tr:last-child td { border-bottom: 0; }
+table.prose th { color: var(--muted); font-weight: 600; font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; }
+table.prose tr:hover td { background: color-mix(in srgb, var(--soft) 60%, transparent); }
+.yes { color: var(--v112); font-weight: 700; }
+.no { color: var(--muted); }
+
+/* ================= simulators ================= */
+.sim { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 20px; margin: 18px 0; box-shadow: var(--shadow-lg); position: relative; }
+.sim::before { content: "INTERACTIVE"; position: absolute; top: -10px; left: 20px; font: 800 .64rem "Inter", sans-serif; letter-spacing: .14em;
+               color: #fff; background: var(--grad); padding: 4px 10px; border-radius: 20px; }
+.sim-head { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.ctl-label { font: 700 .7rem "Inter", sans-serif; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-right: 2px; }
+.seg { display: inline-flex; background: var(--soft); border-radius: 10px; padding: 3px; gap: 2px; flex-wrap: wrap; border: 1px solid var(--line); }
+.seg button { border: 0; background: transparent; color: var(--muted); padding: 5px 11px; border-radius: 7px; cursor: pointer;
+              font: 600 .78rem "JetBrains Mono", ui-monospace, Consolas, monospace; transition: .15s; }
+.seg button:hover:not(:disabled) { color: var(--ink); }
+.seg button.on { background: var(--card); color: var(--ink); box-shadow: var(--shadow); }
+.seg button:disabled { opacity: .35; cursor: not-allowed; }
+.btn { border: 1px solid var(--line); background: var(--card); color: var(--ink); padding: 7px 14px; border-radius: 10px;
+       cursor: pointer; font: 600 .84rem "Inter", system-ui, sans-serif; transition: .15s; }
+.btn:hover:not(:disabled) { border-color: var(--accent); transform: translateY(-1px); }
+.btn.primary { background: var(--grad); border-color: transparent; color: #fff; box-shadow: 0 6px 18px -8px var(--accent); }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+input.btn { cursor: text; }
+.sim-cols { display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr) minmax(0, 1.9fr); }
+@media (max-width: 860px) { .sim-cols { grid-template-columns: minmax(0, 1fr); } }
+.pane-title { font: 700 .7rem "Inter", sans-serif; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 8px;
+              display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.narration { background: var(--soft); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; margin: 14px 0 0; min-height: 3.2em; }
+.narration b { color: var(--accent); }
+.steps { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0 12px; }
+.step { border: 1px solid var(--line); background: var(--card); color: var(--muted); border-radius: 30px; padding: 5px 13px;
+        font: 600 .78rem "Inter", system-ui, sans-serif; cursor: pointer; transition: .2s; }
+.step.done { color: var(--ink); border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); }
+.step.on { background: var(--grad); color: #fff; border-color: transparent; box-shadow: 0 6px 18px -8px var(--accent); }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: .78rem; color: var(--muted); margin-top: 12px; }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 4px; vertical-align: -2px; margin-right: 5px; }
+.verdict { margin-top: 12px; padding: 11px 15px; border-radius: 12px; font-size: .9rem; animation: pop .35s ease; }
+.verdict:empty { display: none; }
+.verdict.ok { background: var(--new); color: var(--new-ink); }
+.verdict.bad { background: var(--del); color: var(--del-ink); }
+.verdict ul { margin: 4px 0 0; padding-left: 18px; }
+@keyframes pop { from { transform: scale(.97); opacity: 0; } to { transform: none; opacity: 1; } }
+.sql-out { margin-top: 12px; }
+svg text { font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; }
+.timeline-svg { width: 100%; height: auto; display: block; margin-top: 6px; }
+.badge { display: inline-block; font: 700 .68rem "Inter", sans-serif; padding: 2px 7px; border-radius: 5px; background: var(--soft); color: var(--muted); }
+
+/* ================= diagrams ================= */
+.diagram { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 18px; margin: 16px 0; overflow-x: auto; box-shadow: var(--shadow); }
+.diagram svg { display: block; width: 100%; height: auto; min-width: 560px; }
+.d-box { fill: var(--soft); stroke: var(--line); }
+.d-txt { fill: var(--ink); font: 12px "Inter", system-ui, sans-serif; }
+.d-mut { fill: var(--muted); font: 11px "Inter", system-ui, sans-serif; }
+.d-line { stroke: var(--muted); stroke-width: 1.5; fill: none; opacity: .7; }
+.flow-dot { fill: var(--accent); filter: drop-shadow(0 0 4px var(--accent)); }
+
+/* ================= reveal on scroll ================= */
+.reveal { opacity: 0; transform: translateY(14px); transition: opacity .6s ease, transform .6s cubic-bezier(.2,.8,.2,1); }
+.reveal.in { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } * { animation: none !important; } }
+
+/* incremental: wider input pane */
+#incsim .sim-cols { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); }
+@media (max-width: 860px) { #incsim .sim-cols { grid-template-columns: minmax(0, 1fr); } }
+
+/* ================= flags page ================= */
+.where-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin: 14px 0; }
+.where { border-radius: 14px; padding: 14px 16px; border: 1px solid var(--line); background: var(--card); box-shadow: var(--shadow); position: relative; }
+.where .rank { position: absolute; top: 12px; right: 14px; font: 800 1.6rem "Inter", sans-serif; opacity: .12; }
+.where h4 { margin: 0 0 4px; font-size: .95rem; }
+.where p { margin: 0; font-size: .86rem; color: var(--muted); }
+.flag-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr)); margin: 16px 0; }
+@media (max-width: 420px) { .flag-grid { grid-template-columns: minmax(0, 1fr); } }
+.flag { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 18px 20px; box-shadow: var(--shadow); min-width: 0; transition: box-shadow .2s, transform .2s; }
+.flag:hover { box-shadow: var(--shadow-lg); }
+.flag-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+.flag-name { font: 700 1.02rem "JetBrains Mono", ui-monospace, Consolas, monospace; color: var(--accent); }
+.flag-alias { font: .8rem "JetBrains Mono", monospace; color: var(--muted); }
+.flag-cmds { display: flex; gap: 4px; flex-wrap: wrap; margin: 4px 0 10px; }
+.flag-cmds span { font: 600 .7rem "JetBrains Mono", monospace; padding: 2px 7px; border-radius: 5px; background: var(--soft); color: var(--muted); border: 1px solid var(--line); }
+.flag dl { margin: 0; display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 6px 12px; font-size: .9rem; }
+.flag dt { font: 700 .68rem "Inter", sans-serif; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); padding-top: 4px; }
+.flag dd { margin: 0; min-width: 0; }
+.flag dd pre.code { margin: 2px 0; font-size: .76rem; padding: 9px 12px; }
+.chips { display: flex; gap: 5px; flex-wrap: wrap; }
+.chip { font: 600 .72rem "Inter", sans-serif; padding: 3px 8px; border-radius: 20px; border: 1px solid var(--line); color: var(--muted); }
+.chip.y { color: var(--v112); border-color: color-mix(in srgb, var(--v112) 40%, var(--line)); background: color-mix(in srgb, var(--v112) 10%, transparent); }
+.chip.n { opacity: .55; text-decoration: line-through; }
+.group-title { display: flex; align-items: center; gap: 10px; }
+.group-title .num { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; font: 800 .85rem "Inter", sans-serif; color: #fff; background: var(--grad); }
+
+/* DAG playground */
+.dag-wrap { background: var(--bg2); border: 1px solid var(--line); border-radius: 14px; padding: 8px; overflow-x: auto; }
+.dag-wrap svg { display: block; width: 100%; min-width: 760px; height: auto; }
+.dag-node rect { transition: fill .35s, stroke .35s, opacity .35s; }
+.dag-node.dim { opacity: .32; }
+.dag-node.pulse rect.body { animation: nodepulse .9s ease; }
+@keyframes nodepulse { 0% { filter: drop-shadow(0 0 0 var(--accent)); } 40% { filter: drop-shadow(0 0 10px var(--accent)); } 100% { filter: none; } }
+.dag-edge { stroke: var(--muted); stroke-width: 1.4; fill: none; opacity: .45; transition: opacity .3s, stroke .3s; }
+.dag-edge.hot { stroke: var(--accent); opacity: .9; stroke-dasharray: 5 4; animation: dash 1s linear infinite; }
+@keyframes dash { to { stroke-dashoffset: -18; } }
+.cmdline { font: 600 .92rem "JetBrains Mono", monospace; background: var(--code-bg); color: var(--code-ink); padding: 14px 16px; border-radius: 12px;
+           margin: 12px 0; overflow-x: auto; white-space: nowrap; box-shadow: var(--shadow); }
+.cmdline .p { color: #28c840; margin-right: 8px; }
+.cmdline .fl { color: #ff9a7a; } .cmdline .v { color: #a5e0a0; }
+.toggle { display: inline-flex; align-items: center; gap: 7px; font: 600 .8rem "JetBrains Mono", monospace; padding: 6px 11px; border-radius: 9px;
+          border: 1px solid var(--line); background: var(--soft); color: var(--muted); cursor: pointer; user-select: none; transition: .15s; }
+.toggle input { accent-color: var(--accent); margin: 0; }
+.toggle.on { color: var(--ink); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--card)); }
+.toggle.disabled { opacity: .4; cursor: not-allowed; }
+.presets { display: flex; gap: 6px; flex-wrap: wrap; }
+.presets button { font: 600 .76rem "JetBrains Mono", monospace; padding: 4px 9px; border-radius: 7px; border: 1px dashed var(--line); background: transparent; color: var(--muted); cursor: pointer; }
+.presets button:hover { color: var(--accent); border-color: var(--accent); }
+.effects { display: grid; gap: 6px; margin-top: 10px; font-size: .88rem; }
+.effects div { padding: 7px 12px; border-radius: 10px; background: var(--soft); border: 1px solid var(--line); }
+.effects b { font-family: "JetBrains Mono", monospace; font-size: .82rem; }
+.recipe { display: grid; grid-template-columns: 38px minmax(0, 1fr); gap: 12px; align-items: start; }
+.recipe .ico { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; font-size: 1.1rem; background: var(--soft); }
+
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<header class="top">
+  <div class="top-inner">
+    <a class="brand" href="index.html" aria-label="dbt mechanics home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff5f3f"/><stop offset=".55" stop-color="#ff9f43"/><stop offset="1" stop-color="#7c5cff"/></linearGradient></defs>
+        <rect width="32" height="32" rx="9" fill="url(#lg)"/><circle cx="9" cy="22" r="3" fill="#fff"/><circle cx="16" cy="10" r="3" fill="#fff"/><circle cx="23" cy="22" r="3" fill="#fff"/>
+        <path d="M9 22L16 10L23 22" stroke="#fff" stroke-width="2" fill="none"/></svg>
+      dbt<span>mechanics</span></a>
+    <nav class="nav">
+<a href="index.html" class="">Home</a>
+<a href="snapshots.html" class="">Snapshots & hard deletes</a>
+<a href="incremental.html" class="">Incremental strategies</a>
+<a href="tests.html" class="">Data tests & unit tests</a>
+<a href="flags.html" class="on">CLI flags</a>
+    </nav>
+    <div class="vswitch" role="group" aria-label="dbt version">
+      <span class="vlabel">dbt Core</span>
+      <button data-set-ver="v18">1.8.6</button>
+      <button data-set-ver="v112">1.12</button>
+      <button data-set-ver="both">Compare</button>
+    </div>
+    <button class="theme-btn" id="theme-btn" title="Toggle light / dark">◐</button>
+  </div>
+</header>
+<main>
+<section class="hero">
+<span class="eyebrow">🚩 CLI flags</span>
+<h1>The flags that <span class="grad">change what dbt does</span></h1>
+<p class="lead">For each flag: what it does, how to type it, when it's the right tool, and <strong>where</strong> it can be set
+(command line, environment variable, <code>dbt_project.yml</code>, or a model config). Start with the playground: pick a command, a selector and some flags,
+then watch the DAG.</p>
+<div class="toc">
+  <a href="#where">1 · Where flags live</a>
+  <a href="#play">2 · DAG playground</a>
+  <a href="#build">3 · Build behaviour</a>
+  <a href="#select">4 · Selection</a>
+  <a href="#state">5 · State &amp; CI</a>
+  <a href="#run">6 · Run control</a>
+  <a href="#debug">7 · Debugging</a>
+  <a href="#recipes">8 · Recipes</a>
+</div>
+</section>
+
+<h2 id="where">1 · Where can a flag be set? (highest priority first)</h2>
+<div class="where-grid">
+  <div class="where"><span class="rank">1</span><h4>Command line</h4><p><code>dbt build --fail-fast</code>. It always wins and applies to this invocation only. Every flag exists here.</p></div>
+  <div class="where"><span class="rank">2</span><h4>Environment variable</h4>
+    <p><span class="only-v18"><code>DBT_FAIL_FAST=true</code> (prefix <code>DBT_</code>)</span>
+       <span class="only-v112"><code>DBT_ENGINE_FAIL_FAST=true</code> (prefix <code>DBT_ENGINE_</code> since 1.11)</span>.
+       Ideal for CI runners and containers.</p></div>
+  <div class="where"><span class="rank">3</span><h4><code>dbt_project.yml</code> → <code>flags:</code></h4><p>Project-wide defaults for "behaviour" flags (fail_fast, warn_error, partial_parse…), committed with the code. Since 1.8 this replaces the old <code>config:</code> block in profiles.yml.</p></div>
+  <div class="where"><span class="rank">4</span><h4>Resource config</h4><p>A few flags have a per-model twin: <code>full_refresh</code>, <code>store_failures</code>. The config <code>full_refresh: false</code> even overrides <code>--full-refresh</code>.</p></div>
+  <div class="where"><span class="rank">5</span><h4>dbt default</h4><p>Used when nothing above is set.</p></div>
+</div>
+
+<div class="vgrid">
+  <div class="vcol only-v18"><span class="tag v18">1.8.6</span>
+<div class="file">dbt_project.yml</div>
+<pre class="code">flags:
+  fail_fast: true
+  warn_error_options:
+    include: [NoNodesForSelectionCriteria]   <span class="c"># 'include'/'exclude' in 1.8</span>
+  partial_parse: true
+  send_anonymous_usage_stats: false</pre>
+<pre class="code">export DBT_FULL_REFRESH=true      <span class="c"># env var form</span>
+export DBT_TARGET=ci</pre>
+  </div>
+  <div class="vcol only-v112"><span class="tag v112">1.12</span>
+<div class="file">dbt_project.yml</div>
+<pre class="code">flags:
+  fail_fast: true
+  warn_error_options:
+    error: [NoNodesForSelectionCriteria]     <span class="c"># renamed in 1.10</span>
+    silence: [Deprecations]
+  <span class="c"># behaviour-change opt-ins live here too (only here):</span>
+  require_sql_header_in_test_configs: true</pre>
+<pre class="code">export DBT_ENGINE_FULL_REFRESH=true   <span class="c"># 1.11+ prefix</span>
+export DBT_ENGINE_TARGET=ci
+<span class="c"># 1.12 also loads a .env file from the working directory</span></pre>
+  </div>
+</div>
+<div class="callout warn"><b>Not everything goes everywhere</b>
+  <p>Run-scoped flags (<code>--select</code>, <code>--empty</code>, <code>--defer</code>, <code>--state</code>, <code>--sample</code>, <code>--event-time-*</code>, <code>--target</code>) <strong>cannot</strong> go in <code>flags:</code>,
+  because they describe one invocation, not the project. <code>--select</code> has no environment variable at all (use <code>selectors.yml</code> to version a selection).
+  <span class="only-v112">When migrating, check that old <code>DBT_*</code> env vars are still picked up, or rename them to <code>DBT_ENGINE_*</code>.</span></p>
+</div>
+
+<h2 id="play">2 · DAG playground</h2>
+<p>A small project: sources → staging → snapshot / incremental fact / dimension → mart, with data tests and a unit test.
+<code>stg_customers</code> is marked as <em>modified</em> versus prod. Then press <strong>Run</strong>.</p>
+<div class="sim" id="dagsim">
+  <div class="controls" style="margin-bottom:10px">
+    <span class="ctl-label">Command</span><div id="dag-cmdsel"></div>
+    <span id="dag-simver-wrap"><span class="ctl-label">Simulate</span><span id="dag-simver"></span></span>
+  </div>
+  <div class="controls" style="margin-bottom:8px">
+    <span class="ctl-label">-s</span><input id="dag-select" class="btn" style="width:230px;font-family:'JetBrains Mono',monospace" placeholder="(everything)" />
+    <span class="ctl-label">--exclude</span><input id="dag-exclude" class="btn" style="width:170px;font-family:'JetBrains Mono',monospace" placeholder="" />
+  </div>
+  <div class="presets" style="margin-bottom:10px">
+    <span class="ctl-label">try</span>
+    <button data-preset="fct_orders">fct_orders</button>
+    <button data-preset="+fct_orders">+fct_orders</button>
+    <button data-preset="stg_orders+">stg_orders+</button>
+    <button data-preset="@stg_customers">@stg_customers</button>
+    <button data-preset="state:modified+">state:modified+</button>
+    <button data-preset="tag:finance">tag:finance</button>
+    <button data-preset="1+dim_customers">1+dim_customers</button>
+    <button data-preset="config.materialized:incremental">config.materialized:incremental</button>
+    <button data-preset="">(clear)</button>
+  </div>
+  <div class="controls" style="margin-bottom:8px">
+    <label class="toggle" data-k="fullRefresh"><input type="checkbox">--full-refresh</label>
+    <label class="toggle" data-k="empty"><input type="checkbox">--empty</label>
+    <label class="toggle" data-k="sample"><input type="checkbox">--sample "3 days"</label>
+    <label class="toggle" data-k="defer"><input type="checkbox">--defer --state</label>
+    <label class="toggle" data-k="noUnit"><input type="checkbox">--exclude-resource-type unit_test</label>
+    <label class="toggle" data-k="failFast"><input type="checkbox">--fail-fast</label>
+    <label class="toggle" data-k="protect"><input type="checkbox">config: fct_orders full_refresh=false</label>
+  </div>
+  <div class="controls" style="margin-bottom:12px">
+    <span class="ctl-label">--indirect-selection</span><div id="dag-indirect"></div>
+    <span class="ctl-label">Simulate failure of</span><div id="dag-fail"></div>
+  </div>
+  <div class="cmdline" id="dag-cmd"></div>
+  <div class="dag-wrap" id="dag-svg"></div>
+  <div class="controls" style="margin-top:12px"><button class="btn primary" id="dag-run">▶ Run</button>
+    <div class="legend" style="margin:0">
+      <span><i style="background:#2fa36b"></i>source</span><span><i style="background:#14a3a3"></i>seed</span><span><i style="background:#3a6fd0"></i>model</span>
+      <span><i style="background:#8a5cf6"></i>snapshot</span><span><i style="background:#8d8d99"></i>data test</span><span><i style="background:#e0a800"></i>unit test</span>
+      <span><i style="border:1.5px dashed var(--accent)"></i>deferred to prod</span>
+    </div>
+  </div>
+  <div class="effects" id="dag-fx"></div>
+</div>
+<div class="callout tip"><b>Things to try</b>
+  <p>• <code>fct_orders</code> without <code>--defer</code>: <code>stg_orders</code> shows "dev?". Add <code>--defer --state</code> and it is read from prod instead.</p>
+  <p>• <code>+fct_orders</code> + <code>--full-refresh</code>: the view and the snapshot don't care, and the incremental is rebuilt. Then tick <em>full_refresh=false</em> and the CLI flag loses.</p>
+  <p>• <code>fct_orders</code> + <code>--indirect-selection</code> eager vs cautious: <code>rel_fct_orders_customer</code> also depends on the unselected <code>dim_customers</code>, so cautious drops it.</p>
+  <p>• Simulate a failure of <code>stg_customers</code>, Run, then again with <code>--fail-fast</code>.</p>
+</div>
+
+<h2 id="build"><span class="group-title"><span class="num">3</span>Build behaviour</span></h2>
+<p>Flags that change <em>what</em> gets written for the selected nodes.</p>
+<div class="flag-grid" id="flags-build"></div>
+
+<div class="diagram">
+<svg viewBox="0 0 900 200" role="img" aria-label="full-refresh vs empty vs sample">
+  <text class="d-txt" x="20" y="24" font-weight="700">Same incremental model, three flags</text>
+  <g transform="translate(20,44)">
+    <rect width="270" height="140" rx="12" class="d-box"/>
+    <text class="d-txt" x="14" y="24" font-weight="700">--full-refresh</text>
+    <text class="d-mut" x="14" y="42">drop table → rebuild from ALL history</text>
+    <g>
+      <rect x="14" y="58" width="242" height="14" rx="4" fill="var(--new)"><animate attributeName="width" values="0;242;242" dur="3s" repeatCount="indefinite"/></rect>
+      <text class="d-mut" x="14" y="92">rows: 0 → 100%  ·  cost: high</text>
+      <text class="d-mut" x="14" y="112">is_incremental() = false</text>
+    </g>
+  </g>
+  <g transform="translate(315,44)">
+    <rect width="270" height="140" rx="12" class="d-box"/>
+    <text class="d-txt" x="14" y="24" font-weight="700">--empty</text>
+    <text class="d-mut" x="14" y="42">refs → where false limit 0</text>
+    <rect x="14" y="58" width="242" height="14" rx="4" fill="none" stroke="var(--muted)" stroke-dasharray="4 3"/>
+    <text class="d-mut" x="14" y="92">rows: 0  ·  columns: ✓  ·  cost: ~0</text>
+    <text class="d-mut" x="14" y="112">validates SQL, types, contracts</text>
+  </g>
+  <g transform="translate(610,44)">
+    <rect width="270" height="140" rx="12" class="d-box"/>
+    <text class="d-txt" x="14" y="24" font-weight="700">--sample "3 days"  (1.10+)</text>
+    <text class="d-mut" x="14" y="42">inputs with event_time → last 3 days</text>
+    <rect x="14" y="58" width="242" height="14" rx="4" fill="var(--soft)" stroke="var(--line)"/>
+    <rect x="200" y="58" width="56" height="14" rx="4" fill="var(--upd)"><animate attributeName="opacity" values=".3;1;.3" dur="2s" repeatCount="indefinite"/></rect>
+    <text class="d-mut" x="14" y="92">rows: recent slice  ·  cost: low</text>
+    <text class="d-mut" x="14" y="112">real data for dev / CI</text>
+  </g>
+</svg>
+</div>
+
+<h2 id="select"><span class="group-title"><span class="num">4</span>Selection</span></h2>
+<p>Flags that choose <em>which</em> nodes run.</p>
+<div class="flag-grid" id="flags-select"></div>
+
+<h2 id="state"><span class="group-title"><span class="num">5</span>State &amp; CI</span></h2>
+<p>Flags that compare against, or read from, another environment (usually prod).</p>
+<div class="flag-grid" id="flags-state"></div>
+
+<h2 id="run"><span class="group-title"><span class="num">6</span>Run control</span></h2>
+<div class="flag-grid" id="flags-run"></div>
+
+<h2 id="debug"><span class="group-title"><span class="num">7</span>Debugging</span></h2>
+<div class="flag-grid" id="flags-debug"></div>
+
+<h2 id="recipes"><span class="group-title"><span class="num">8</span>Recipes</span></h2>
+<div class="cards">
+  <div class="card recipe"><div class="ico">💻</div><div><h3>Dev loop</h3>
+    <pre class="code">dbt build -s fct_orders+ --defer --state prod/
+<span class="only-v112">dbt build -s fct_orders+ --sample=<span class="s">"3 days"</span>   <span class="c"># 1.10+</span></span></pre>
+    <p>Build what you touched and its children. Read everything else from prod.</p></div></div>
+  <div class="card recipe"><div class="ico">🧪</div><div><h3>Slim CI</h3>
+    <pre class="code">dbt build -s state:modified+ --defer --state prod/ --empty -x   <span class="c"># 1: schema check</span>
+dbt build -s state:modified+ --defer --state prod/ -x           <span class="c"># 2: real data</span></pre>
+    <p>The first pass catches SQL and contract errors in seconds. The second runs the data tests.</p></div></div>
+  <div class="card recipe"><div class="ico">🌙</div><div><h3>Production nightly</h3>
+    <pre class="code">dbt source freshness
+dbt build --selector nightly --exclude-resource-type unit_test
+dbt retry   <span class="c"># if it failed: resume at the failure</span></pre>
+    <p>No <code>--fail-fast</code>: independent branches still deliver.</p></div></div>
+  <div class="card recipe"><div class="ico">⏪</div><div><h3>Backfill a period</h3>
+    <pre class="code"><span class="only-v18">dbt run -s fct_orders --vars <span class="s">'{"from": "2024-09-01"}'</span>   <span class="c"># var used in is_incremental()</span></span><span class="only-v112">dbt run -s fct_orders --event-time-start <span class="s">"2024-09-01"</span> --event-time-end <span class="s">"2024-09-04"</span></span></pre>
+    <p>Rebuild a window without a full refresh.</p></div></div>
+  <div class="card recipe"><div class="ico">🔁</div><div><h3>Logic change on an incremental</h3>
+    <pre class="code">dbt build -s fct_orders+ --full-refresh</pre>
+    <p>Rebuild the model and its children. Use the config <code>full_refresh: false</code> on models whose history can't be rebuilt.</p></div></div>
+  <div class="card recipe"><div class="ico">🌱</div><div><h3>Seed columns changed</h3>
+    <pre class="code">dbt seed -s country_codes --full-refresh</pre>
+    <p>A normal seed run truncates and inserts, so it can't change columns. This drops and recreates the table.</p></div></div>
+</div>
+
+</main>
+<footer class="foot">
+  Built with <code>python build.py</code>. Version-specific blocks are tagged
+  <span class="tag v18">1.8.6</span> and <span class="tag v112">1.12</span>. Use the switch at the top to show one or compare both.
+</footer>
+<script>
+// ---------- version switch (shared by every page) ----------
+const VER_KEY = "dbt-mechanics-version";
+function getVer() { return document.documentElement.dataset.ver; }
+function setVer(v) {
+  document.documentElement.dataset.ver = v;
+  document.querySelectorAll("[data-set-ver]").forEach(b => b.classList.toggle("on", b.dataset.setVer === v));
+  try { localStorage.setItem(VER_KEY, v); } catch (e) { /* storage unavailable: fine */ }
+  document.dispatchEvent(new CustomEvent("verchange", { detail: v }));
+}
+document.querySelectorAll("[data-set-ver]").forEach(b => b.addEventListener("click", () => setVer(b.dataset.setVer)));
+let savedVer = "both";
+try { savedVer = localStorage.getItem(VER_KEY) || "both"; } catch (e) { /* ignore */ }
+setVer(savedVer);
+
+// ---------- theme toggle ----------
+(function () {
+  const btn = document.getElementById("theme-btn");
+  if (!btn) return;
+  btn.addEventListener("click", () => {
+    const cur = document.documentElement.dataset.theme
+      || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    const next = cur === "dark" ? "light" : "dark";
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem("dbt-mechanics-theme", next); } catch (e) { /* ignore */ }
+  });
+})();
+
+// ---------- scroll progress + reveal ----------
+(function () {
+  const bar = document.getElementById("progress");
+  const onScroll = () => {
+    const h = document.documentElement.scrollHeight - innerHeight;
+    if (bar) bar.style.width = (h > 0 ? (scrollY / h) * 100 : 0) + "%";
+  };
+  addEventListener("scroll", onScroll, { passive: true }); onScroll();
+  if (!("IntersectionObserver" in window)) return;
+  const io = new IntersectionObserver(entries => entries.forEach(e => {
+    if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); }
+  }), { rootMargin: "0px 0px -40px 0px" });
+  document.querySelectorAll("main h2, main .card, main .diagram, main .callout, main .flag, main .where, main .vcol, main .sim")
+    .forEach(el => { if (!el.closest(".hero")) { el.classList.add("reveal"); io.observe(el); } });
+})();
+
+// ---------- small helpers ----------
+function $(sel, root = document) { return root.querySelector(sel); }
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+
+// Build a segmented control. options: [{value, label, disabled, title}]
+function segmented(container, options, value, onChange) {
+  container.innerHTML = "";
+  container.classList.add("seg");
+  options.forEach(o => {
+    const b = document.createElement("button");
+    b.textContent = o.label; b.dataset.value = o.value;
+    if (o.title) b.title = o.title;
+    b.disabled = !!o.disabled;
+    b.classList.toggle("on", o.value === value);
+    b.addEventListener("click", () => {
+      container.querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b));
+      onChange(o.value);
+    });
+    container.appendChild(b);
+  });
+}
+
+// Render rows as a table. cols: [{key, label, cls?, fmt?}], rows carry an optional _cls and _cellCls {key: cls}
+function renderTable(el, cols, rows, opts = {}) {
+  const head = "<tr>" + cols.map(c => `<th>${esc(c.label)}</th>`).join("") + "</tr>";
+  const body = rows.map(r => {
+    const tds = cols.map(c => {
+      const v = r[c.key];
+      const isNull = v === null || v === undefined;
+      const cls = [c.cls || "", isNull ? "null" : "", (r._cellCls && r._cellCls[c.key]) || ""].join(" ").trim();
+      const shown = isNull ? "null" : (c.fmt ? c.fmt(v, r) : v);
+      return `<td class="${cls}">${esc(shown)}</td>`;
+    }).join("");
+    return `<tr class="${r._cls || ""} ${r._flash ? "flash" : ""}">${tds}</tr>`;
+  }).join("");
+  el.innerHTML = `<div class="tbl-wrap"><table class="dt">${head}${body || `<tr><td colspan="${cols.length}" class="null">${opts.empty || "(empty)"}</td></tr>`}</table></div>`;
+}
+
+// =====================================================================
+// Flags page: (1) DAG playground — selection, indirect test selection,
+// deferral, --full-refresh / --empty / --sample effects, fail-fast;
+// (2) flag reference cards rendered from data.
+// =====================================================================
+(function () {
+  // ------------------------------------------------------------------ DAG
+  const N = (id, type, mat, x, y, parents = [], extra = {}) => ({ id, type, mat, x, y, parents, tags: [], ...extra });
+  const NODES = [
+    N("shop.orders", "source", "source", 20, 30, [], { eventTime: true }),
+    N("shop.customers", "source", "source", 20, 140),
+    N("country_codes", "seed", "seed", 20, 250),
+    N("stg_orders", "model", "view", 215, 30, ["shop.orders"], { eventTime: true }),
+    N("orders_snapshot", "snapshot", "snapshot", 215, 105, ["shop.orders"]),
+    N("stg_customers", "model", "view", 215, 185, ["shop.customers"], { modified: true }),
+    N("not_null_stg_customers_id", "test", "data test", 215, 262, ["stg_customers"]),
+    N("fct_orders", "model", "incremental", 410, 30, ["stg_orders"], { tags: ["finance"] }),
+    N("ut_fct_orders_amount", "unit_test", "unit test", 410, 105, ["fct_orders"]),
+    N("dim_customers", "model", "table", 410, 185, ["stg_customers", "country_codes"]),
+    N("unique_fct_orders_id", "test", "data test", 605, 30, ["fct_orders"]),
+    N("rel_fct_orders_customer", "test", "data test", 605, 262, ["fct_orders", "dim_customers"]),
+    N("mart_revenue", "model", "table", 605, 145, ["fct_orders", "dim_customers"], { tags: ["finance"] }),
+  ];
+  const BY = Object.fromEntries(NODES.map(n => [n.id, n]));
+  const W = 150, H = 40;
+  const TYPE_COLOR = { source: "#2fa36b", seed: "#14a3a3", model: "#3a6fd0", snapshot: "#8a5cf6", test: "#8d8d99", unit_test: "#e0a800" };
+  const isTest = n => n.type === "test" || n.type === "unit_test";
+  const children = id => NODES.filter(n => n.parents.includes(id) && !isTest(n)).map(n => n.id);
+  function walk(id, next, depth) {
+    const out = new Set(); let frontier = [id], d = 0;
+    while (frontier.length && (depth === null || d < depth)) {
+      const nf = [];
+      frontier.forEach(f => next(f).forEach(c => { if (!out.has(c)) { out.add(c); nf.push(c); } }));
+      frontier = nf; d++;
+    }
+    return out;
+  }
+  const ancestors = (id, depth = null) => walk(id, x => BY[x].parents, depth);
+  const descendants = (id, depth = null) => walk(id, children, depth);
+
+  function matchMethod(sel) {
+    const m = sel.match(/^([a-z_]+):(.+)$/);
+    if (!m) return NODES.filter(n => n.id === sel || n.id === sel.replace(/^source:/, "")).map(n => n.id);
+    const [, meth, val] = m;
+    if (meth === "tag") return NODES.filter(n => n.tags.includes(val)).map(n => n.id);
+    if (meth === "state") return val === "modified" ? NODES.filter(n => n.modified).map(n => n.id) : [];
+    if (meth === "resource_type") return NODES.filter(n => n.type === val).map(n => n.id);
+    if (meth === "test_type") return NODES.filter(n => (val === "unit" ? n.type === "unit_test" : n.type === "test")).map(n => n.id);
+    if (meth === "source") return NODES.filter(n => n.type === "source" && n.id.startsWith(val)).map(n => n.id);
+    if (meth === "config.materialized") return NODES.filter(n => n.mat === val).map(n => n.id);
+    return [];
+  }
+  function selectExpr(expr) {
+    const out = new Set(); const errors = [];
+    expr.trim().split(/\s+/).filter(Boolean).forEach(tok => {
+      const m = tok.match(/^(@)?(?:(\d*)\+)?(.+?)(?:\+(\d*))?$/);
+      if (!m) { errors.push(tok); return; }
+      const [, at, up, body, down] = m;
+      const hasUp = tok.replace(/^@/, "").match(/^\d*\+/), hasDown = /\+\d*$/.test(tok);
+      const base = matchMethod(body);
+      if (!base.length) errors.push(tok);
+      base.forEach(id => {
+        out.add(id);
+        if (hasUp) ancestors(id, up ? +up : null).forEach(a => out.add(a));
+        if (hasDown || at) descendants(id, down ? +down : null).forEach(d => out.add(d));
+        if (at) descendants(id).forEach(d => ancestors(d).forEach(a => out.add(a)));
+      });
+    });
+    return { ids: out, errors };
+  }
+
+  const CMD_TYPES = {
+    build: ["model", "seed", "snapshot", "test", "unit_test"], run: ["model"], test: ["test", "unit_test"],
+    seed: ["seed"], snapshot: ["snapshot"],
+  };
+
+  const st = {
+    cmd: "build", select: "", exclude: "", fullRefresh: false, empty: false, defer: false, failFast: false,
+    indirect: "eager", noUnit: false, sample: false, protect: false, fail: "none", simVer: "v112",
+    statuses: {}, running: false,
+  };
+  const root = document.getElementById("dagsim");
+  const $$ = s => root.querySelector(s);
+  const ver = () => getVer() === "both" ? st.simVer : getVer();
+
+  function compute() {
+    const types = CMD_TYPES[st.cmd];
+    let sel, errors = [];
+    if (st.select.trim()) ({ ids: sel, errors } = selectExpr(st.select)); else sel = new Set(NODES.map(n => n.id));
+    let exc = new Set();
+    if (st.exclude.trim()) { const r = selectExpr(st.exclude); exc = r.ids; errors = errors.concat(r.errors.map(e => "exclude " + e)); }
+    const direct = new Set([...sel].filter(id => !exc.has(id)));
+    // indirect test selection (applies to build / test when a model is selected)
+    const nonTests = new Set([...direct].filter(id => !isTest(BY[id])));
+    const ancestorsOfSel = new Set(); nonTests.forEach(id => ancestors(id).forEach(a => ancestorsOfSel.add(a)));
+    NODES.filter(isTest).forEach(t => {
+      if (direct.has(t.id) || exc.has(t.id) || !st.select.trim()) return;
+      const ps = t.parents;
+      const ok = st.indirect === "eager" ? ps.some(p => nonTests.has(p))
+        : st.indirect === "cautious" ? ps.every(p => nonTests.has(p))
+        : st.indirect === "buildable" ? ps.every(p => nonTests.has(p) || ancestorsOfSel.has(p)) && ps.some(p => nonTests.has(p))
+        : false;
+      if (ok) direct.add(t.id);
+    });
+    let run = NODES.filter(n => direct.has(n.id) && types.includes(n.type));
+    if (st.noUnit) run = run.filter(n => n.type !== "unit_test");
+    const runIds = new Set(run.map(n => n.id));
+    // execution order: unit tests before their model, tests after parents
+    const order = [];
+    const visit = (id, seen = new Set()) => {
+      if (seen.has(id)) return; seen.add(id);
+      BY[id].parents.forEach(p => visit(p, seen));
+      const ut = NODES.find(u => u.type === "unit_test" && u.parents[0] === id);
+      if (ut && runIds.has(ut.id) && !order.includes(ut.id)) order.push(ut.id);
+      if (runIds.has(id) && !order.includes(id)) order.push(id);
+    };
+    const seen = new Set();
+    NODES.filter(n => !isTest(n)).forEach(n => visit(n.id, seen));
+    NODES.filter(n => n.type === "test" && runIds.has(n.id)).forEach(n => order.push(n.id));
+    // deferral: parents of executed nodes that are not executed themselves
+    const deferred = new Set();
+    run.forEach(n => {
+      const ps = n.type === "unit_test" ? [] : n.parents;
+      ps.forEach(p => { if (!runIds.has(p) && BY[p].type !== "source") deferred.add(p); });
+    });
+    return { run, runIds, order, deferred, errors };
+  }
+
+  function effect(n) {
+    const v = ver();
+    const fr = st.fullRefresh, em = st.empty;
+    const sample = st.sample && v === "v112" && n.parents.some(p => BY[p].eventTime);
+    const sampleTxt = sample ? " Inputs with event_time are filtered to the last 3 days (--sample)." : "";
+    if (n.type === "source") return "not executed (sources are only referenced)";
+    if (n.type === "unit_test") return "runs on mocked inputs before fct_orders is built. --empty and --full-refresh don't apply.";
+    if (n.type === "test") return em ? "runs against tables built empty, so it passes trivially (it proves the SQL compiles and runs)" : "runs the test query on the real data";
+    if (n.type === "seed") {
+      if (em) return v === "v112" ? "--empty: table created with the CSV's columns and 0 rows (seed supports --empty in 1.12)" : "--empty does not apply to seeds in 1.8.6: the CSV is loaded normally";
+      return fr ? "--full-refresh: table DROPPED and recreated (needed when the CSV's columns change)" : "truncate + insert the CSV rows (the table structure is kept)";
+    }
+    if (n.type === "snapshot") {
+      const base = fr ? "--full-refresh is IGNORED: snapshots are never rebuilt (history is precious). " : "";
+      if (em) return base + (v === "v112" ? "--empty: the source reads as 0 rows, so nothing is captured (snapshots support --empty since 1.9)" : "--empty is not supported for snapshots before 1.9");
+      return base + "compares the source with current rows and merges the changes";
+    }
+    // models
+    const emptyTxt = em ? " --empty: every ref()/source() becomes a 0-row subquery (where false limit 0), so the relation is built with the right columns and no data." : "";
+    if (n.mat === "incremental") {
+      if (fr && st.protect) return "--full-refresh ignored because the model has full_refresh: false → normal incremental run (is_incremental() = true)." + emptyTxt + sampleTxt;
+      if (fr) return "--full-refresh: table DROPPED and rebuilt from all history (is_incremental() = false)." + emptyTxt + sampleTxt;
+      return "is_incremental() = true: only new rows are selected and merged." + emptyTxt + sampleTxt;
+    }
+    if (n.mat === "view") return "create or replace view." + (fr ? " --full-refresh changes nothing for a view." : "") + emptyTxt + sampleTxt;
+    return "create or replace table as select." + (fr ? " It is always a full rebuild, so --full-refresh changes nothing." : "") + emptyTxt + sampleTxt;
+  }
+
+  function cmdLine(res) {
+    const q = s => /[\s+@:]/.test(s) ? `"${s}"` : s;
+    const parts = [`<span class="p">$</span>dbt ${st.cmd}`];
+    const f = (flag, val) => parts.push(`<span class="fl">${flag}</span>${val !== undefined ? ` <span class="v">${esc(val)}</span>` : ""}`);
+    if (st.select.trim()) f("-s", q(st.select.trim()));
+    if (st.exclude.trim()) f("--exclude", q(st.exclude.trim()));
+    if (st.fullRefresh) f("--full-refresh");
+    if (st.empty) f("--empty");
+    if (st.sample && ver() === "v112") f("--sample", '"3 days"');
+    if (st.indirect !== "eager") f("--indirect-selection", st.indirect);
+    if (st.noUnit) f("--exclude-resource-type", "unit_test");
+    if (st.defer) f("--defer");
+    if (st.defer || /state:/.test(st.select + st.exclude)) f("--state", "prod-artifacts/");
+    if (st.failFast) f("--fail-fast");
+    return parts.join(" ");
+  }
+
+  function draw(res) {
+    const parts = [];
+    // edges
+    NODES.forEach(n => n.parents.forEach(p => {
+      const a = BY[p], b = n;
+      const x1 = a.x + W, y1 = a.y + H / 2, x2 = b.x, y2 = b.y + H / 2;
+      const hot = res.runIds.has(n.id) && (res.runIds.has(p) || res.deferred.has(p));
+      const tst = isTest(n);
+      const [sx, sy, ex, ey] = tst && b.x <= a.x + W ? [a.x + W / 2, a.y + H, b.x + W / 2, b.y] : [x1, y1, x2, y2];
+      const d = tst && b.x <= a.x + W ? `M${sx} ${sy} L${ex} ${ey}` : `M${sx} ${sy} C${sx + 40} ${sy} ${ex - 40} ${ey} ${ex} ${ey}`;
+      parts.push(`<path class="dag-edge ${hot ? "hot" : ""}" d="${d}" ${tst ? 'stroke-dasharray="3 3"' : ""}/>`);
+    }));
+    // nodes
+    NODES.forEach(n => {
+      const on = res.runIds.has(n.id), def = res.deferred.has(n.id) && st.defer;
+      const devref = res.deferred.has(n.id) && !st.defer;
+      const s = st.statuses[n.id];
+      const col = TYPE_COLOR[n.type];
+      const fill = s === "error" ? "var(--del)" : s === "skipped" ? "var(--gone)" : s === "success" ? "var(--new)" : on ? "color-mix(in srgb, " + col + " 16%, var(--card))" : "var(--card)";
+      const stroke = def ? "var(--accent)" : on ? col : "var(--line)";
+      parts.push(`<g class="dag-node ${on || def || devref ? "" : "dim"}" data-id="${n.id}">
+        <rect class="body" x="${n.x}" y="${n.y}" width="${W}" height="${H}" rx="9" fill="${fill}" stroke="${stroke}" stroke-width="${on || def ? 1.8 : 1}" ${def || devref ? 'stroke-dasharray="5 3"' : ""}/>
+        <rect x="${n.x}" y="${n.y}" width="5" height="${H}" rx="2" fill="${col}"/>
+        <text x="${n.x + 12}" y="${n.y + 17}" font-size="${Math.min(11, 225 / n.id.length).toFixed(1)}" fill="var(--ink)" font-weight="600">${n.id}</text>
+        <text x="${n.x + 12}" y="${n.y + 31}" font-size="9.5" fill="var(--muted)">${n.mat}${n.tags.length ? " · #" + n.tags[0] : ""}${n.modified ? " · modified" : ""}</text>
+        ${def ? `<text x="${n.x + W - 6}" y="${n.y + 31}" font-size="9.5" text-anchor="end" fill="var(--accent)" font-weight="700">↗ prod</text>` : ""}
+        ${devref ? `<text x="${n.x + W - 6}" y="${n.y + 31}" font-size="9.5" text-anchor="end" fill="#e0a800" font-weight="700">dev?</text>` : ""}
+        ${s ? `<g><rect x="${n.x + W - 50}" y="${n.y - 9}" width="50" height="16" rx="8" fill="${s === "error" ? "#e0442f" : s === "skipped" ? "#8d8d99" : "#1f9d6b"}"/>
+          <text x="${n.x + W - 25}" y="${n.y + 2.5}" font-size="9" text-anchor="middle" font-weight="700" fill="#fff">${s === "success" ? "✓ OK" : s === "error" ? "✗ ERROR" : "SKIP"}</text></g>` : ""}
+      </g>`);
+    });
+    $$("#dag-svg").innerHTML = `<svg viewBox="0 -12 770 327">${parts.join("")}</svg>`;
+  }
+
+  function render(keepStatus = false) {
+    if (!keepStatus) st.statuses = {};
+    const res = compute();
+    $$("#dag-cmd").innerHTML = cmdLine(res);
+    draw(res);
+    // effect list
+    const fx = res.order.map(id => `<div><b>${id}</b>: ${esc(effect(BY[id]))}</div>`);
+    if (res.deferred.size) {
+      fx.push(st.defer
+        ? `<div style="border-color:var(--accent)"><b>--defer</b>: ${[...res.deferred].map(esc).join(", ")} aren't built, so their ref() resolves to the <b>production</b> relations from the manifest in --state.</div>`
+        : `<div style="border-color:#e0a800"><b>no --defer</b>: ${[...res.deferred].map(esc).join(", ")} aren't selected, so ref() points to <b>your dev schema</b>. Those relations must already exist there, or the build fails. Add --defer --state to read them from prod.</div>`);
+    }
+    if (!res.order.length) fx.push(`<div>Nothing to execute: the selection is empty for <b>dbt ${st.cmd}</b>.</div>`);
+    if (res.errors.length) fx.push(`<div style="border-color:#e0442f">Selector matched nothing: ${res.errors.map(esc).join(", ")}</div>`);
+    $$("#dag-fx").innerHTML = `<div class="pane-title"><span>Execution plan · ${res.order.length} node${res.order.length > 1 ? "s" : ""} in this order</span></div>` + fx.join("");
+    // controls state
+    root.querySelectorAll(".toggle[data-k]").forEach(t => {
+      const k = t.dataset.k; const inp = t.querySelector("input");
+      const dis = (k === "sample" && ver() === "v18");
+      inp.checked = !!st[k] && !dis; inp.disabled = dis;
+      t.classList.toggle("on", inp.checked); t.classList.toggle("disabled", dis);
+      t.title = dis ? "--sample arrives in dbt 1.10" : "";
+    });
+    $$("#dag-simver-wrap").style.display = getVer() === "both" ? "" : "none";
+    return res;
+  }
+
+  async function play() {
+    if (st.running) return;
+    st.running = true; $$("#dag-run").disabled = true;
+    const res = render();
+    let stopped = false; const failed = new Set();
+    for (const id of res.order) {
+      const n = BY[id];
+      const blocked = n.parents.some(p => failed.has(p) || st.statuses[p] === "skipped" && res.runIds.has(p));
+      if (stopped || blocked) { st.statuses[id] = "skipped"; if (blocked) failed.add(id); render(true); continue; }
+      const g = root.querySelector(`.dag-node[data-id="${CSS.escape(id)}"]`);
+      if (g) g.classList.add("pulse");
+      await new Promise(r => setTimeout(r, 420));
+      st.statuses[id] = id === st.fail ? "error" : "success";
+      if (id === st.fail) { failed.add(id); if (st.failFast) stopped = true; }
+      render(true);
+    }
+    const errs = Object.values(st.statuses).filter(s => s === "error").length, sk = Object.values(st.statuses).filter(s => s === "skipped").length;
+    $$("#dag-fx").insertAdjacentHTML("afterbegin", `<div class="verdict ${errs ? "bad" : "ok"}">${errs ? `✗ ${errs} error, ${sk} skipped. ${st.failFast ? "--fail-fast stopped everything that was still pending." : "Without --fail-fast, only the descendants of the failed node are skipped; independent branches keep going."} Next: <code>dbt retry</code> re-runs from the failure point.` : `✓ Completed: ${res.order.length} nodes`}</div>`);
+    st.running = false; $$("#dag-run").disabled = false;
+  }
+
+  if (root) {
+    segmented($$("#dag-cmdsel"), Object.keys(CMD_TYPES).map(c => ({ value: c, label: c })), st.cmd, v => { st.cmd = v; render(); });
+    segmented($$("#dag-indirect"), ["eager", "cautious", "buildable", "empty"].map(v => ({ value: v, label: v })), st.indirect, v => { st.indirect = v; render(); });
+    segmented($$("#dag-fail"), ["none", "stg_customers", "fct_orders"].map(v => ({ value: v, label: v })), st.fail, v => { st.fail = v; render(); });
+    segmented($$("#dag-simver"), [{ value: "v18", label: "1.8.6" }, { value: "v112", label: "1.12" }], st.simVer, v => { st.simVer = v; render(); });
+    const selIn = $$("#dag-select"), excIn = $$("#dag-exclude");
+    selIn.addEventListener("input", () => { st.select = selIn.value; render(); });
+    excIn.addEventListener("input", () => { st.exclude = excIn.value; render(); });
+    root.querySelectorAll("[data-preset]").forEach(b => b.addEventListener("click", () => {
+      selIn.value = st.select = b.dataset.preset; render();
+    }));
+    root.querySelectorAll(".toggle[data-k] input").forEach(inp => inp.addEventListener("change", () => {
+      st[inp.closest(".toggle").dataset.k] = inp.checked; render();
+    }));
+    $$("#dag-run").addEventListener("click", play);
+    document.addEventListener("verchange", () => render());
+    render();
+  }
+
+  // ------------------------------------------------------------ flag cards
+  const V18 = '<span class="tag v18">1.8.6</span>', V112 = '<span class="tag v112">1.12</span>';
+  const yes = t => `<span class="chip y">${t}</span>`, no = t => `<span class="chip n">${t}</span>`;
+  const env = (a, b) => `<span class="only-v18"><code>${a}</code></span><span class="only-v112"> <code>${b}</code></span>`;
+  const FLAGS = {
+    build: [
+      { name: "--full-refresh", alias: "-f", cmds: ["build", "run", "seed"],
+        what: "Ignores the existing table. Incremental models are dropped and rebuilt from all history (<code>is_incremental()</code> returns false), and seeds are dropped and recreated. Views and tables don't change (they are always rebuilt). <strong>Snapshots are never full-refreshed.</strong>",
+        how: `dbt run -s fct_orders --full-refresh
+dbt seed --full-refresh -s country_codes   <span class="c"># CSV columns changed</span>`,
+        when: "After changing an incremental model's logic or columns, after fixing bad historic data, or when a seed's columns change. Avoid it on huge or append-only tables whose source no longer holds all the history.",
+        where: [yes("CLI"), yes("env " + env("DBT_FULL_REFRESH", "DBT_ENGINE_FULL_REFRESH")), yes("model config <code>full_refresh</code>"), no("flags:")],
+        extra: `<pre class="code"><span class="c"># protect a model from accidental rebuilds: config beats the CLI flag</span>
+models:
+  my_project:
+    events:
+      <span class="h">+full_refresh: false</span></pre>` },
+      { name: "--empty", alias: "", cmds: ["build", "run", "+snapshot 1.9", "+seed 1.12"],
+        what: "Runs your real SQL but replaces every <code>ref()</code> and <code>source()</code> with a zero-row subquery (<code>where false limit 0</code>). Every relation gets created with the right columns and <strong>no data</strong>, so it's a cheap, schema-only dry run. In Jinja, <code>flags.EMPTY</code> tells you it's on.",
+        how: `dbt build --empty                         <span class="c"># whole project, schema only</span>
+dbt run -s state:modified+ --empty --defer --state prod/
+<span class="c">-- opt one input out (e.g. a hook needs the real table):</span>
+{{ source(<span class="s">'sys'</span>, <span class="s">'customers'</span>).render() }}`,
+        when: "In CI to validate SQL, columns and contracts in seconds, to create the parent tables unit tests need, and for a first build in a new dev schema. Data tests pass trivially on empty tables, so don't read anything into them.",
+        where: [yes("CLI"), yes("env " + env("DBT_EMPTY", "DBT_ENGINE_EMPTY")), no("flags:"), no("config")],
+        vers: `${V18} run and build. Snapshots and seeds still read real data. ${V112} snapshots too (1.9), plus <code>dbt seed --empty</code> (1.12).` },
+      { name: "--sample", alias: "", cmds: ["build", "run"], v112only: true,
+        what: "Sample mode (1.10+): inputs that have an <code>event_time</code> config are filtered to a time window, so a dev build covers recent data only. Inputs without <code>event_time</code> are read in full.",
+        how: `dbt build --sample=<span class="s">"3 days"</span>
+dbt run --sample=<span class="s">"{'start': '2024-07-01', 'end': '2024-07-08'}"</span>`,
+        when: "Development and CI on big fact tables, when you want real but small data (unlike --empty, which gives none). Configure <code>event_time</code> on your sources and staging models.",
+        where: [yes("CLI"), yes("env <code>DBT_ENGINE_SAMPLE</code>"), no("flags:"), no("config")],
+        vers: `${V18} not available. In 1.8.6, use a var + <code>{% if target.name == 'dev' %} where … {% endif %}</code> in the model.` },
+      { name: "--event-time-start / --event-time-end", alias: "", cmds: ["build", "run"], v112only: true,
+        what: "Microbatch backfill (1.9+): rebuilds only the batches between the two dates, one query per batch. Both flags are required together.",
+        how: `dbt run -s fct_events --event-time-start <span class="s">"2024-09-01"</span> --event-time-end <span class="s">"2024-09-04"</span>`,
+        when: "Late-arriving data beyond the <code>lookback</code>, or reprocessing a period after a bug fix, without a full refresh.",
+        where: [yes("CLI"), yes("env <code>DBT_ENGINE_EVENT_TIME_START/END</code>"), no("flags:")],
+        vers: `${V18} not available: filter on <code>var('from')</code> inside <code>is_incremental()</code> instead.` },
+    ],
+    select: [
+      { name: "--select / --exclude", alias: "-s", cmds: ["build", "run", "test", "seed", "snapshot", "ls", "compile", "clone"],
+        what: "Chooses the nodes. Space = union, comma = intersection. Graph operators: <code>+model</code> (parents), <code>model+</code> (children), <code>2+model</code> (2 levels), <code>@model</code> (children and all their parents). Methods: <code>tag:</code>, <code>path:</code>, <code>source:</code>, <code>state:modified</code>, <code>resource_type:</code>, <code>test_type:</code>, <code>config.materialized:</code>…",
+        how: `dbt build -s <span class="s">"+fct_orders"</span> --exclude <span class="s">"tag:slow"</span>
+dbt build -s <span class="s">"tag:finance,config.materialized:incremental"</span>   <span class="c"># intersection</span>`,
+        when: "Always in dev (build only what you touch plus its children). In prod, split jobs by tag or folder.",
+        where: [yes("CLI"), yes("selectors.yml → --selector"), no("env"), no("flags:")],
+        vers: `${V18} <code>--models/-m</code> still works silently. ${V112} <code>--models/-m</code> warns since 1.10 (an error in v2), and there is a new <code>selector:name</code> method usable inside <code>-s</code> (1.12).` },
+      { name: "--selector", alias: "", cmds: ["build", "run", "test", "ls", "…"],
+        what: "Runs a named selection defined in <code>selectors.yml</code> (YAML union/intersection/exclude, with a possible default).",
+        how: `<span class="c"># selectors.yml</span>
+selectors:
+  - name: nightly
+    definition:
+      union:
+        - method: tag
+          value: nightly
+        - exclude: [{method: tag, value: slow}]
+dbt build --selector nightly`,
+        when: "Production jobs: the selection is versioned and reviewed instead of hidden in a scheduler command.",
+        where: [yes("CLI"), yes("selectors.yml"), no("env")],
+        vers: `${V112} combining <code>--selector</code> with <code>-s</code> now warns (--selector wins). Use <code>-s "selector:nightly"</code> to combine them.` },
+      { name: "--resource-type / --exclude-resource-type", alias: "", cmds: ["build", "list", "clone", "+test 1.9"],
+        what: "A final filter on node types after selection: <code>model</code>, <code>seed</code>, <code>snapshot</code>, <code>test</code>, <code>unit_test</code>, <code>source</code>…",
+        how: `dbt build --exclude-resource-type unit_test     <span class="c"># prod: skip unit tests</span>
+dbt test --resource-type unit_test               <span class="c"># 1.9+</span>`,
+        when: "Production: unit tests test code, not data, so exclude them from prod runs.",
+        where: [yes("CLI"), yes("env " + env("DBT_EXCLUDE_RESOURCE_TYPES", "DBT_ENGINE_EXCLUDE_RESOURCE_TYPES")), no("flags:")] },
+      { name: "--indirect-selection", alias: "", cmds: ["build", "test"],
+        what: "Which tests come along when you select models. <code>eager</code> (default): any test touching a selected model. <code>cautious</code>: only tests whose parents are <em>all</em> selected. <code>buildable</code>: parents selected or upstream of the selection. <code>empty</code>: none.",
+        how: `dbt build -s fct_orders --indirect-selection cautious`,
+        when: "Use <code>cautious</code> when relationship tests to unselected models fail on stale dev data, and <code>empty</code> for a pure run without tests.",
+        where: [yes("CLI"), yes("env " + env("DBT_INDIRECT_SELECTION", "DBT_ENGINE_INDIRECT_SELECTION")), yes("flags:")] },
+    ],
+    state: [
+      { name: "--state + state:modified", alias: "", cmds: ["build", "run", "test", "ls", "compile", "clone"],
+        what: "Compares your project with a <code>manifest.json</code> from another run (usually prod) to select what changed: <code>state:modified</code>, <code>state:new</code>, <code>state:modified.body</code>…",
+        how: `dbt build -s <span class="s">"state:modified+"</span> --state ./prod-artifacts`,
+        when: "Slim CI: build and test only the modified models and their children.",
+        where: [yes("CLI"), yes("env " + env("DBT_STATE", "DBT_ENGINE_STATE")), no("flags:")],
+        vers: `${V112} the behaviour flag <code>state_modified_compare_more_unrendered_values</code> (on by default in 1.12) reduces false "modified" results caused by env-specific configs.` },
+      { name: "--defer", alias: "+ --favor-state", cmds: ["build", "run", "test", "compile"],
+        what: "For every <code>ref()</code> to a model you are <em>not</em> building, read it from the prod relation in the <code>--state</code> manifest instead of your dev schema. <code>--favor-state</code> reads prod even if a dev copy exists.",
+        how: `dbt build -s <span class="s">"state:modified+"</span> --defer --state ./prod-artifacts`,
+        when: "CI and dev: no need to rebuild the whole upstream graph. Pair it with <code>--empty</code> for very fast schema checks.",
+        where: [yes("CLI"), yes("env " + env("DBT_DEFER", "DBT_ENGINE_DEFER")), no("flags:")] },
+      { name: "dbt retry", alias: "command", cmds: ["retry"],
+        what: "Re-runs the previous command from the point of failure (errored and skipped nodes only), reusing its flags, vars and <code>--full-refresh</code>. On microbatch models (1.9+) it retries only the failed batches.",
+        how: `dbt build -s tag:nightly      <span class="c"># fails on dim_customers</span>
+dbt retry                     <span class="c"># fix, then resume from there</span>`,
+        when: "Any long production run that failed halfway.",
+        where: [yes("CLI"), no("flags:")] },
+    ],
+    run: [
+      { name: "--fail-fast", alias: "-x", cmds: ["build", "run", "test", "seed", "snapshot"],
+        what: "Stops the whole invocation at the first failure. Without it, only the children of the failed node are skipped, and other branches continue.",
+        how: `dbt build -x`,
+        when: "CI (fail quickly and save warehouse time). In prod, usually leave it off so independent branches still deliver.",
+        where: [yes("CLI"), yes("env " + env("DBT_FAIL_FAST", "DBT_ENGINE_FAIL_FAST")), yes("flags:")],
+        vers: `${V112} a model config <code>on_error: continue</code> (1.12) lets children of a failed model run anyway.` },
+      { name: "--target / --threads / --vars", alias: "-t", cmds: ["all"],
+        what: "<code>--target</code> picks the connection output in <code>profiles.yml</code>. <code>--threads</code> sets how many nodes run in parallel. <code>--vars</code> overrides <code>var()</code> values (YAML/JSON string).",
+        how: `dbt build -t prod --threads 16 --vars <span class="s">'{"start_date": "2024-01-01"}'</span>`,
+        when: "Target: one per environment. Threads: raise until the warehouse queues. Vars: parameterised backfills and feature switches.",
+        where: [yes("CLI"), yes("profiles.yml (target, threads)"), yes("dbt_project.yml vars:"), yes("env " + env("DBT_TARGET", "DBT_ENGINE_TARGET")), '<span class="chip y only-v112">vars.yml (1.12)</span>'] },
+      { name: "--warn-error / --warn-error-options", alias: "", cmds: ["all"],
+        what: "Turns warnings (all, or chosen ones) into errors, or silences them.",
+        how: `dbt build --warn-error-options <span class="s">'{"error": ["NoNodesForSelectionCriteria"], "silence": ["Deprecations"]}'</span>`,
+        when: "CI: fail on new deprecations or unused configs before they reach prod.",
+        where: [yes("CLI"), yes("env"), yes("flags:")],
+        vers: `${V18} keys <code>include</code> / <code>exclude</code>. ${V112} renamed <code>error</code> / <code>warn</code> (1.10, old names deprecated), plus <code>silence</code>.` },
+      { name: "--store-failures", alias: "", cmds: ["test", "build"],
+        what: "Saves the rows returned by failing tests into tables in <code>&lt;schema&gt;_dbt_test__audit</code>.",
+        how: `dbt test -s fct_orders --store-failures`,
+        when: "To debug failures, or to feed a data-quality dashboard. Set it per test with <code>config: store_failures: true</code> (or <code>store_failures_as: view</code>).",
+        where: [yes("CLI"), yes("env"), yes("test config"), no("flags:")] },
+    ],
+    debug: [
+      { name: "--debug / --log-level / --quiet", alias: "-d -q", cmds: ["all"],
+        what: "Verbosity. <code>--debug</code> prints every SQL statement and timing. <code>--log-format json</code> gives machine-readable logs. <code>-q</code> shows only errors (plus <code>{{ print() }}</code> output).",
+        how: `dbt --debug run -s fct_orders
+dbt build --log-format json --log-level warn`,
+        when: "Debug a macro or a strange DDL, or ship logs to an observability tool.",
+        where: [yes("CLI"), yes("env"), yes("flags:")] },
+      { name: "--no-partial-parse", alias: "", cmds: ["all"],
+        what: "Forces a full re-parse of the project instead of reusing <code>target/partial_parse.msgpack</code>.",
+        how: `dbt parse --no-partial-parse`,
+        when: "Weird stale behaviour after changing env vars, packages or macros, or in CI from a clean checkout.",
+        where: [yes("CLI"), yes("env"), yes("flags:")],
+        vers: `${V112} <code>--use-v2-parser</code> (beta, 1.12) parses with the Rust engine, 5–10× faster on big projects.` },
+    ],
+  };
+
+  function card(f) {
+    return `<article class="flag">
+      <div class="flag-head"><span class="flag-name">${f.name}</span>${f.alias ? `<span class="flag-alias">${f.alias}</span>` : ""}${f.v112only ? '<span class="tag v112">1.9+ / 1.10+</span>' : ""}</div>
+      <div class="flag-cmds">${f.cmds.map(c => `<span>${c}</span>`).join("")}</div>
+      <dl>
+        <dt>What</dt><dd>${f.what}</dd>
+        <dt>How</dt><dd><pre class="code">${f.how}</pre>${f.extra || ""}</dd>
+        <dt>Best for</dt><dd>${f.when}</dd>
+        <dt>Where</dt><dd><div class="chips">${f.where.join("")}</div></dd>
+        ${f.vers ? `<dt>Versions</dt><dd>${f.vers}</dd>` : ""}
+      </dl></article>`;
+  }
+  Object.entries(FLAGS).forEach(([grp, list]) => {
+    const el = document.getElementById("flags-" + grp);
+    if (el) el.innerHTML = list.map(card).join("");
+  });
+})();
+
+</script>
+</body>
+</html>

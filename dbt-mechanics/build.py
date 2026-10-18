@@ -45,6 +45,14 @@ THEMATICS = [
                    "and what changed between 1.8 and 1.12.",
         "scripts": ["tests.js"],
     },
+    {
+        "slug": "flags",
+        "title": "CLI flags",
+        "icon": "🚩",
+        "summary": "--full-refresh, --empty, --select, --defer, --sample, --fail-fast… What each one does, "
+                   "when to use it, and where you can set it (CLI, env var, dbt_project.yml, config).",
+        "scripts": ["flags.js"],
+    },
 ]
 
 
@@ -66,6 +74,7 @@ def index_content() -> str:
   <div class="theme-icon">{t["icon"]}</div>
   <h2>{t["title"]}</h2>
   <p>{t["summary"]}</p>
+  <span class="go">Explore →</span>
 </a>''' for t in THEMATICS)
     return read(SRC / "pages" / "index.html").replace("{{cards}}", cards)
 

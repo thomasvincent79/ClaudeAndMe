@@ -4,14 +4,30 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{title}}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23ff5f3f'/%3E%3Cpath d='M9 22l7-12 7 12' stroke='white' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<script>
+  // apply saved theme/version before paint (no flash)
+  try {
+    const t = localStorage.getItem("dbt-mechanics-theme"); if (t) document.documentElement.dataset.theme = t;
+    const v = localStorage.getItem("dbt-mechanics-version"); if (v) document.documentElement.dataset.ver = v;
+  } catch (e) {}
+</script>
 <style>
 {{css}}
 </style>
 </head>
 <body>
+<div class="progress" id="progress"></div>
 <header class="top">
   <div class="top-inner">
-    <a class="brand" href="index.html">dbt<span>mechanics</span></a>
+    <a class="brand" href="index.html" aria-label="dbt mechanics home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff5f3f"/><stop offset=".55" stop-color="#ff9f43"/><stop offset="1" stop-color="#7c5cff"/></linearGradient></defs>
+        <rect width="32" height="32" rx="9" fill="url(#lg)"/><circle cx="9" cy="22" r="3" fill="#fff"/><circle cx="16" cy="10" r="3" fill="#fff"/><circle cx="23" cy="22" r="3" fill="#fff"/>
+        <path d="M9 22L16 10L23 22" stroke="#fff" stroke-width="2" fill="none"/></svg>
+      dbt<span>mechanics</span></a>
     <nav class="nav">
 {{nav}}
     </nav>
@@ -21,6 +37,7 @@
       <button data-set-ver="v112">{{v112}}</button>
       <button data-set-ver="both">Compare</button>
     </div>
+    <button class="theme-btn" id="theme-btn" title="Toggle light / dark">◐</button>
   </div>
 </header>
 <main>
@@ -28,7 +45,7 @@
 </main>
 <footer class="foot">
   Built with <code>python build.py</code>. Version-specific blocks are tagged
-  <span class="tag v18">{{v18}}</span> and <span class="tag v112">{{v112}}</span>; use the switch at the top to show one or compare both.
+  <span class="tag v18">{{v18}}</span> and <span class="tag v112">{{v112}}</span>. Use the switch at the top to show one or compare both.
 </footer>
 <script>
 {{js}}

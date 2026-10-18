@@ -1,3 +1,5 @@
+<section class="hero">
+<span class="eyebrow">🕰️ Snapshots</span>
 <h1>Snapshots &amp; hard deletes</h1>
 <p class="lead">A snapshot turns a mutable source table into a <strong>type 2 slowly changing dimension</strong>: every time a row changes,
 the old version is closed and a new version is inserted. The tricky part is rows that <em>disappear</em> from the source.
@@ -11,6 +13,7 @@ That is what <code>invalidate_hard_deletes</code> (1.8.6) and <code>hard_deletes
   <a href="#modes">5 · The modes compared</a>
   <a href="#best">6 · Best practices</a>
 </div>
+</section>
 
 <h2 id="how">1 · How a snapshot run works</h2>
 <p>On every <code>dbt snapshot</code>, dbt compares the result of your <code>select</code> with the <strong>current</strong> rows of the

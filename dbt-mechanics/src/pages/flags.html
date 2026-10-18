@@ -1,0 +1,193 @@
+<section class="hero">
+<span class="eyebrow">🚩 CLI flags</span>
+<h1>The flags that <span class="grad">change what dbt does</span></h1>
+<p class="lead">For each flag: what it does, how to type it, when it's the right tool, and <strong>where</strong> it can be set
+(command line, environment variable, <code>dbt_project.yml</code>, or a model config). Start with the playground: pick a command, a selector and some flags,
+then watch the DAG.</p>
+<div class="toc">
+  <a href="#where">1 · Where flags live</a>
+  <a href="#play">2 · DAG playground</a>
+  <a href="#build">3 · Build behaviour</a>
+  <a href="#select">4 · Selection</a>
+  <a href="#state">5 · State &amp; CI</a>
+  <a href="#run">6 · Run control</a>
+  <a href="#debug">7 · Debugging</a>
+  <a href="#recipes">8 · Recipes</a>
+</div>
+</section>
+
+<h2 id="where">1 · Where can a flag be set? (highest priority first)</h2>
+<div class="where-grid">
+  <div class="where"><span class="rank">1</span><h4>Command line</h4><p><code>dbt build --fail-fast</code>. It always wins and applies to this invocation only. Every flag exists here.</p></div>
+  <div class="where"><span class="rank">2</span><h4>Environment variable</h4>
+    <p><span class="only-v18"><code>DBT_FAIL_FAST=true</code> (prefix <code>DBT_</code>)</span>
+       <span class="only-v112"><code>DBT_ENGINE_FAIL_FAST=true</code> (prefix <code>DBT_ENGINE_</code> since 1.11)</span>.
+       Ideal for CI runners and containers.</p></div>
+  <div class="where"><span class="rank">3</span><h4><code>dbt_project.yml</code> → <code>flags:</code></h4><p>Project-wide defaults for "behaviour" flags (fail_fast, warn_error, partial_parse…), committed with the code. Since 1.8 this replaces the old <code>config:</code> block in profiles.yml.</p></div>
+  <div class="where"><span class="rank">4</span><h4>Resource config</h4><p>A few flags have a per-model twin: <code>full_refresh</code>, <code>store_failures</code>. The config <code>full_refresh: false</code> even overrides <code>--full-refresh</code>.</p></div>
+  <div class="where"><span class="rank">5</span><h4>dbt default</h4><p>Used when nothing above is set.</p></div>
+</div>
+
+<div class="vgrid">
+  <div class="vcol only-v18"><span class="tag v18">1.8.6</span>
+<div class="file">dbt_project.yml</div>
+<pre class="code">flags:
+  fail_fast: true
+  warn_error_options:
+    include: [NoNodesForSelectionCriteria]   <span class="c"># 'include'/'exclude' in 1.8</span>
+  partial_parse: true
+  send_anonymous_usage_stats: false</pre>
+<pre class="code">export DBT_FULL_REFRESH=true      <span class="c"># env var form</span>
+export DBT_TARGET=ci</pre>
+  </div>
+  <div class="vcol only-v112"><span class="tag v112">1.12</span>
+<div class="file">dbt_project.yml</div>
+<pre class="code">flags:
+  fail_fast: true
+  warn_error_options:
+    error: [NoNodesForSelectionCriteria]     <span class="c"># renamed in 1.10</span>
+    silence: [Deprecations]
+  <span class="c"># behaviour-change opt-ins live here too (only here):</span>
+  require_sql_header_in_test_configs: true</pre>
+<pre class="code">export DBT_ENGINE_FULL_REFRESH=true   <span class="c"># 1.11+ prefix</span>
+export DBT_ENGINE_TARGET=ci
+<span class="c"># 1.12 also loads a .env file from the working directory</span></pre>
+  </div>
+</div>
+<div class="callout warn"><b>Not everything goes everywhere</b>
+  <p>Run-scoped flags (<code>--select</code>, <code>--empty</code>, <code>--defer</code>, <code>--state</code>, <code>--sample</code>, <code>--event-time-*</code>, <code>--target</code>) <strong>cannot</strong> go in <code>flags:</code>,
+  because they describe one invocation, not the project. <code>--select</code> has no environment variable at all (use <code>selectors.yml</code> to version a selection).
+  <span class="only-v112">When migrating, check that old <code>DBT_*</code> env vars are still picked up, or rename them to <code>DBT_ENGINE_*</code>.</span></p>
+</div>
+
+<h2 id="play">2 · DAG playground</h2>
+<p>A small project: sources → staging → snapshot / incremental fact / dimension → mart, with data tests and a unit test.
+<code>stg_customers</code> is marked as <em>modified</em> versus prod. Then press <strong>Run</strong>.</p>
+<div class="sim" id="dagsim">
+  <div class="controls" style="margin-bottom:10px">
+    <span class="ctl-label">Command</span><div id="dag-cmdsel"></div>
+    <span id="dag-simver-wrap"><span class="ctl-label">Simulate</span><span id="dag-simver"></span></span>
+  </div>
+  <div class="controls" style="margin-bottom:8px">
+    <span class="ctl-label">-s</span><input id="dag-select" class="btn" style="width:230px;font-family:'JetBrains Mono',monospace" placeholder="(everything)" />
+    <span class="ctl-label">--exclude</span><input id="dag-exclude" class="btn" style="width:170px;font-family:'JetBrains Mono',monospace" placeholder="" />
+  </div>
+  <div class="presets" style="margin-bottom:10px">
+    <span class="ctl-label">try</span>
+    <button data-preset="fct_orders">fct_orders</button>
+    <button data-preset="+fct_orders">+fct_orders</button>
+    <button data-preset="stg_orders+">stg_orders+</button>
+    <button data-preset="@stg_customers">@stg_customers</button>
+    <button data-preset="state:modified+">state:modified+</button>
+    <button data-preset="tag:finance">tag:finance</button>
+    <button data-preset="1+dim_customers">1+dim_customers</button>
+    <button data-preset="config.materialized:incremental">config.materialized:incremental</button>
+    <button data-preset="">(clear)</button>
+  </div>
+  <div class="controls" style="margin-bottom:8px">
+    <label class="toggle" data-k="fullRefresh"><input type="checkbox">--full-refresh</label>
+    <label class="toggle" data-k="empty"><input type="checkbox">--empty</label>
+    <label class="toggle" data-k="sample"><input type="checkbox">--sample "3 days"</label>
+    <label class="toggle" data-k="defer"><input type="checkbox">--defer --state</label>
+    <label class="toggle" data-k="noUnit"><input type="checkbox">--exclude-resource-type unit_test</label>
+    <label class="toggle" data-k="failFast"><input type="checkbox">--fail-fast</label>
+    <label class="toggle" data-k="protect"><input type="checkbox">config: fct_orders full_refresh=false</label>
+  </div>
+  <div class="controls" style="margin-bottom:12px">
+    <span class="ctl-label">--indirect-selection</span><div id="dag-indirect"></div>
+    <span class="ctl-label">Simulate failure of</span><div id="dag-fail"></div>
+  </div>
+  <div class="cmdline" id="dag-cmd"></div>
+  <div class="dag-wrap" id="dag-svg"></div>
+  <div class="controls" style="margin-top:12px"><button class="btn primary" id="dag-run">▶ Run</button>
+    <div class="legend" style="margin:0">
+      <span><i style="background:#2fa36b"></i>source</span><span><i style="background:#14a3a3"></i>seed</span><span><i style="background:#3a6fd0"></i>model</span>
+      <span><i style="background:#8a5cf6"></i>snapshot</span><span><i style="background:#8d8d99"></i>data test</span><span><i style="background:#e0a800"></i>unit test</span>
+      <span><i style="border:1.5px dashed var(--accent)"></i>deferred to prod</span>
+    </div>
+  </div>
+  <div class="effects" id="dag-fx"></div>
+</div>
+<div class="callout tip"><b>Things to try</b>
+  <p>• <code>fct_orders</code> without <code>--defer</code>: <code>stg_orders</code> shows "dev?". Add <code>--defer --state</code> and it is read from prod instead.</p>
+  <p>• <code>+fct_orders</code> + <code>--full-refresh</code>: the view and the snapshot don't care, and the incremental is rebuilt. Then tick <em>full_refresh=false</em> and the CLI flag loses.</p>
+  <p>• <code>fct_orders</code> + <code>--indirect-selection</code> eager vs cautious: <code>rel_fct_orders_customer</code> also depends on the unselected <code>dim_customers</code>, so cautious drops it.</p>
+  <p>• Simulate a failure of <code>stg_customers</code>, Run, then again with <code>--fail-fast</code>.</p>
+</div>
+
+<h2 id="build"><span class="group-title"><span class="num">3</span>Build behaviour</span></h2>
+<p>Flags that change <em>what</em> gets written for the selected nodes.</p>
+<div class="flag-grid" id="flags-build"></div>
+
+<div class="diagram">
+<svg viewBox="0 0 900 200" role="img" aria-label="full-refresh vs empty vs sample">
+  <text class="d-txt" x="20" y="24" font-weight="700">Same incremental model, three flags</text>
+  <g transform="translate(20,44)">
+    <rect width="270" height="140" rx="12" class="d-box"/>
+    <text class="d-txt" x="14" y="24" font-weight="700">--full-refresh</text>
+    <text class="d-mut" x="14" y="42">drop table → rebuild from ALL history</text>
+    <g>
+      <rect x="14" y="58" width="242" height="14" rx="4" fill="var(--new)"><animate attributeName="width" values="0;242;242" dur="3s" repeatCount="indefinite"/></rect>
+      <text class="d-mut" x="14" y="92">rows: 0 → 100%  ·  cost: high</text>
+      <text class="d-mut" x="14" y="112">is_incremental() = false</text>
+    </g>
+  </g>
+  <g transform="translate(315,44)">
+    <rect width="270" height="140" rx="12" class="d-box"/>
+    <text class="d-txt" x="14" y="24" font-weight="700">--empty</text>
+    <text class="d-mut" x="14" y="42">refs → where false limit 0</text>
+    <rect x="14" y="58" width="242" height="14" rx="4" fill="none" stroke="var(--muted)" stroke-dasharray="4 3"/>
+    <text class="d-mut" x="14" y="92">rows: 0  ·  columns: ✓  ·  cost: ~0</text>
+    <text class="d-mut" x="14" y="112">validates SQL, types, contracts</text>
+  </g>
+  <g transform="translate(610,44)">
+    <rect width="270" height="140" rx="12" class="d-box"/>
+    <text class="d-txt" x="14" y="24" font-weight="700">--sample "3 days"  (1.10+)</text>
+    <text class="d-mut" x="14" y="42">inputs with event_time → last 3 days</text>
+    <rect x="14" y="58" width="242" height="14" rx="4" fill="var(--soft)" stroke="var(--line)"/>
+    <rect x="200" y="58" width="56" height="14" rx="4" fill="var(--upd)"><animate attributeName="opacity" values=".3;1;.3" dur="2s" repeatCount="indefinite"/></rect>
+    <text class="d-mut" x="14" y="92">rows: recent slice  ·  cost: low</text>
+    <text class="d-mut" x="14" y="112">real data for dev / CI</text>
+  </g>
+</svg>
+</div>
+
+<h2 id="select"><span class="group-title"><span class="num">4</span>Selection</span></h2>
+<p>Flags that choose <em>which</em> nodes run.</p>
+<div class="flag-grid" id="flags-select"></div>
+
+<h2 id="state"><span class="group-title"><span class="num">5</span>State &amp; CI</span></h2>
+<p>Flags that compare against, or read from, another environment (usually prod).</p>
+<div class="flag-grid" id="flags-state"></div>
+
+<h2 id="run"><span class="group-title"><span class="num">6</span>Run control</span></h2>
+<div class="flag-grid" id="flags-run"></div>
+
+<h2 id="debug"><span class="group-title"><span class="num">7</span>Debugging</span></h2>
+<div class="flag-grid" id="flags-debug"></div>
+
+<h2 id="recipes"><span class="group-title"><span class="num">8</span>Recipes</span></h2>
+<div class="cards">
+  <div class="card recipe"><div class="ico">💻</div><div><h3>Dev loop</h3>
+    <pre class="code">dbt build -s fct_orders+ --defer --state prod/
+<span class="only-v112">dbt build -s fct_orders+ --sample=<span class="s">"3 days"</span>   <span class="c"># 1.10+</span></span></pre>
+    <p>Build what you touched and its children. Read everything else from prod.</p></div></div>
+  <div class="card recipe"><div class="ico">🧪</div><div><h3>Slim CI</h3>
+    <pre class="code">dbt build -s state:modified+ --defer --state prod/ --empty -x   <span class="c"># 1: schema check</span>
+dbt build -s state:modified+ --defer --state prod/ -x           <span class="c"># 2: real data</span></pre>
+    <p>The first pass catches SQL and contract errors in seconds. The second runs the data tests.</p></div></div>
+  <div class="card recipe"><div class="ico">🌙</div><div><h3>Production nightly</h3>
+    <pre class="code">dbt source freshness
+dbt build --selector nightly --exclude-resource-type unit_test
+dbt retry   <span class="c"># if it failed: resume at the failure</span></pre>
+    <p>No <code>--fail-fast</code>: independent branches still deliver.</p></div></div>
+  <div class="card recipe"><div class="ico">⏪</div><div><h3>Backfill a period</h3>
+    <pre class="code"><span class="only-v18">dbt run -s fct_orders --vars <span class="s">'{"from": "2024-09-01"}'</span>   <span class="c"># var used in is_incremental()</span></span><span class="only-v112">dbt run -s fct_orders --event-time-start <span class="s">"2024-09-01"</span> --event-time-end <span class="s">"2024-09-04"</span></span></pre>
+    <p>Rebuild a window without a full refresh.</p></div></div>
+  <div class="card recipe"><div class="ico">🔁</div><div><h3>Logic change on an incremental</h3>
+    <pre class="code">dbt build -s fct_orders+ --full-refresh</pre>
+    <p>Rebuild the model and its children. Use the config <code>full_refresh: false</code> on models whose history can't be rebuilt.</p></div></div>
+  <div class="card recipe"><div class="ico">🌱</div><div><h3>Seed columns changed</h3>
+    <pre class="code">dbt seed -s country_codes --full-refresh</pre>
+    <p>A normal seed run truncates and inserts, so it can't change columns. This drops and recreates the table.</p></div></div>
+</div>

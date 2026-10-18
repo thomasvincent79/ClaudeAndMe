@@ -12,6 +12,35 @@ let savedVer = "both";
 try { savedVer = localStorage.getItem(VER_KEY) || "both"; } catch (e) { /* ignore */ }
 setVer(savedVer);
 
+// ---------- theme toggle ----------
+(function () {
+  const btn = document.getElementById("theme-btn");
+  if (!btn) return;
+  btn.addEventListener("click", () => {
+    const cur = document.documentElement.dataset.theme
+      || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    const next = cur === "dark" ? "light" : "dark";
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem("dbt-mechanics-theme", next); } catch (e) { /* ignore */ }
+  });
+})();
+
+// ---------- scroll progress + reveal ----------
+(function () {
+  const bar = document.getElementById("progress");
+  const onScroll = () => {
+    const h = document.documentElement.scrollHeight - innerHeight;
+    if (bar) bar.style.width = (h > 0 ? (scrollY / h) * 100 : 0) + "%";
+  };
+  addEventListener("scroll", onScroll, { passive: true }); onScroll();
+  if (!("IntersectionObserver" in window)) return;
+  const io = new IntersectionObserver(entries => entries.forEach(e => {
+    if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); }
+  }), { rootMargin: "0px 0px -40px 0px" });
+  document.querySelectorAll("main h2, main .card, main .diagram, main .callout, main .flag, main .where, main .vcol, main .sim")
+    .forEach(el => { if (!el.closest(".hero")) { el.classList.add("reveal"); io.observe(el); } });
+})();
+
 // ---------- small helpers ----------
 function $(sel, root = document) { return root.querySelector(sel); }
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }

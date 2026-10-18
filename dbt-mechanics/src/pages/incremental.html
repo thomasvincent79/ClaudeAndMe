@@ -1,3 +1,5 @@
+<section class="hero">
+<span class="eyebrow">➕ Incremental models</span>
 <h1>Incremental strategies</h1>
 <p class="lead">An incremental model is built once in full, then on each run dbt only computes <em>new or changed</em> rows and folds them into the existing table.
 Two choices decide whether the result is correct: <strong>which rows your query selects</strong> (the <code>is_incremental()</code> filter) and
@@ -11,6 +13,7 @@ Two choices decide whether the result is correct: <strong>which rows your query 
   <a href="#options">5 · Useful options</a>
   <a href="#best">6 · Which one to choose</a>
 </div>
+</section>
 
 <h2 id="how">1 · Anatomy of an incremental run</h2>
 <div class="diagram">
@@ -69,7 +72,7 @@ and a <strong>late-arriving</strong> order dated 01-01. A full refresh would giv
       <div id="inc-verdict"></div>
     </div>
   </div>
-  <div class="vgrid" style="grid-template-columns:repeat(auto-fit,minmax(340px,1fr))">
+  <div class="vgrid" style="grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr))">
     <div id="inc-model"></div>
     <div id="inc-sql"></div>
   </div>
