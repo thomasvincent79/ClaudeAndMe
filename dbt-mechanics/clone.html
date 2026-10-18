@@ -1,0 +1,688 @@
+<!doctype html>
+<html lang="en" data-ver="both">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>dbt clone</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23ff5f3f'/%3E%3Cpath d='M9 22l7-12 7 12' stroke='white' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<script>
+  // apply saved theme/version before paint (no flash)
+  try {
+    const t = localStorage.getItem("dbt-mechanics-theme"); if (t) document.documentElement.dataset.theme = t;
+    const v = localStorage.getItem("dbt-mechanics-version"); if (v) document.documentElement.dataset.ver = v;
+  } catch (e) {}
+</script>
+<style>
+/* ================= tokens ================= */
+:root {
+  --bg: #f6f5f2; --bg2: #efede7; --card: #ffffff; --ink: #17171a; --muted: #686873; --line: #e4e2db; --soft: #f0eee8;
+  --accent: #ff5f3f; --accent2: #ff9f43; --accent-ink: #fff;
+  --grad: linear-gradient(120deg, #ff5f3f 0%, #ff9f43 45%, #7c5cff 100%);
+  --v18: #3a6fd0; --v18-bg: #e6eefb;
+  --v112: #12946a; --v112-bg: #ddf4ea;
+  --new: #d7f3e2; --new-ink: #136b42;
+  --upd: #fff0c4; --upd-ink: #855600;
+  --del: #fde0dc; --del-ink: #a8281b;
+  --gone: #ececea; --gone-ink: #8d8d8a;
+  --code-bg: #15161c; --code-ink: #e7e7ee; --code-bar: #20222b;
+  --shadow: 0 1px 2px rgba(20,20,30,.05), 0 8px 24px -12px rgba(20,20,30,.18);
+  --shadow-lg: 0 2px 6px rgba(20,20,30,.06), 0 24px 48px -20px rgba(20,20,30,.28);
+  --mesh1: rgba(255,95,63,.16); --mesh2: rgba(124,92,255,.14); --mesh3: rgba(255,159,67,.14);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f0f13; --bg2: #15151b; --card: #18181f; --ink: #ecebf1; --muted: #9c9ba8; --line: #2a2a34; --soft: #22222b;
+    --accent: #ff7a5c; --accent2: #ffb366;
+    --v18: #8cb2f4; --v18-bg: #1a2640;
+    --v112: #5fd6a5; --v112-bg: #13302a;
+    --new: #143524; --new-ink: #8fe0b3;
+    --upd: #3a2e12; --upd-ink: #f3cf7a;
+    --del: #42201c; --del-ink: #ffa597;
+    --gone: #24242b; --gone-ink: #74747e;
+    --code-bg: #0b0b0f; --code-ink: #e7e7ee; --code-bar: #16161d;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+    --shadow-lg: 0 2px 6px rgba(0,0,0,.4), 0 24px 48px -20px rgba(0,0,0,.8);
+    --mesh1: rgba(255,95,63,.18); --mesh2: rgba(124,92,255,.2); --mesh3: rgba(255,159,67,.1);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f0f13; --bg2: #15151b; --card: #18181f; --ink: #ecebf1; --muted: #9c9ba8; --line: #2a2a34; --soft: #22222b;
+  --accent: #ff7a5c; --accent2: #ffb366;
+  --v18: #8cb2f4; --v18-bg: #1a2640;
+  --v112: #5fd6a5; --v112-bg: #13302a;
+  --new: #143524; --new-ink: #8fe0b3;
+  --upd: #3a2e12; --upd-ink: #f3cf7a;
+  --del: #42201c; --del-ink: #ffa597;
+  --gone: #24242b; --gone-ink: #74747e;
+  --code-bg: #0b0b0f; --code-ink: #e7e7ee; --code-bar: #16161d;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+  --shadow-lg: 0 2px 6px rgba(0,0,0,.4), 0 24px 48px -20px rgba(0,0,0,.8);
+  --mesh1: rgba(255,95,63,.18); --mesh2: rgba(124,92,255,.2); --mesh3: rgba(255,159,67,.1);
+  color-scheme: dark;
+}
+
+/* ================= base ================= */
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 80px; }
+body { margin: 0; background: var(--bg); color: var(--ink);
+       font: 15.5px/1.65 "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+       -webkit-font-smoothing: antialiased; }
+body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background: radial-gradient(900px 500px at 8% -10%, var(--mesh1), transparent 60%),
+              radial-gradient(800px 500px at 100% 0%, var(--mesh2), transparent 60%),
+              radial-gradient(700px 600px at 50% 110%, var(--mesh3), transparent 60%); }
+a { color: var(--accent); text-underline-offset: 3px; }
+code { font: .86em/1.4 "JetBrains Mono", ui-monospace, "Cascadia Code", Consolas, monospace; background: var(--soft);
+       padding: 1px 6px; border-radius: 5px; border: 1px solid var(--line); overflow-wrap: anywhere; }
+h1 { font-size: clamp(2rem, 4.5vw, 3.1rem); line-height: 1.08; letter-spacing: -.03em; margin: 6px 0 12px; font-weight: 800; }
+h2 { font-size: 1.55rem; letter-spacing: -.02em; margin: 64px 0 12px; font-weight: 750; position: relative; padding-bottom: 10px; }
+h2::after { content: ""; position: absolute; left: 0; bottom: 0; width: 56px; height: 3px; border-radius: 3px; background: var(--grad); }
+h3 { font-size: 1.08rem; margin: 26px 0 8px; letter-spacing: -.01em; }
+.lead { color: var(--muted); font-size: 1.1rem; margin: 0 0 22px; max-width: 72ch; }
+p, li { max-width: 80ch; }
+::selection { background: color-mix(in srgb, var(--accent) 30%, transparent); }
+
+/* ================= header ================= */
+.progress { position: fixed; top: 0; left: 0; height: 3px; width: 0; background: var(--grad); z-index: 20; }
+.top { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 78%, transparent);
+       backdrop-filter: saturate(1.6) blur(14px); -webkit-backdrop-filter: saturate(1.6) blur(14px); border-bottom: 1px solid var(--line); }
+.top-inner { max-width: 1200px; margin: 0 auto; padding: 10px 16px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 1.05rem; color: var(--ink); text-decoration: none; letter-spacing: -.02em; }
+.brand svg { width: 26px; height: 26px; }
+.brand span { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.nav { display: flex; gap: 2px; flex-wrap: nowrap; flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; white-space: nowrap; }
+.nav::-webkit-scrollbar { display: none; }
+@media (max-width: 1000px) { .nav { order: 3; flex-basis: 100%; } .top-inner { gap: 8px 12px; } }
+.nav a { color: var(--muted); text-decoration: none; padding: 6px 11px; border-radius: 8px; font-size: .9rem; font-weight: 500; transition: .15s; }
+.nav a:hover { background: var(--soft); color: var(--ink); }
+.nav a.on { color: var(--ink); background: var(--card); box-shadow: var(--shadow); }
+.vswitch { display: flex; align-items: center; gap: 2px; background: var(--soft); padding: 3px; border-radius: 10px; border: 1px solid var(--line); }
+.vlabel { font-size: .74rem; color: var(--muted); padding: 0 6px; font-weight: 600; }
+.vswitch button, .theme-btn { border: 0; background: transparent; color: var(--muted); font: 600 .84rem "Inter", system-ui, sans-serif;
+                  padding: 5px 10px; border-radius: 7px; cursor: pointer; transition: .15s; }
+.vswitch button.on { background: var(--card); color: var(--ink); box-shadow: var(--shadow); }
+.vswitch button[data-set-ver="v18"].on { color: var(--v18); }
+.vswitch button[data-set-ver="v112"].on { color: var(--v112); }
+.theme-btn { font-size: 1rem; border: 1px solid var(--line); background: var(--soft); padding: 5px 9px; }
+.theme-btn:hover { color: var(--ink); }
+
+main { max-width: 1200px; margin: 0 auto; padding: 28px 16px 40px; }
+.foot { max-width: 1200px; margin: 40px auto 0; padding: 22px 16px 48px; color: var(--muted); font-size: .85rem; border-top: 1px solid var(--line); }
+
+/* ================= hero ================= */
+.hero { position: relative; overflow: hidden; border-radius: 22px; padding: 38px 34px 30px; margin: 4px 0 10px;
+        background: linear-gradient(160deg, color-mix(in srgb, var(--card) 92%, transparent), color-mix(in srgb, var(--card) 70%, transparent));
+        border: 1px solid var(--line); box-shadow: var(--shadow-lg); }
+.hero::before { content: ""; position: absolute; inset: -2px; z-index: 0; opacity: .55; pointer-events: none;
+  background: radial-gradient(500px 220px at 100% 0%, var(--mesh2), transparent 70%), radial-gradient(400px 200px at 0% 100%, var(--mesh1), transparent 70%); }
+.hero > * { position: relative; z-index: 1; }
+.eyebrow { display: inline-flex; align-items: center; gap: 8px; font: 700 .74rem "Inter", sans-serif; letter-spacing: .12em; text-transform: uppercase;
+           color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); padding: 5px 11px; border-radius: 30px; }
+.hero h1 .grad, .grad { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.hero .lead { color: var(--muted); margin-bottom: 18px; }
+.hero-art { position: absolute; right: 24px; top: 20px; width: 300px; opacity: .9; z-index: 0; }
+@media (max-width: 980px) { .hero-art { display: none; } }
+.hero.big { padding: 56px 40px 44px; }
+.hero.big h1 { font-size: clamp(2.4rem, 6vw, 4rem); max-width: 14ch; }
+.stats { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+.stat { background: var(--soft); border: 1px solid var(--line); border-radius: 12px; padding: 8px 14px; font-size: .85rem; color: var(--muted); }
+.stat b { color: var(--ink); font-size: 1.05rem; margin-right: 4px; }
+
+/* ================= version blocks ================= */
+.tag { display: inline-block; font: 700 .7rem/1 "Inter", system-ui, sans-serif; padding: 4px 8px; border-radius: 6px; letter-spacing: .02em; vertical-align: middle; }
+.tag.v18 { background: var(--v18-bg); color: var(--v18); }
+.tag.v112 { background: var(--v112-bg); color: var(--v112); }
+.vgrid { display: grid; gap: 16px; grid-template-columns: 1fr; margin: 14px 0; }
+html[data-ver="both"] .vgrid { grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); }
+html[data-ver="v18"] .only-v112, html[data-ver="v112"] .only-v18 { display: none !important; }
+.vcol { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px; box-shadow: var(--shadow);
+        position: relative; min-width: 0; overflow: hidden; }
+.vcol::before { content: ""; position: absolute; left: 0; top: 0; right: 0; height: 3px; background: var(--line); }
+.vcol.only-v18::before { background: linear-gradient(90deg, var(--v18), transparent); }
+.vcol.only-v112::before { background: linear-gradient(90deg, var(--v112), transparent); }
+.vcol > .tag:first-child { margin-bottom: 6px; }
+
+/* ================= cards & callouts ================= */
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; box-shadow: var(--shadow); }
+.cards { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(270px, 100%), 1fr)); margin: 16px 0; }
+.card h3:first-child { margin-top: 0; }
+a.theme-card { color: inherit; text-decoration: none; display: block; position: relative; transition: transform .2s, box-shadow .2s; overflow: hidden; }
+a.theme-card::after { content: ""; position: absolute; inset: 0; border-radius: 16px; padding: 1px; background: var(--grad); opacity: 0; transition: opacity .2s;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none; }
+a.theme-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
+a.theme-card:hover::after { opacity: 1; }
+.theme-card h2 { margin: 12px 0 6px; padding: 0; font-size: 1.15rem; }
+.theme-card h2::after { display: none; }
+.theme-card p { margin: 0; color: var(--muted); font-size: .92rem; }
+.theme-card .go { display: inline-block; margin-top: 12px; font-weight: 600; font-size: .88rem; color: var(--accent); }
+.theme-icon { width: 46px; height: 46px; display: grid; place-items: center; font-size: 1.4rem; border-radius: 12px;
+              background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 22%, transparent), color-mix(in srgb, #7c5cff 22%, transparent)); }
+.callout { border: 1px solid var(--line); border-left: 4px solid var(--accent); background: var(--card); padding: 12px 16px; border-radius: 12px; margin: 16px 0; box-shadow: var(--shadow); }
+.callout.tip { border-left-color: var(--v112); }
+.callout.warn { border-left-color: #e0a800; }
+.callout.danger { border-left-color: #e0442f; background: linear-gradient(90deg, color-mix(in srgb, var(--del) 60%, var(--card)), var(--card) 60%); }
+.callout b:first-child { display: block; margin-bottom: 2px; }
+.callout p { margin: 4px 0; }
+.toc { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0 0; }
+.toc a { font-size: .85rem; font-weight: 500; text-decoration: none; padding: 5px 12px; border: 1px solid var(--line);
+         border-radius: 30px; color: var(--ink); background: var(--card); transition: .15s; }
+.toc a:hover { border-color: var(--accent); color: var(--accent); transform: translateY(-1px); }
+
+/* ================= code ================= */
+.file { font: 600 .74rem "JetBrains Mono", ui-monospace, Consolas, monospace; color: #a9abb8; margin: 14px 0 0; background: var(--code-bar);
+        padding: 9px 14px 9px 62px; border-radius: 12px 12px 0 0; position: relative; }
+.file::before { content: ""; position: absolute; left: 14px; top: 50%; width: 10px; height: 10px; border-radius: 50%; transform: translateY(-50%);
+                background: #ff5f57; box-shadow: 15px 0 0 #febc2e, 30px 0 0 #28c840; }
+.file + pre.code { margin-top: 0; border-top-left-radius: 0; border-top-right-radius: 0; }
+pre.code { background: var(--code-bg); color: var(--code-ink); border-radius: 12px; padding: 14px 16px; overflow-x: auto;
+           font: .8rem/1.6 "JetBrains Mono", ui-monospace, "Cascadia Code", Consolas, monospace; margin: 10px 0; box-shadow: var(--shadow); }
+pre.code .c { color: #7d8196; }
+pre.code .k { color: #ff9a7a; }
+pre.code .s { color: #a5e0a0; }
+pre.code .f { color: #8cc4ff; }
+pre.code .h { background: rgba(255,214,102,.16); border-radius: 4px; padding: 0 3px; box-shadow: inset 0 0 0 1px rgba(255,214,102,.25); }
+
+/* ================= tables ================= */
+.tbl-wrap { overflow-x: auto; }
+table.dt { border-collapse: separate; border-spacing: 0; width: 100%; font: .8rem/1.35 "JetBrains Mono", ui-monospace, Consolas, monospace; }
+table.dt th { text-align: left; color: var(--muted); font: 600 .72rem "Inter", sans-serif; text-transform: uppercase; letter-spacing: .04em;
+              padding: 7px 9px; border-bottom: 1px solid var(--line); white-space: nowrap; background: var(--soft); }
+table.dt th:first-child { border-top-left-radius: 8px; } table.dt th:last-child { border-top-right-radius: 8px; }
+table.dt td { padding: 6px 9px; border-bottom: 1px solid var(--line); white-space: nowrap; transition: background .5s, color .5s; }
+table.dt tr.new td { background: var(--new); color: var(--new-ink); }
+table.dt tr.upd td { background: var(--upd); color: var(--upd-ink); }
+table.dt tr.del td { background: var(--del); color: var(--del-ink); }
+table.dt tr.gone td { background: var(--gone); color: var(--gone-ink); text-decoration: line-through; }
+table.dt td.cell-upd { background: var(--upd) !important; color: var(--upd-ink) !important; font-weight: 700; }
+table.dt td.meta { color: var(--muted); }
+table.dt td.null { color: var(--muted); font-style: italic; }
+table.dt tr.flash td { animation: flash 1s cubic-bezier(.2,.8,.2,1); }
+@keyframes flash { 0% { filter: brightness(1.4) saturate(1.4); transform: translateX(-10px); opacity: .2; } 100% { filter: none; transform: none; opacity: 1; } }
+table.prose { border-collapse: collapse; width: 100%; font-size: .9rem; }
+table.prose th, table.prose td { border-bottom: 1px solid var(--line); padding: 10px 12px; text-align: left; vertical-align: top; }
+table.prose tr:last-child td { border-bottom: 0; }
+table.prose th { color: var(--muted); font-weight: 600; font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; }
+table.prose tr:hover td { background: color-mix(in srgb, var(--soft) 60%, transparent); }
+.yes { color: var(--v112); font-weight: 700; }
+.no { color: var(--muted); }
+
+/* ================= simulators ================= */
+.sim { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 20px; margin: 18px 0; box-shadow: var(--shadow-lg); position: relative; }
+.sim::before { content: "INTERACTIVE"; position: absolute; top: -10px; left: 20px; font: 800 .64rem "Inter", sans-serif; letter-spacing: .14em;
+               color: #fff; background: var(--grad); padding: 4px 10px; border-radius: 20px; }
+.sim-head { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.ctl-label { font: 700 .7rem "Inter", sans-serif; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-right: 2px; }
+.seg { display: inline-flex; background: var(--soft); border-radius: 10px; padding: 3px; gap: 2px; flex-wrap: wrap; border: 1px solid var(--line); }
+.seg button { border: 0; background: transparent; color: var(--muted); padding: 5px 11px; border-radius: 7px; cursor: pointer;
+              font: 600 .78rem "JetBrains Mono", ui-monospace, Consolas, monospace; transition: .15s; }
+.seg button:hover:not(:disabled) { color: var(--ink); }
+.seg button.on { background: var(--card); color: var(--ink); box-shadow: var(--shadow); }
+.seg button:disabled { opacity: .35; cursor: not-allowed; }
+.btn { border: 1px solid var(--line); background: var(--card); color: var(--ink); padding: 7px 14px; border-radius: 10px;
+       cursor: pointer; font: 600 .84rem "Inter", system-ui, sans-serif; transition: .15s; }
+.btn:hover:not(:disabled) { border-color: var(--accent); transform: translateY(-1px); }
+.btn.primary { background: var(--grad); border-color: transparent; color: #fff; box-shadow: 0 6px 18px -8px var(--accent); }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+input.btn { cursor: text; }
+.sim-cols { display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr) minmax(0, 1.9fr); }
+@media (max-width: 860px) { .sim-cols { grid-template-columns: minmax(0, 1fr); } }
+.pane-title { font: 700 .7rem "Inter", sans-serif; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 8px;
+              display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.narration { background: var(--soft); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; margin: 14px 0 0; min-height: 3.2em; }
+.narration b { color: var(--accent); }
+.steps { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0 12px; }
+.step { border: 1px solid var(--line); background: var(--card); color: var(--muted); border-radius: 30px; padding: 5px 13px;
+        font: 600 .78rem "Inter", system-ui, sans-serif; cursor: pointer; transition: .2s; }
+.step.done { color: var(--ink); border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); }
+.step.on { background: var(--grad); color: #fff; border-color: transparent; box-shadow: 0 6px 18px -8px var(--accent); }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: .78rem; color: var(--muted); margin-top: 12px; }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 4px; vertical-align: -2px; margin-right: 5px; }
+.verdict { margin-top: 12px; padding: 11px 15px; border-radius: 12px; font-size: .9rem; animation: pop .35s ease; }
+.verdict:empty { display: none; }
+.verdict.ok { background: var(--new); color: var(--new-ink); }
+.verdict.bad { background: var(--del); color: var(--del-ink); }
+.verdict ul { margin: 4px 0 0; padding-left: 18px; }
+@keyframes pop { from { transform: scale(.97); opacity: 0; } to { transform: none; opacity: 1; } }
+.sql-out { margin-top: 12px; }
+svg text { font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; }
+.timeline-svg { width: 100%; height: auto; display: block; margin-top: 6px; }
+.badge { display: inline-block; font: 700 .68rem "Inter", sans-serif; padding: 2px 7px; border-radius: 5px; background: var(--soft); color: var(--muted); }
+
+/* ================= diagrams ================= */
+.diagram { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 18px; margin: 16px 0; overflow-x: auto; box-shadow: var(--shadow); }
+.diagram svg { display: block; width: 100%; height: auto; min-width: 560px; }
+.d-box { fill: var(--soft); stroke: var(--line); }
+.d-txt { fill: var(--ink); font: 12px "Inter", system-ui, sans-serif; }
+.d-mut { fill: var(--muted); font: 11px "Inter", system-ui, sans-serif; }
+.d-line { stroke: var(--muted); stroke-width: 1.5; fill: none; opacity: .7; }
+.flow-dot { fill: var(--accent); filter: drop-shadow(0 0 4px var(--accent)); }
+
+/* ================= reveal on scroll ================= */
+.reveal { opacity: 0; transform: translateY(14px); transition: opacity .6s ease, transform .6s cubic-bezier(.2,.8,.2,1); }
+.reveal.in { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } * { animation: none !important; } }
+
+/* incremental: wider input pane */
+#incsim .sim-cols { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); }
+@media (max-width: 860px) { #incsim .sim-cols { grid-template-columns: minmax(0, 1fr); } }
+
+/* ================= flags page ================= */
+.where-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin: 14px 0; }
+.where { border-radius: 14px; padding: 14px 16px; border: 1px solid var(--line); background: var(--card); box-shadow: var(--shadow); position: relative; }
+.where .rank { position: absolute; top: 12px; right: 14px; font: 800 1.6rem "Inter", sans-serif; opacity: .12; }
+.where h4 { margin: 0 0 4px; font-size: .95rem; }
+.where p { margin: 0; font-size: .86rem; color: var(--muted); }
+.flag-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr)); margin: 16px 0; }
+@media (max-width: 420px) { .flag-grid { grid-template-columns: minmax(0, 1fr); } }
+.flag { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 18px 20px; box-shadow: var(--shadow); min-width: 0; transition: box-shadow .2s, transform .2s; }
+.flag:hover { box-shadow: var(--shadow-lg); }
+.flag-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+.flag-name { font: 700 1.02rem "JetBrains Mono", ui-monospace, Consolas, monospace; color: var(--accent); }
+.flag-alias { font: .8rem "JetBrains Mono", monospace; color: var(--muted); }
+.flag-cmds { display: flex; gap: 4px; flex-wrap: wrap; margin: 4px 0 10px; }
+.flag-cmds span { font: 600 .7rem "JetBrains Mono", monospace; padding: 2px 7px; border-radius: 5px; background: var(--soft); color: var(--muted); border: 1px solid var(--line); }
+.flag dl { margin: 0; display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 6px 12px; font-size: .9rem; }
+.flag dt { font: 700 .68rem "Inter", sans-serif; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); padding-top: 4px; }
+.flag dd { margin: 0; min-width: 0; }
+.flag dd pre.code { margin: 2px 0; font-size: .76rem; padding: 9px 12px; }
+.chips { display: flex; gap: 5px; flex-wrap: wrap; }
+.chip { font: 600 .72rem "Inter", sans-serif; padding: 3px 8px; border-radius: 20px; border: 1px solid var(--line); color: var(--muted); }
+.chip.y { color: var(--v112); border-color: color-mix(in srgb, var(--v112) 40%, var(--line)); background: color-mix(in srgb, var(--v112) 10%, transparent); }
+.chip.n { opacity: .55; text-decoration: line-through; }
+.group-title { display: flex; align-items: center; gap: 10px; }
+.group-title .num { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; font: 800 .85rem "Inter", sans-serif; color: #fff; background: var(--grad); }
+
+/* DAG playground */
+.dag-wrap { background: var(--bg2); border: 1px solid var(--line); border-radius: 14px; padding: 8px; overflow-x: auto; }
+.dag-wrap svg { display: block; width: 100%; min-width: 760px; height: auto; }
+.dag-node rect { transition: fill .35s, stroke .35s, opacity .35s; }
+.dag-node.dim { opacity: .32; }
+.dag-node.pulse rect.body { animation: nodepulse .9s ease; }
+@keyframes nodepulse { 0% { filter: drop-shadow(0 0 0 var(--accent)); } 40% { filter: drop-shadow(0 0 10px var(--accent)); } 100% { filter: none; } }
+.dag-edge { stroke: var(--muted); stroke-width: 1.4; fill: none; opacity: .45; transition: opacity .3s, stroke .3s; }
+.dag-edge.hot { stroke: var(--accent); opacity: .9; stroke-dasharray: 5 4; animation: dash 1s linear infinite; }
+@keyframes dash { to { stroke-dashoffset: -18; } }
+.cmdline { font: 600 .92rem "JetBrains Mono", monospace; background: var(--code-bg); color: var(--code-ink); padding: 14px 16px; border-radius: 12px;
+           margin: 12px 0; overflow-x: auto; white-space: nowrap; box-shadow: var(--shadow); }
+.cmdline .p { color: #28c840; margin-right: 8px; }
+.cmdline .fl { color: #ff9a7a; } .cmdline .v { color: #a5e0a0; }
+.toggle { display: inline-flex; align-items: center; gap: 7px; font: 600 .8rem "JetBrains Mono", monospace; padding: 6px 11px; border-radius: 9px;
+          border: 1px solid var(--line); background: var(--soft); color: var(--muted); cursor: pointer; user-select: none; transition: .15s; }
+.toggle input { accent-color: var(--accent); margin: 0; }
+.toggle.on { color: var(--ink); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--card)); }
+.toggle.disabled { opacity: .4; cursor: not-allowed; }
+.presets { display: flex; gap: 6px; flex-wrap: wrap; }
+.presets button { font: 600 .76rem "JetBrains Mono", monospace; padding: 4px 9px; border-radius: 7px; border: 1px dashed var(--line); background: transparent; color: var(--muted); cursor: pointer; }
+.presets button:hover { color: var(--accent); border-color: var(--accent); }
+.effects { display: grid; gap: 6px; margin-top: 10px; font-size: .88rem; }
+.effects div { padding: 7px 12px; border-radius: 10px; background: var(--soft); border: 1px solid var(--line); }
+.effects b { font-family: "JetBrains Mono", monospace; font-size: .82rem; }
+.recipe { display: grid; grid-template-columns: 38px minmax(0, 1fr); gap: 12px; align-items: start; }
+.recipe .ico { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; font-size: 1.1rem; background: var(--soft); }
+
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<header class="top">
+  <div class="top-inner">
+    <a class="brand" href="index.html" aria-label="dbt mechanics home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff5f3f"/><stop offset=".55" stop-color="#ff9f43"/><stop offset="1" stop-color="#7c5cff"/></linearGradient></defs>
+        <rect width="32" height="32" rx="9" fill="url(#lg)"/><circle cx="9" cy="22" r="3" fill="#fff"/><circle cx="16" cy="10" r="3" fill="#fff"/><circle cx="23" cy="22" r="3" fill="#fff"/>
+        <path d="M9 22L16 10L23 22" stroke="#fff" stroke-width="2" fill="none"/></svg>
+      dbt<span>mechanics</span></a>
+    <nav class="nav">
+<a href="index.html" class="">Home</a>
+<a href="snapshots.html" class="" title="Snapshots & hard deletes">Snapshots</a>
+<a href="incremental.html" class="" title="Incremental strategies">Incremental</a>
+<a href="tests.html" class="" title="Data tests & unit tests">Tests</a>
+<a href="flags.html" class="" title="CLI flags">Flags</a>
+<a href="clone.html" class="on" title="dbt clone">Clone</a>
+<a href="freshness.html" class="" title="Source freshness">Freshness</a>
+    </nav>
+    <div class="vswitch" role="group" aria-label="dbt version">
+      <span class="vlabel">dbt Core</span>
+      <button data-set-ver="v18">1.8.6</button>
+      <button data-set-ver="v112">1.12</button>
+      <button data-set-ver="both">Compare</button>
+    </div>
+    <button class="theme-btn" id="theme-btn" title="Toggle light / dark">◐</button>
+  </div>
+</header>
+<main>
+<section class="hero">
+<span class="eyebrow">🧬 dbt clone</span>
+<h1>Copy prod into your schema <span class="grad">without copying data</span></h1>
+<p class="lead"><code>dbt clone</code> (available since 1.6, so in both <span class="tag v18">1.8.6</span> and <span class="tag v112">1.12</span>) reads another environment's
+<code>manifest.json</code> (<code>--state</code>) and recreates the selected relations in <em>your</em> target. Where the warehouse supports it, that's a <strong>zero-copy clone</strong>.
+Elsewhere it's a <strong>pointer view</strong>. No model SQL is executed.</p>
+<div class="toc">
+  <a href="#how">1 · How it works</a>
+  <a href="#sim">2 · Clone simulator</a>
+  <a href="#vs">3 · clone vs --defer</a>
+  <a href="#cfg">4 · Usage &amp; versions</a>
+  <a href="#best">5 · When to use it</a>
+</div>
+</section>
+
+<h2 id="how">1 · How it works</h2>
+<div class="diagram">
+<svg viewBox="0 0 900 210" role="img" aria-label="dbt clone flow">
+  <rect class="d-box" x="10" y="20" width="190" height="70" rx="12"/>
+  <text class="d-txt" x="105" y="48" text-anchor="middle" font-weight="700">prod-artifacts/manifest.json</text>
+  <text class="d-mut" x="105" y="68" text-anchor="middle">where each prod relation lives</text>
+  <rect class="d-box" x="10" y="120" width="190" height="70" rx="12"/>
+  <text class="d-txt" x="105" y="148" text-anchor="middle" font-weight="700">--select / --exclude</text>
+  <text class="d-mut" x="105" y="168" text-anchor="middle">which nodes</text>
+  <rect x="270" y="65" width="200" height="80" rx="12" fill="var(--card)" stroke="var(--accent)"/>
+  <text class="d-txt" x="370" y="95" text-anchor="middle" font-weight="700">clone materialization</text>
+  <text class="d-mut" x="370" y="114" text-anchor="middle">exists in target? skip unless</text>
+  <text class="d-mut" x="370" y="130" text-anchor="middle">--full-refresh</text>
+  <rect x="550" y="20" width="340" height="70" rx="12" fill="var(--new)"/>
+  <text class="d-txt" x="565" y="46" font-weight="700">prod object is a TABLE + Snowflake / BigQuery / Databricks</text>
+  <text class="d-mut" x="565" y="66">→ zero-copy clone: metadata only, instant, storage shared</text>
+  <rect x="550" y="120" width="340" height="70" rx="12" fill="color-mix(in srgb, #3a6fd0 16%, var(--card))"/>
+  <text class="d-txt" x="565" y="146" font-weight="700">otherwise (view, or Postgres / Redshift…)</text>
+  <text class="d-mut" x="565" y="166">→ pointer view: create view … as select * from prod.x</text>
+  <path id="c1" class="d-line" d="M200 55 C240 55 240 95 270 95"/><path id="c2" class="d-line" d="M200 155 C240 155 240 115 270 115"/>
+  <path id="c3" class="d-line" d="M470 95 C510 95 510 55 550 55"/><path id="c4" class="d-line" d="M470 115 C510 115 510 155 550 155"/>
+  <circle r="5" class="flow-dot"><animateMotion dur="2s" repeatCount="indefinite"><mpath href="#c1"/></animateMotion></circle>
+  <circle r="5" class="flow-dot"><animateMotion dur="2s" begin=".5s" repeatCount="indefinite"><mpath href="#c2"/></animateMotion></circle>
+  <circle r="5" class="flow-dot"><animateMotion dur="2s" begin="1s" repeatCount="indefinite"><mpath href="#c3"/></animateMotion></circle>
+  <circle r="5" class="flow-dot"><animateMotion dur="2s" begin="1.5s" repeatCount="indefinite"><mpath href="#c4"/></animateMotion></circle>
+</svg>
+</div>
+<p>Clone statements are independent of each other, so raise <code>--threads</code> (for example 32 or 50) to clone a whole project in seconds.
+Models, seeds and snapshots are all cloned as relations. Tests are not.</p>
+
+<h2 id="sim">2 · Clone simulator</h2>
+<p>Prod has 6 relations. Your dev schema already contains an old <code>dim_customers</code>. <code>fct_orders</code> (✎) is the model you modified.</p>
+<div class="sim" id="clonesim">
+  <div class="controls" style="margin-bottom:8px"><span class="ctl-label">Warehouse</span><div id="clone-adapter"></div></div>
+  <div class="controls" style="margin-bottom:8px"><span class="ctl-label">-s</span><div id="clone-sel"></div>
+    <span class="ctl-label">Existing relations</span><div id="clone-fr"></div></div>
+  <div class="cmdline" id="clone-cmd"></div>
+  <div class="dag-wrap" id="clone-svg"></div>
+  <div id="clone-sql"></div>
+  <div class="pane-title" style="margin-top:16px"><span>Then, in CI: build the modified model</span></div>
+  <div id="clone-after"></div>
+  <div class="legend">
+    <span><i style="background:var(--new)"></i>zero-copy clone</span>
+    <span><i style="background:color-mix(in srgb, #3a6fd0 30%, var(--card))"></i>pointer view</span>
+    <span><i style="background:var(--upd)"></i>existing relation kept</span>
+  </div>
+</div>
+<div class="callout tip"><b>Things to try</b>
+  <p>• Switch to <em>Postgres / Redshift</em>: every node becomes a view, and the incremental model then gets fully rebuilt in CI.</p>
+  <p>• Toggle <code>--full-refresh</code>: the stale <code>dim_customers</code> in dev is replaced by a fresh clone of prod.</p>
+</div>
+
+<h2 id="vs">3 · clone vs <code>--defer</code></h2>
+<div class="tbl-wrap card">
+<table class="prose">
+  <tr><th></th><th><code>--defer --state</code></th><th><code>dbt clone --state</code></th></tr>
+  <tr><td>What it does</td><td>At compile time, <code>ref()</code> to an unbuilt model points to the prod relation</td><td>Creates real objects in your schema (clones or views)</td></tr>
+  <tr><td>Warehouse objects created</td><td>None</td><td>One per selected node</td></tr>
+  <tr><td>Cost</td><td>Free</td><td>Metadata ops (zero-copy) or views; small</td></tr>
+  <tr><td>Visible outside dbt (BI tool, notebooks)?</td><td class="no">No: your schema stays partial</td><td class="yes">Yes: the schema is complete</td></tr>
+  <tr><td>Incremental model starts "warm"</td><td class="no">No: the first build in your schema is a full build</td><td class="yes">Yes on zero-copy warehouses (the clone is a table)</td></tr>
+  <tr><td>Can you write to it?</td><td>n/a</td><td>Clone: yes, it diverges copy-on-write. View: no.</td></tr>
+  <tr><td>Freshness</td><td>Always prod's current data</td><td>Clone: frozen at clone time. View: live.</td></tr>
+</table>
+</div>
+<div class="callout"><b>Rule of thumb</b><p>Use <code>--defer</code> by default. Reach for <code>clone</code> when something <em>outside</em> dbt must see a complete schema, or when you need incremental models to start from prod's data.</p></div>
+
+<h2 id="cfg">4 · Usage &amp; versions</h2>
+<div class="vgrid">
+  <div class="vcol only-v18"><span class="tag v18">1.8.6</span>
+<pre class="code"><span class="c"># complete dev schema from prod</span>
+dbt clone --state prod-artifacts/ --threads 32
+<span class="c"># CI: clone modified incremental models first, then build</span>
+dbt clone -s <span class="s">"state:modified+,config.materialized:incremental"</span> --state prod-artifacts/
+dbt build -s <span class="s">"state:modified+"</span> --defer --state prod-artifacts/
+<span class="c"># refresh stale clones</span>
+dbt clone --state prod-artifacts/ --full-refresh
+<span class="c"># skip seeds (1.8 added --exclude-resource-type for clone)</span>
+dbt clone --state prod-artifacts/ --exclude-resource-type seed</pre>
+  <p>Env vars: <code>DBT_STATE</code>, <code>DBT_FULL_REFRESH</code>.</p>
+  </div>
+  <div class="vcol only-v112"><span class="tag v112">1.12</span>
+    <p>Same command and behaviour. The differences come from the surrounding features:</p>
+    <ul>
+      <li>Env vars use the <code>DBT_ENGINE_</code> prefix (1.11): <code>DBT_ENGINE_STATE</code>.</li>
+      <li><code>state:modified</code> compares unrendered configs by default (behaviour flag matured in 1.12), so fewer false "modified" nodes get cloned or built.</li>
+      <li>The <code>selector:</code> method can be used inside <code>-s</code> (1.12): <code>dbt clone -s "selector:ci_incrementals"</code>.</li>
+    </ul>
+<pre class="code">dbt clone -s <span class="s">"state:modified+,config.materialized:incremental"</span> \
+  --state prod-artifacts/ --threads 32</pre>
+  </div>
+</div>
+
+<h2 id="best">5 · When to use it</h2>
+<div class="cards">
+  <div class="card"><h3>✅ Good fits</h3><ul>
+    <li><strong>CI with incremental models</strong> on Snowflake / BigQuery / Databricks: clone the modified incrementals, then build them incrementally.</li>
+    <li><strong>Complete dev sandbox</strong> to explore in a BI tool or notebook.</li>
+    <li><strong>Blue/green deploys</strong>: build in a staging schema cloned from prod, test, then swap.</li>
+    <li>Testing a BI dashboard against a change before merging.</li></ul></div>
+  <div class="card"><h3>⚠️ Watch out</h3><ul>
+    <li>Clones are a <strong>snapshot in time</strong>. Re-clone with <code>--full-refresh</code>, or they drift from prod.</li>
+    <li>On Postgres/Redshift you only get views, so there is no incremental benefit and a dependency on prod objects.</li>
+    <li>The <code>--state</code> manifest must match what really exists in prod (download it from the latest prod run).</li>
+    <li>Your target role needs read access to prod objects, plus clone privileges where applicable.</li></ul></div>
+  <div class="card"><h3>❌ Not for</h3><ul>
+    <li>Copying data across accounts or regions: a clone stays inside one warehouse account/project.</li>
+    <li>Replacing <code>--defer</code> in everyday dev: deferral is free and always current.</li></ul></div>
+</div>
+
+</main>
+<footer class="foot">
+  Built with <code>python build.py</code>. Version-specific blocks are tagged
+  <span class="tag v18">1.8.6</span> and <span class="tag v112">1.12</span>. Use the switch at the top to show one or compare both.
+</footer>
+<script>
+// ---------- version switch (shared by every page) ----------
+const VER_KEY = "dbt-mechanics-version";
+function getVer() { return document.documentElement.dataset.ver; }
+function setVer(v) {
+  document.documentElement.dataset.ver = v;
+  document.querySelectorAll("[data-set-ver]").forEach(b => b.classList.toggle("on", b.dataset.setVer === v));
+  try { localStorage.setItem(VER_KEY, v); } catch (e) { /* storage unavailable: fine */ }
+  document.dispatchEvent(new CustomEvent("verchange", { detail: v }));
+}
+document.querySelectorAll("[data-set-ver]").forEach(b => b.addEventListener("click", () => setVer(b.dataset.setVer)));
+let savedVer = "both";
+try { savedVer = localStorage.getItem(VER_KEY) || "both"; } catch (e) { /* ignore */ }
+setVer(savedVer);
+
+// ---------- theme toggle ----------
+(function () {
+  const btn = document.getElementById("theme-btn");
+  if (!btn) return;
+  btn.addEventListener("click", () => {
+    const cur = document.documentElement.dataset.theme
+      || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    const next = cur === "dark" ? "light" : "dark";
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem("dbt-mechanics-theme", next); } catch (e) { /* ignore */ }
+  });
+})();
+
+// keep the current page's nav link visible when the nav scrolls sideways
+(function () {
+  const nav = document.querySelector(".nav"), on = nav && nav.querySelector("a.on");
+  if (on) nav.scrollLeft += on.getBoundingClientRect().left - nav.getBoundingClientRect().left - (nav.clientWidth - on.offsetWidth) / 2;
+})();
+
+// ---------- scroll progress + reveal ----------
+(function () {
+  const bar = document.getElementById("progress");
+  const onScroll = () => {
+    const h = document.documentElement.scrollHeight - innerHeight;
+    if (bar) bar.style.width = (h > 0 ? (scrollY / h) * 100 : 0) + "%";
+  };
+  addEventListener("scroll", onScroll, { passive: true }); onScroll();
+  if (!("IntersectionObserver" in window)) return;
+  const io = new IntersectionObserver(entries => entries.forEach(e => {
+    if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); }
+  }), { rootMargin: "0px 0px -40px 0px" });
+  document.querySelectorAll("main h2, main .card, main .diagram, main .callout, main .flag, main .where, main .vcol, main .sim")
+    .forEach(el => { if (!el.closest(".hero")) { el.classList.add("reveal"); io.observe(el); } });
+})();
+
+// ---------- small helpers ----------
+function $(sel, root = document) { return root.querySelector(sel); }
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+
+// Build a segmented control. options: [{value, label, disabled, title}]
+function segmented(container, options, value, onChange) {
+  container.innerHTML = "";
+  container.classList.add("seg");
+  options.forEach(o => {
+    const b = document.createElement("button");
+    b.textContent = o.label; b.dataset.value = o.value;
+    if (o.title) b.title = o.title;
+    b.disabled = !!o.disabled;
+    b.classList.toggle("on", o.value === value);
+    b.addEventListener("click", () => {
+      container.querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b));
+      onChange(o.value);
+    });
+    container.appendChild(b);
+  });
+}
+
+// Render rows as a table. cols: [{key, label, cls?, fmt?}], rows carry an optional _cls and _cellCls {key: cls}
+function renderTable(el, cols, rows, opts = {}) {
+  const head = "<tr>" + cols.map(c => `<th>${esc(c.label)}</th>`).join("") + "</tr>";
+  const body = rows.map(r => {
+    const tds = cols.map(c => {
+      const v = r[c.key];
+      const isNull = v === null || v === undefined;
+      const cls = [c.cls || "", isNull ? "null" : "", (r._cellCls && r._cellCls[c.key]) || ""].join(" ").trim();
+      const shown = isNull ? "null" : (c.fmt ? c.fmt(v, r) : v);
+      return `<td class="${cls}">${esc(shown)}</td>`;
+    }).join("");
+    return `<tr class="${r._cls || ""} ${r._flash ? "flash" : ""}">${tds}</tr>`;
+  }).join("");
+  el.innerHTML = `<div class="tbl-wrap"><table class="dt">${head}${body || `<tr><td colspan="${cols.length}" class="null">${opts.empty || "(empty)"}</td></tr>`}</table></div>`;
+}
+
+// =====================================================================
+// dbt clone simulator: prod relations (from --state) → target schema.
+// Zero-copy clone where the warehouse supports it and prod object is a
+// table, pointer view otherwise; existing relations skipped unless
+// --full-refresh. Step 2 shows what an incremental build does afterwards.
+// =====================================================================
+(function () {
+  const root = document.getElementById("clonesim");
+  if (!root) return;
+  const $$ = s => root.querySelector(s);
+
+  const PROD = [
+    { id: "country_codes", kind: "seed", obj: "table", rows: "250", modified: false },
+    { id: "stg_orders", kind: "view", obj: "view", rows: "—", modified: false },
+    { id: "orders_snapshot", kind: "snapshot", obj: "table", rows: "3.1M", modified: false },
+    { id: "fct_orders", kind: "incremental", obj: "table", rows: "1.2B", modified: true },
+    { id: "dim_customers", kind: "table", obj: "table", rows: "4M", modified: false },
+    { id: "mart_revenue", kind: "table", obj: "table", rows: "12k", modified: false, child: true },
+  ];
+  const DEV_EXISTING = { dim_customers: "table (built last week)" };
+  const ADAPTERS = {
+    snowflake: { label: "Snowflake", zc: true, sql: (s, t) => `create or replace table ${t} clone ${s};` },
+    bigquery: { label: "BigQuery", zc: true, sql: (s, t) => `create or replace table ${t} clone ${s};` },
+    databricks: { label: "Databricks", zc: true, sql: (s, t) => `create or replace table ${t} shallow clone ${s};` },
+    postgres: { label: "Postgres / Redshift", zc: false },
+  };
+  const SELECTS = {
+    all: { label: "(everything)", ids: PROD.map(p => p.id) },
+    modified: { label: "state:modified+", ids: ["fct_orders", "mart_revenue"] },
+    fct: { label: "fct_orders", ids: ["fct_orders"] },
+  };
+  const st = { adapter: "snowflake", sel: "all", fr: false, step: 0, timer: null };
+
+  function plan() {
+    const a = ADAPTERS[st.adapter];
+    const ids = SELECTS[st.sel].ids;
+    return PROD.map(p => {
+      if (!ids.includes(p.id)) return { ...p, action: "none" };
+      const exists = DEV_EXISTING[p.id];
+      if (exists && !st.fr) return { ...p, action: "skip", sql: `-- ${p.id} already exists in dbt_alice: left untouched (use --full-refresh to recreate)` };
+      const src = `prod.analytics.${p.id}`, tgt = `dev.dbt_alice.${p.id}`;
+      if (a.zc && p.obj === "table") return { ...p, action: "clone", sql: a.sql(src, tgt), recreate: !!exists };
+      return { ...p, action: "view", sql: `create or replace view ${tgt} as select * from ${src};`, recreate: !!exists };
+    });
+  }
+
+  const ACT = {
+    clone: { txt: "zero-copy clone", col: "#1f9d6b", note: "metadata only: instant, no storage until one side changes" },
+    view: { txt: "pointer view", col: "#3a6fd0", note: "select * from prod: always live, read-only in practice" },
+    skip: { txt: "skipped (exists)", col: "#8d8d99", note: "pre-existing relation kept" },
+    none: { txt: "not selected", col: "transparent", note: "" },
+  };
+
+  function draw(p) {
+    const rowH = 46, H = 40 + p.length * rowH;
+    const parts = [`<text x="20" y="22" class="d-txt" font-weight="700">prod.analytics  (from --state manifest)</text>
+      <text x="520" y="22" class="d-txt" font-weight="700">dev.dbt_alice  (your target)</text>`];
+    p.forEach((n, i) => {
+      const y = 36 + i * rowH, a = ACT[n.action];
+      const on = n.action !== "none";
+      parts.push(`<g opacity="${on ? 1 : .35}">
+        <rect x="20" y="${y}" width="220" height="34" rx="9" fill="var(--card)" stroke="var(--line)"/>
+        <text x="32" y="${y + 15}" font-size="11.5" fill="var(--ink)" font-weight="600">${n.id}${n.modified ? "  ✎" : ""}</text>
+        <text x="32" y="${y + 28}" font-size="9.5" fill="var(--muted)">${n.kind} · ${n.obj} · ${n.rows} rows</text></g>`);
+      if (n.action === "clone" || n.action === "view") {
+        const path = `M240 ${y + 17} C380 ${y + 17} 380 ${y + 17} 520 ${y + 17}`;
+        parts.push(`<path id="cp${i}" d="${path}" fill="none" stroke="${a.col}" stroke-width="2" ${n.action === "view" ? 'stroke-dasharray="6 4"' : ""} opacity=".8"/>
+          <circle r="5" fill="${a.col}"><animateMotion dur="1.6s" repeatCount="indefinite" begin="${i * .15}s"><mpath href="#cp${i}"/></animateMotion></circle>
+          <text x="380" y="${y + 11}" text-anchor="middle" font-size="9.5" fill="${a.col}" font-weight="700">${a.txt}${n.recreate ? " (recreated)" : ""}</text>`);
+      }
+      const devTxt = n.action === "clone" ? `table (clone) · ${n.rows} rows · 0 B` : n.action === "view" ? `view → prod.${n.id}` : DEV_EXISTING[n.id] || "—";
+      const devCol = n.action === "skip" ? "var(--upd)" : n.action === "clone" ? "var(--new)" : n.action === "view" ? "color-mix(in srgb, #3a6fd0 18%, var(--card))" : "var(--card)";
+      parts.push(`<g opacity="${on || DEV_EXISTING[n.id] ? 1 : .35}">
+        <rect x="520" y="${y}" width="240" height="34" rx="9" fill="${devCol}" stroke="var(--line)" ${n.action === "none" && !DEV_EXISTING[n.id] ? 'stroke-dasharray="4 3"' : ""}/>
+        <text x="532" y="${y + 15}" font-size="11.5" fill="var(--ink)" font-weight="600">${n.id}</text>
+        <text x="532" y="${y + 28}" font-size="9.5" fill="var(--muted)">${devTxt}</text></g>`);
+    });
+    $$("#clone-svg").innerHTML = `<svg viewBox="0 0 780 ${H}" style="min-width:620px">${parts.join("")}</svg>`;
+  }
+
+  function afterBuild(p) {
+    const f = p.find(n => n.id === "fct_orders");
+    const a = ADAPTERS[st.adapter];
+    if (f.action === "clone") return `<div class="verdict ok">✓ <b>fct_orders</b> is a real <b>table</b> in dev, so <code>is_incremental()</code> is <b>true</b>.
+      Your modified logic only processes new rows (merge), and CI tests the incremental branch without a 1.2B-row full refresh.
+      Storage: only the micro-partitions the merge rewrites are new. Everything else is still shared with prod.</div>`;
+    if (f.action === "view") return `<div class="verdict bad">✗ In dev, <b>fct_orders</b> is a <b>view</b> pointing to prod. An incremental model whose existing relation is a view is
+      <b>rebuilt in full</b> (<code>is_incremental()</code> is false when the relation isn't a table). On ${a.label}, cloning doesn't save you the full refresh.
+      Use <code>--defer</code> for upstream refs instead, and test the incremental branch with a unit test (<code>overrides: macros: is_incremental: true</code>).</div>`;
+    if (f.action === "skip") return `<div class="verdict">fct_orders kept its existing dev relation.</div>`;
+    return `<div class="verdict">fct_orders was not cloned: it doesn't exist in dev yet, so the next build is a full build (is_incremental() = false)${a.zc ? ". Select it in the clone to avoid that" : ""}.</div>`;
+  }
+
+  function render() {
+    segmented($$("#clone-adapter"), Object.entries(ADAPTERS).map(([k, a]) => ({ value: k, label: a.label })), st.adapter, v => { st.adapter = v; render(); });
+    segmented($$("#clone-sel"), Object.entries(SELECTS).map(([k, s]) => ({ value: k, label: s.label })), st.sel, v => { st.sel = v; render(); });
+    segmented($$("#clone-fr"), [{ value: false, label: "off" }, { value: true, label: "--full-refresh" }], st.fr, v => { st.fr = v; render(); });
+    const p = plan();
+    draw(p);
+    const cmd = `dbt clone${st.sel !== "all" ? ` -s ${SELECTS[st.sel].label}` : ""} --state prod-artifacts/${st.fr ? " --full-refresh" : ""} --threads 32`;
+    $$("#clone-cmd").innerHTML = `<span class="p">$</span>${esc(cmd)}`;
+    const sql = p.filter(n => n.sql).map(n => n.sql).join("\n");
+    $$("#clone-sql").innerHTML = `<div class="file">what dbt runs on ${ADAPTERS[st.adapter].label}</div><pre class="code">${esc(sql || "-- nothing selected")}</pre>`;
+    $$("#clone-after").innerHTML = `<div class="cmdline"><span class="p">$</span>dbt build -s state:modified+ --defer --state prod-artifacts/</div>` + afterBuild(p);
+  }
+  document.addEventListener("verchange", render);
+  render();
+})();
+
+</script>
+</body>
+</html>

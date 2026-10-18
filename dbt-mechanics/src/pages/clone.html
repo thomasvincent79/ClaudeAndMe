@@ -1,0 +1,124 @@
+<section class="hero">
+<span class="eyebrow">🧬 dbt clone</span>
+<h1>Copy prod into your schema <span class="grad">without copying data</span></h1>
+<p class="lead"><code>dbt clone</code> (available since 1.6, so in both <span class="tag v18">1.8.6</span> and <span class="tag v112">1.12</span>) reads another environment's
+<code>manifest.json</code> (<code>--state</code>) and recreates the selected relations in <em>your</em> target. Where the warehouse supports it, that's a <strong>zero-copy clone</strong>.
+Elsewhere it's a <strong>pointer view</strong>. No model SQL is executed.</p>
+<div class="toc">
+  <a href="#how">1 · How it works</a>
+  <a href="#sim">2 · Clone simulator</a>
+  <a href="#vs">3 · clone vs --defer</a>
+  <a href="#cfg">4 · Usage &amp; versions</a>
+  <a href="#best">5 · When to use it</a>
+</div>
+</section>
+
+<h2 id="how">1 · How it works</h2>
+<div class="diagram">
+<svg viewBox="0 0 900 210" role="img" aria-label="dbt clone flow">
+  <rect class="d-box" x="10" y="20" width="190" height="70" rx="12"/>
+  <text class="d-txt" x="105" y="48" text-anchor="middle" font-weight="700">prod-artifacts/manifest.json</text>
+  <text class="d-mut" x="105" y="68" text-anchor="middle">where each prod relation lives</text>
+  <rect class="d-box" x="10" y="120" width="190" height="70" rx="12"/>
+  <text class="d-txt" x="105" y="148" text-anchor="middle" font-weight="700">--select / --exclude</text>
+  <text class="d-mut" x="105" y="168" text-anchor="middle">which nodes</text>
+  <rect x="270" y="65" width="200" height="80" rx="12" fill="var(--card)" stroke="var(--accent)"/>
+  <text class="d-txt" x="370" y="95" text-anchor="middle" font-weight="700">clone materialization</text>
+  <text class="d-mut" x="370" y="114" text-anchor="middle">exists in target? skip unless</text>
+  <text class="d-mut" x="370" y="130" text-anchor="middle">--full-refresh</text>
+  <rect x="550" y="20" width="340" height="70" rx="12" fill="var(--new)"/>
+  <text class="d-txt" x="565" y="46" font-weight="700">prod object is a TABLE + Snowflake / BigQuery / Databricks</text>
+  <text class="d-mut" x="565" y="66">→ zero-copy clone: metadata only, instant, storage shared</text>
+  <rect x="550" y="120" width="340" height="70" rx="12" fill="color-mix(in srgb, #3a6fd0 16%, var(--card))"/>
+  <text class="d-txt" x="565" y="146" font-weight="700">otherwise (view, or Postgres / Redshift…)</text>
+  <text class="d-mut" x="565" y="166">→ pointer view: create view … as select * from prod.x</text>
+  <path id="c1" class="d-line" d="M200 55 C240 55 240 95 270 95"/><path id="c2" class="d-line" d="M200 155 C240 155 240 115 270 115"/>
+  <path id="c3" class="d-line" d="M470 95 C510 95 510 55 550 55"/><path id="c4" class="d-line" d="M470 115 C510 115 510 155 550 155"/>
+  <circle r="5" class="flow-dot"><animateMotion dur="2s" repeatCount="indefinite"><mpath href="#c1"/></animateMotion></circle>
+  <circle r="5" class="flow-dot"><animateMotion dur="2s" begin=".5s" repeatCount="indefinite"><mpath href="#c2"/></animateMotion></circle>
+  <circle r="5" class="flow-dot"><animateMotion dur="2s" begin="1s" repeatCount="indefinite"><mpath href="#c3"/></animateMotion></circle>
+  <circle r="5" class="flow-dot"><animateMotion dur="2s" begin="1.5s" repeatCount="indefinite"><mpath href="#c4"/></animateMotion></circle>
+</svg>
+</div>
+<p>Clone statements are independent of each other, so raise <code>--threads</code> (for example 32 or 50) to clone a whole project in seconds.
+Models, seeds and snapshots are all cloned as relations. Tests are not.</p>
+
+<h2 id="sim">2 · Clone simulator</h2>
+<p>Prod has 6 relations. Your dev schema already contains an old <code>dim_customers</code>. <code>fct_orders</code> (✎) is the model you modified.</p>
+<div class="sim" id="clonesim">
+  <div class="controls" style="margin-bottom:8px"><span class="ctl-label">Warehouse</span><div id="clone-adapter"></div></div>
+  <div class="controls" style="margin-bottom:8px"><span class="ctl-label">-s</span><div id="clone-sel"></div>
+    <span class="ctl-label">Existing relations</span><div id="clone-fr"></div></div>
+  <div class="cmdline" id="clone-cmd"></div>
+  <div class="dag-wrap" id="clone-svg"></div>
+  <div id="clone-sql"></div>
+  <div class="pane-title" style="margin-top:16px"><span>Then, in CI: build the modified model</span></div>
+  <div id="clone-after"></div>
+  <div class="legend">
+    <span><i style="background:var(--new)"></i>zero-copy clone</span>
+    <span><i style="background:color-mix(in srgb, #3a6fd0 30%, var(--card))"></i>pointer view</span>
+    <span><i style="background:var(--upd)"></i>existing relation kept</span>
+  </div>
+</div>
+<div class="callout tip"><b>Things to try</b>
+  <p>• Switch to <em>Postgres / Redshift</em>: every node becomes a view, and the incremental model then gets fully rebuilt in CI.</p>
+  <p>• Toggle <code>--full-refresh</code>: the stale <code>dim_customers</code> in dev is replaced by a fresh clone of prod.</p>
+</div>
+
+<h2 id="vs">3 · clone vs <code>--defer</code></h2>
+<div class="tbl-wrap card">
+<table class="prose">
+  <tr><th></th><th><code>--defer --state</code></th><th><code>dbt clone --state</code></th></tr>
+  <tr><td>What it does</td><td>At compile time, <code>ref()</code> to an unbuilt model points to the prod relation</td><td>Creates real objects in your schema (clones or views)</td></tr>
+  <tr><td>Warehouse objects created</td><td>None</td><td>One per selected node</td></tr>
+  <tr><td>Cost</td><td>Free</td><td>Metadata ops (zero-copy) or views; small</td></tr>
+  <tr><td>Visible outside dbt (BI tool, notebooks)?</td><td class="no">No: your schema stays partial</td><td class="yes">Yes: the schema is complete</td></tr>
+  <tr><td>Incremental model starts "warm"</td><td class="no">No: the first build in your schema is a full build</td><td class="yes">Yes on zero-copy warehouses (the clone is a table)</td></tr>
+  <tr><td>Can you write to it?</td><td>n/a</td><td>Clone: yes, it diverges copy-on-write. View: no.</td></tr>
+  <tr><td>Freshness</td><td>Always prod's current data</td><td>Clone: frozen at clone time. View: live.</td></tr>
+</table>
+</div>
+<div class="callout"><b>Rule of thumb</b><p>Use <code>--defer</code> by default. Reach for <code>clone</code> when something <em>outside</em> dbt must see a complete schema, or when you need incremental models to start from prod's data.</p></div>
+
+<h2 id="cfg">4 · Usage &amp; versions</h2>
+<div class="vgrid">
+  <div class="vcol only-v18"><span class="tag v18">1.8.6</span>
+<pre class="code"><span class="c"># complete dev schema from prod</span>
+dbt clone --state prod-artifacts/ --threads 32
+<span class="c"># CI: clone modified incremental models first, then build</span>
+dbt clone -s <span class="s">"state:modified+,config.materialized:incremental"</span> --state prod-artifacts/
+dbt build -s <span class="s">"state:modified+"</span> --defer --state prod-artifacts/
+<span class="c"># refresh stale clones</span>
+dbt clone --state prod-artifacts/ --full-refresh
+<span class="c"># skip seeds (1.8 added --exclude-resource-type for clone)</span>
+dbt clone --state prod-artifacts/ --exclude-resource-type seed</pre>
+  <p>Env vars: <code>DBT_STATE</code>, <code>DBT_FULL_REFRESH</code>.</p>
+  </div>
+  <div class="vcol only-v112"><span class="tag v112">1.12</span>
+    <p>Same command and behaviour. The differences come from the surrounding features:</p>
+    <ul>
+      <li>Env vars use the <code>DBT_ENGINE_</code> prefix (1.11): <code>DBT_ENGINE_STATE</code>.</li>
+      <li><code>state:modified</code> compares unrendered configs by default (behaviour flag matured in 1.12), so fewer false "modified" nodes get cloned or built.</li>
+      <li>The <code>selector:</code> method can be used inside <code>-s</code> (1.12): <code>dbt clone -s "selector:ci_incrementals"</code>.</li>
+    </ul>
+<pre class="code">dbt clone -s <span class="s">"state:modified+,config.materialized:incremental"</span> \
+  --state prod-artifacts/ --threads 32</pre>
+  </div>
+</div>
+
+<h2 id="best">5 · When to use it</h2>
+<div class="cards">
+  <div class="card"><h3>✅ Good fits</h3><ul>
+    <li><strong>CI with incremental models</strong> on Snowflake / BigQuery / Databricks: clone the modified incrementals, then build them incrementally.</li>
+    <li><strong>Complete dev sandbox</strong> to explore in a BI tool or notebook.</li>
+    <li><strong>Blue/green deploys</strong>: build in a staging schema cloned from prod, test, then swap.</li>
+    <li>Testing a BI dashboard against a change before merging.</li></ul></div>
+  <div class="card"><h3>⚠️ Watch out</h3><ul>
+    <li>Clones are a <strong>snapshot in time</strong>. Re-clone with <code>--full-refresh</code>, or they drift from prod.</li>
+    <li>On Postgres/Redshift you only get views, so there is no incremental benefit and a dependency on prod objects.</li>
+    <li>The <code>--state</code> manifest must match what really exists in prod (download it from the latest prod run).</li>
+    <li>Your target role needs read access to prod objects, plus clone privileges where applicable.</li></ul></div>
+  <div class="card"><h3>❌ Not for</h3><ul>
+    <li>Copying data across accounts or regions: a clone stays inside one warehouse account/project.</li>
+    <li>Replacing <code>--defer</code> in everyday dev: deferral is free and always current.</li></ul></div>
+</div>

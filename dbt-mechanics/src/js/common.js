@@ -25,6 +25,12 @@ setVer(savedVer);
   });
 })();
 
+// keep the current page's nav link visible when the nav scrolls sideways
+(function () {
+  const nav = document.querySelector(".nav"), on = nav && nav.querySelector("a.on");
+  if (on) nav.scrollLeft += on.getBoundingClientRect().left - nav.getBoundingClientRect().left - (nav.clientWidth - on.offsetWidth) / 2;
+})();
+
 // ---------- scroll progress + reveal ----------
 (function () {
   const bar = document.getElementById("progress");

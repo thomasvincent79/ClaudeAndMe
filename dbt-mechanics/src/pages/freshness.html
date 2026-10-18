@@ -1,0 +1,144 @@
+<section class="hero">
+<span class="eyebrow">⏱️ Source freshness</span>
+<h1>Is the raw data <span class="grad">late?</span></h1>
+<p class="lead">Freshness checks answer one question before you build anything: <em>when did data last land in this source?</em>
+dbt computes <code>age = now − max(loaded_at)</code> and compares it with <code>warn_after</code> / <code>error_after</code>.
+The idea is the same in <span class="tag v18">1.8.6</span> and <span class="tag v112">1.12</span>. Where the YAML keys go has changed.</p>
+<div class="toc">
+  <a href="#how">1 · How it's computed</a>
+  <a href="#sim">2 · Freshness simulator</a>
+  <a href="#yaml">3 · Configuration by version</a>
+  <a href="#fresher">4 · Build only what got fresher</a>
+  <a href="#best">5 · Best practices</a>
+</div>
+</section>
+
+<h2 id="how">1 · How it's computed</h2>
+<div class="diagram">
+<svg viewBox="0 0 900 180" role="img" aria-label="Freshness computation">
+  <rect class="d-box" x="10" y="20" width="230" height="60" rx="12"/>
+  <text class="d-txt" x="125" y="46" text-anchor="middle" font-weight="700">loaded_at_field / loaded_at_query</text>
+  <text class="d-mut" x="125" y="64" text-anchor="middle">max(_etl_loaded_at) [where filter]</text>
+  <rect class="d-box" x="10" y="100" width="230" height="60" rx="12"/>
+  <text class="d-txt" x="125" y="126" text-anchor="middle" font-weight="700">…or warehouse metadata</text>
+  <text class="d-mut" x="125" y="144" text-anchor="middle">no field → last_altered (Snowflake, BQ…)</text>
+  <rect x="300" y="55" width="180" height="70" rx="12" fill="var(--card)" stroke="var(--accent)"/>
+  <text class="d-txt" x="390" y="84" text-anchor="middle" font-weight="700">age = now − max_loaded_at</text>
+  <text class="d-mut" x="390" y="104" text-anchor="middle">now = snapshotted_at (UTC)</text>
+  <rect x="540" y="12" width="350" height="44" rx="10" fill="var(--del)"/><text class="d-txt" x="556" y="39" font-weight="700">age &gt; error_after → ERROR STALE (exit code 1)</text>
+  <rect x="540" y="68" width="350" height="44" rx="10" fill="var(--upd)"/><text class="d-txt" x="556" y="95" font-weight="700">age &gt; warn_after → WARN (exit code 0)</text>
+  <rect x="540" y="124" width="350" height="44" rx="10" fill="var(--new)"/><text class="d-txt" x="556" y="151" font-weight="700">otherwise → PASS</text>
+  <path id="r1" class="d-line" d="M240 50 C270 50 270 80 300 80"/><path id="r2" class="d-line" d="M240 130 C270 130 270 100 300 100"/>
+  <path class="d-line" d="M480 90 C510 90 510 34 540 34"/><path id="r3" class="d-line" d="M480 90 L540 90"/><path class="d-line" d="M480 90 C510 90 510 146 540 146"/>
+  <circle r="5" class="flow-dot"><animateMotion dur="1.8s" repeatCount="indefinite"><mpath href="#r1"/></animateMotion></circle>
+  <circle r="5" class="flow-dot"><animateMotion dur="1.8s" begin=".6s" repeatCount="indefinite"><mpath href="#r2"/></animateMotion></circle>
+  <circle r="5" class="flow-dot"><animateMotion dur="1.8s" begin="1.2s" repeatCount="indefinite"><mpath href="#r3"/></animateMotion></circle>
+</svg>
+</div>
+<p>It runs only with <code>dbt source freshness</code>. <code>dbt build</code> and <code>dbt run</code> do <strong>not</strong> check freshness, so schedule it as the first step of the job.
+Results go to <code>target/sources.json</code>. A source without any <code>freshness</code> config (or with <code>freshness: null</code>) is skipped.</p>
+
+<h2 id="sim">2 · Freshness simulator</h2>
+<p>Four tables in <code>shop</code>. <code>orders</code> is stricter (warn 6h, error 12h) than the source default (warn 12h, error 24h). <code>product_skus</code> is opted out.
+Drag the clock.</p>
+<div class="sim" id="freshsim">
+  <div class="controls" style="margin-bottom:10px">
+    <span class="ctl-label">now</span>
+    <input type="range" id="fr-slider" min="4" max="52" value="8" style="width:280px;accent-color:var(--accent)">
+    <b id="fr-now" style="font-family:'JetBrains Mono',monospace;font-size:.9rem"></b>
+    <button class="btn primary" id="fr-play">▶ Fast-forward 2 days</button>
+  </div>
+  <div class="pane-title"><span>age vs thresholds (last loads: orders 06-10 03:00 · customers 06-09 14:00 · payments 06-08 18:00)</span></div>
+  <div class="dag-wrap" id="fr-svg"></div>
+  <div class="sim-cols" style="margin-top:14px;grid-template-columns:minmax(0,1fr) minmax(0,1fr)">
+    <div><div class="pane-title"><span>terminal</span></div><div id="fr-out"></div></div>
+    <div><div class="controls" style="margin-bottom:6px"><span class="ctl-label">how max_loaded_at is found</span><div id="fr-mode"></div></div><div id="fr-sql"></div></div>
+  </div>
+</div>
+
+<h2 id="yaml">3 · Configuration by version</h2>
+<div class="vgrid">
+  <div class="vcol only-v18"><span class="tag v18">1.8.6</span>
+    <p><code>freshness</code> and <code>loaded_at_field</code> are <strong>properties</strong> of the source or table (top-level keys).</p>
+<div class="file">models/staging/shop/_sources.yml</div>
+<pre class="code">sources:
+  - name: shop
+    database: raw
+    <span class="h">loaded_at_field: _etl_loaded_at</span>
+    <span class="h">freshness:</span>                       <span class="c"># default for every table</span>
+      warn_after: {count: 12, period: hour}
+      error_after: {count: 24, period: hour}
+    tables:
+      - name: orders
+        freshness:                     <span class="c"># stricter override</span>
+          warn_after: {count: 6, period: hour}
+          error_after: {count: 12, period: hour}
+          filter: _etl_loaded_at &gt;= dateadd('day', -3, current_timestamp)
+      - name: customers
+      - name: payments
+      - name: product_skus
+        freshness: null                <span class="c"># opt out</span></pre>
+    <p>Without <code>loaded_at_field</code>, adapters that support it (Snowflake, BigQuery, Redshift, Databricks, since 1.7) fall back to warehouse metadata.
+       On Postgres you must provide the field.</p>
+  </div>
+  <div class="vcol only-v112"><span class="tag v112">1.12</span>
+    <p><code>freshness</code> moved under <code>config:</code> (1.9) and so did <code>loaded_at_field</code> (1.10). The old placement still works but warns (1.10+ deprecations).
+       New in 1.10: <code>loaded_at_query</code> for custom logic.</p>
+<div class="file">models/staging/shop/_sources.yml</div>
+<pre class="code">sources:
+  - name: shop
+    database: raw
+    <span class="h">config:</span>
+      loaded_at_field: _etl_loaded_at
+      freshness:
+        warn_after: {count: 12, period: hour}
+        error_after: {count: 24, period: hour}
+    tables:
+      - name: orders
+        config:
+          freshness:
+            warn_after: {count: 6, period: hour}
+            error_after: {count: 12, period: hour}
+            filter: _etl_loaded_at &gt;= dateadd('day', -3, current_timestamp)
+      - name: events
+        <span class="h">loaded_at_query: |</span>                <span class="c"># 1.10+, not combinable with loaded_at_field</span>
+          select max(_loaded_at) from {{ this }}
+          where _loaded_at &gt; dateadd(day, -7, current_date)
+          qualify count(*) over (partition by _loaded_at::date) &gt; 2000
+      - name: product_skus
+        config:
+          freshness: null</pre>
+    <p>Project-wide default: <code>sources: +freshness: …</code> in <code>dbt_project.yml</code>.
+       On BigQuery, wildcard tables (<code>events_*</code>) get unreliable metadata freshness. Enable <code>bigquery_reject_wildcard_metadata_source_freshness</code> (1.12) to make that an error, and use a field instead.</p>
+  </div>
+</div>
+
+<h2 id="fresher">4 · Build only what got fresher</h2>
+<p>Run freshness twice and compare. <code>source_status:fresher+</code> selects the sources whose <code>max_loaded_at</code> moved since the previous run (the <code>sources.json</code> in <code>--state</code>), plus everything downstream.
+This works in both versions. Click the sources to change which ones received data.</p>
+<div class="sim" id="freshersim">
+  <div class="cmdline"><span class="p">$</span>dbt source freshness <span class="c" style="color:#7d8196">&nbsp;# writes target/sources.json</span><br>
+    <span class="p">$</span>dbt build <span class="fl">-s</span> <span class="v">"source_status:fresher+"</span> <span class="fl">--state</span> <span class="v">previous-run-artifacts/</span></div>
+  <div class="dag-wrap" id="fresher-svg"></div>
+  <div class="narration" id="fresher-out"></div>
+</div>
+<div class="callout tip"><b>Typical use</b><p>A job that runs every 15 minutes but only rebuilds the parts of the DAG with new data. Keep the previous run's <code>sources.json</code>
+(and <code>manifest.json</code>) as the state for the next run.</p></div>
+
+<h2 id="best">5 · Best practices</h2>
+<div class="cards">
+  <div class="card"><h3>Set thresholds from the SLA</h3><ul>
+    <li><code>warn_after</code> ≈ the normal load interval plus a margin, and <code>error_after</code> = when consumers are actually hurt.</li>
+    <li>Set defaults at the source level (or in <code>dbt_project.yml</code>) and override per table.</li>
+    <li>Opt out static tables (<code>freshness: null</code>) instead of loosening the thresholds.</li></ul></div>
+  <div class="card"><h3>Make the query cheap and honest</h3><ul>
+    <li>The loaded-at column should be the <strong>load</strong> timestamp (ETL), not the business event time, which can be legitimately old.</li>
+    <li>Add a <code>filter</code> on big tables so the <code>max()</code> scans a few partitions only.</li>
+    <li>Use timestamps in UTC (or cast them). dbt compares against UTC now.</li></ul></div>
+  <div class="card"><h3>Wire it into orchestration</h3><ul>
+    <li>Run <code>dbt source freshness</code> first. An ERROR (exit 1) stops the pipeline before you publish stale marts.</li>
+    <li>If you'd rather build anyway and alert, run it as a separate, non-blocking step.</li>
+    <li>Use <code>source_status:fresher+</code> for frequent, cheap incremental jobs.</li>
+    <li><span class="only-v18">In 1.8.6, <code>-o / --output</code> changes where sources.json is written.</span><span class="only-v112">In 1.12, <code>-o / --output</code> is deprecated (1.10). Use <code>--target-path</code>.</span></li></ul></div>
+</div>
+<p style="font-size:.85rem;color:var(--muted)">Note: model-level <code>freshness: build_after</code> configs you may see in the docs belong to dbt platform (state-aware orchestration). They aren't used by dbt Core runs.</p>

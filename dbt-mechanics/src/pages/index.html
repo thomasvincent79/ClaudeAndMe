@@ -23,8 +23,8 @@
 Every page covers two dbt Core versions: <span class="tag v18">1.8.6</span> (what you run today) and <span class="tag v112">1.12</span> (current v1).
 Use the switch at the top right to show one version or compare both.</p>
 <div class="stats">
-  <div class="stat"><b>4</b>topics</div>
-  <div class="stat"><b>4</b>interactive simulators</div>
+  <div class="stat"><b>6</b>topics</div>
+  <div class="stat"><b>7</b>interactive simulators</div>
   <div class="stat"><b>2</b>dbt versions side by side</div>
 </div>
 </section>
@@ -50,6 +50,10 @@ Use the switch at the top right to show one version or compare both.</p>
       <td>Same model, plus stricter YAML validation (custom keys under <code>meta</code>), generic-test <code>arguments:</code>, opt-in <code>sql_header</code> in test configs</td><td>1.8 / 1.10 / 1.12</td></tr>
   <tr><td>CLI flags</td><td><code>--empty</code> (run/build), <code>--exclude-resource-type</code>, env vars <code>DBT_*</code>, <code>flags:</code> in dbt_project.yml</td>
       <td>+ <code>--empty</code> for snapshots (1.9) and seeds (1.12), <code>--event-time-start/end</code> (1.9), <code>--sample</code> (1.10), env vars <code>DBT_ENGINE_*</code> (1.11), <code>selector:</code> method (1.12)</td><td>1.8 → 1.12</td></tr>
+  <tr><td>dbt clone</td><td>Available (since 1.6): zero-copy clone or pointer view, <code>--full-refresh</code>, <code>--exclude-resource-type</code></td>
+      <td>Same command; <code>DBT_ENGINE_STATE</code>, better <code>state:modified</code>, <code>selector:</code> method</td><td>1.6 / 1.8</td></tr>
+  <tr><td>Source freshness</td><td><code>freshness</code> / <code>loaded_at_field</code> as properties; metadata freshness when no field</td>
+      <td>Both under <code>config:</code> (1.9 / 1.10), <code>loaded_at_query</code> (1.10), BigQuery wildcard flag (1.12)</td><td>1.9 → 1.12</td></tr>
 </table>
 </div>
 

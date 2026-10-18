@@ -23,6 +23,7 @@ VERSIONS = {"v18": "1.8.6", "v112": "1.12"}
 THEMATICS = [
     {
         "slug": "snapshots",
+        "nav": "Snapshots",
         "title": "Snapshots & hard deletes",
         "icon": "🕰️",
         "summary": "SCD type 2 with timestamp/check strategies. invalidate_hard_deletes (1.8) "
@@ -31,6 +32,7 @@ THEMATICS = [
     },
     {
         "slug": "incremental",
+        "nav": "Incremental",
         "title": "Incremental strategies",
         "icon": "➕",
         "summary": "append, merge, delete+insert, insert_overwrite and microbatch (1.9+). "
@@ -39,6 +41,7 @@ THEMATICS = [
     },
     {
         "slug": "tests",
+        "nav": "Tests",
         "title": "Data tests & unit tests",
         "icon": "✅",
         "summary": "Generic, singular and unit tests, severity thresholds, store_failures, "
@@ -47,11 +50,30 @@ THEMATICS = [
     },
     {
         "slug": "flags",
+        "nav": "Flags",
         "title": "CLI flags",
         "icon": "🚩",
         "summary": "--full-refresh, --empty, --select, --defer, --sample, --fail-fast… What each one does, "
                    "when to use it, and where you can set it (CLI, env var, dbt_project.yml, config).",
         "scripts": ["flags.js"],
+    },
+    {
+        "slug": "clone",
+        "nav": "Clone",
+        "title": "dbt clone",
+        "icon": "🧬",
+        "summary": "Zero-copy clones vs pointer views, --full-refresh on existing relations, clone vs --defer, "
+                   "and the CI trick for incremental models.",
+        "scripts": ["clone.js"],
+    },
+    {
+        "slug": "freshness",
+        "nav": "Freshness",
+        "title": "Source freshness",
+        "icon": "⏱️",
+        "summary": "warn_after / error_after, loaded_at_field vs metadata vs loaded_at_query, YAML by version, "
+                   "and source_status:fresher+ to build only what got new data.",
+        "scripts": ["freshness.js"],
     },
 ]
 
@@ -64,7 +86,7 @@ def nav_html(active: str) -> str:
     links = ['<a href="index.html" class="{}">Home</a>'.format("on" if active == "index" else "")]
     for t in THEMATICS:
         cls = "on" if t["slug"] == active else ""
-        links.append(f'<a href="{t["slug"]}.html" class="{cls}">{t["title"]}</a>')
+        links.append(f'<a href="{t["slug"]}.html" class="{cls}" title="{t["title"]}">{t["nav"]}</a>')
     return "\n".join(links)
 
 
