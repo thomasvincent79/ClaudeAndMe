@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ClaudeAndMe</title>
+<style>
+  :root { --bg:#f6f5f1; --card:#fff; --ink:#1d1d1b; --muted:#6b6a65; --line:#e2e0d8; --accent:#3a78d0; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#161615; --card:#21211f; --ink:#ecebe6; --muted:#a09f99; --line:#34332f; --accent:#8dbbea; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width:760px; margin:0 auto; padding:48px 16px; }
+  h1 { margin:0 0 4px; font-size:2rem; }
+  p.sub { margin:0 0 32px; color:var(--muted); }
+  a.card { display:block; padding:20px; margin-bottom:14px; background:var(--card); border:1px solid var(--line);
+           border-radius:12px; color:inherit; text-decoration:none; transition:border-color .15s; }
+  a.card:hover { border-color:var(--accent); }
+  a.card h2 { margin:0 0 4px; font-size:1.15rem; color:var(--accent); }
+  a.card p { margin:0; color:var(--muted); font-size:.95rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>ClaudeAndMe</h1>
+  <p class="sub">Dashboards built with Claude, one per sub-project.</p>
+  <a class="card" href="world-map-political-orientation/dashboard.html">
+    <h2>World map with political orientation</h2>
+    <p>Government orientation and regime type for every country.</p>
+  </a>
+  <a class="card" href="world-map-precious-resources/resources_map.html">
+    <h2>World map precious resources</h2>
+    <p>Oil, gas and rare-earth reserves, trade flows, sea lanes, chokepoints and pipelines.</p>
+  </a>
+</main>
+</body>
+</html>

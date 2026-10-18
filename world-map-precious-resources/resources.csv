@@ -1,0 +1,98 @@
+# Reserves and trade of strategic natural resources, by country. Edit any value, then run: python make_resources_map.py
+# RESERVES (proved: recoverable with today's technology and prices)
+#   oil_bbn = crude oil, billion barrels (incl. Canadian oil sands). OPEC Annual Statistical Bulletin, Energy Institute Statistical Review, US EIA (end-2023 where available).
+#   gas_tcm = natural gas, trillion cubic metres. Energy Institute Statistical Review (end-2020, last edition with reserves), OPEC ASB, national agencies.
+#   ree_kt  = rare earths, thousand tonnes of rare-earth oxide (REO). USGS Mineral Commodity Summaries 2025.
+# TRADE (approximate 2024 volumes, rounded)
+#   oil_exp_mbd / oil_imp_mbd = crude oil exports / imports, million barrels per day (Energy Institute, EIA, Kpler-based press reports).
+#   gas_exp_bcm / gas_imp_bcm = natural gas exports / imports by pipeline + LNG, billion cubic metres per year (Energy Institute, IEA, GIIGNL).
+#   ree_exp_kt / ree_imp_kt   = rare-earth ores, concentrates and compounds, thousand tonnes REO per year (USGS, China customs; rough estimates).
+# Leave a cell empty when the figure is negligible or unknown. Shares are computed against the sum of every row.
+# iso3 must be the Natural Earth ADM0_A3 code (South Sudan = SDS).
+iso3,country,oil_bbn,gas_tcm,ree_kt,oil_exp_mbd,oil_imp_mbd,gas_exp_bcm,gas_imp_bcm,ree_exp_kt,ree_imp_kt
+VEN,Venezuela,303.2,6.3,,0.75,,,,,
+SAU,Saudi Arabia,267.2,6.0,,6.0,,,,,
+IRN,Iran,208.6,32.1,,1.6,,18,,,
+CAN,Canada,168.1,2.4,830,4.1,0.5,78,22,,
+IRQ,Iraq,145.0,3.5,,3.4,,,9,,
+ARE,United Arab Emirates,113.0,5.9,,3.3,,7,20,,
+KWT,Kuwait,101.5,1.7,,1.6,,,9,,
+RUS,Russia,80.0,37.4,3800,4.7,,140,,,
+LBY,Libya,48.4,1.4,,1.0,,2,,,
+USA,United States,46.4,12.6,1900,4.1,6.6,185,80,40,8
+NGA,Nigeria,37.3,5.5,,1.4,,20,,,
+KAZ,Kazakhstan,30.0,2.3,,1.5,,12,,,
+CHN,China,26.0,8.4,44000,,11.1,,175,55,120
+QAT,Qatar,25.2,24.7,,0.5,,125,,,
+BRA,Brazil,15.9,0.3,21000,1.7,,,6,,
+DZA,Algeria,12.2,2.3,,0.45,,50,,,
+GUY,Guyana,11.0,,,0.55,,,,,
+ECU,Ecuador,8.3,,,0.35,,,,,
+NOR,Norway,7.9,1.4,,1.6,,120,,,
+AZE,Azerbaijan,7.0,2.5,,0.5,,25,,,
+MEX,Mexico,6.1,0.2,,0.85,,,63,,
+OMN,Oman,5.4,0.7,,0.85,,15,,,
+IND,India,4.6,1.3,6900,,4.8,,36,,3
+VNM,Vietnam,4.4,0.6,3500,,,,,,
+SDS,South Sudan,3.5,,,0.1,,,,,
+EGY,Egypt,3.3,2.1,,,,2,13,,
+YEM,Yemen,3.0,0.3,,,,,,,
+COG,Republic of the Congo,2.9,0.3,,0.25,,,,,
+MYS,Malaysia,2.7,0.9,,0.3,0.25,37,,15,12
+ARG,Argentina,2.6,0.4,,0.2,,,4,,
+GBR,United Kingdom,2.5,0.2,,0.6,0.9,,45,,
+AGO,Angola,2.5,0.3,,1.0,,5,,,
+UGA,Uganda,2.5,,,,,,,,
+SYR,Syria,2.5,0.3,,,,,,,
+AUS,Australia,2.4,2.4,5700,0.2,,110,,12,
+IDN,Indonesia,2.3,1.3,,,0.35,20,,,
+COL,Colombia,2.0,0.1,,0.45,,,,,
+GAB,Gabon,2.0,,,0.2,,,,,
+SDN,Sudan,1.5,,,,,,,,
+TCD,Chad,1.5,,,0.12,,,,,
+BRN,Brunei,1.1,0.2,,0.08,,6,,,
+GNQ,Equatorial Guinea,1.1,,,0.08,,3,,,
+PER,Peru,0.9,0.3,,,,5,,,
+GHA,Ghana,0.7,,,0.12,,,,,
+TKM,Turkmenistan,0.6,13.6,,,,40,,,
+UZB,Uzbekistan,0.6,0.8,,,,5,,,
+ITA,Italy,0.6,,,,1.2,,61,,
+ROU,Romania,0.6,0.1,,,,,,,
+DNK,Denmark,0.4,,,,,,,,
+TUN,Tunisia,0.4,,,,,,,,
+UKR,Ukraine,0.4,1.1,,,,,,,
+TUR,Turkey,0.4,,,,0.8,,52,,
+PAK,Pakistan,0.35,0.4,,,0.2,,10,,
+THA,Thailand,0.3,0.1,4.5,,0.9,,17,,
+TTO,Trinidad and Tobago,0.24,0.3,,,,13,,,
+CMR,Cameroon,0.2,0.15,,,,,,,
+BOL,Bolivia,0.2,0.2,,,,7,,,
+PNG,Papua New Guinea,0.2,0.2,,,,11,,,
+BHR,Bahrain,0.19,0.1,,,,,,,
+ALB,Albania,0.17,,,,,,,,
+NER,Niger,0.15,,,,,,,,
+ISR,Israel,,0.6,,,,13,,,
+MOZ,Mozambique,,2.8,,,,4,,,
+MMR,Myanmar,,0.4,,,,9,,40,
+BGD,Bangladesh,,0.1,,,,,7,,
+NLD,Netherlands,,0.1,,,1.2,,45,,7
+GRL,Greenland,,,1500,,,,,,
+TZA,Tanzania,,,890,,,,,,
+ZAF,South Africa,,,860,,,,,,
+JPN,Japan,,,,,2.3,,90,,22
+KOR,South Korea,,,,,2.8,,63,,6
+DEU,Germany,,,,,1.6,,80,,4
+FRA,France,,,,,0.8,,55,,
+ESP,Spain,,,,,1.2,,36,,
+BEL,Belgium,,,,,0.5,,30,,
+TWN,Taiwan,,,,,0.8,,28,,
+POL,Poland,,,,,0.55,,18,,
+SGP,Singapore,,,,,0.9,,13,,
+GRC,Greece,,,,,0.45,,6,,
+SWE,Sweden,,,,,0.35,,,,
+BLR,Belarus,,,,,0.35,,19,,
+HUN,Hungary,,,,,0.15,,9,,
+SVK,Slovakia,,,,,0.1,,4,,
+SRB,Serbia,,,,,,,3,,
+AUT,Austria,,,,,,,8,,
+LAO,Laos,,,,,,,,15,

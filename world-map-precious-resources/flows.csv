@@ -1,0 +1,125 @@
+# Major bilateral trade flows (approximate 2024 volumes, rounded). Edit or add rows, then run: python make_resources_map.py
+# resource: oil (crude, mb/d) | gas (bcm/yr) | ree (rare earths, kt REO/yr).   from / to: Natural Earth ISO3 codes.
+# mode: tanker, LNG carrier, pipeline, bulk carrier, container, overland.
+# from_node / to_node: node ids in network_nodes.csv; leave empty to use the country's main port (p_<ISO3>).
+# via: optional, separated by ';' — pipeline names from network_routes.csv the flow uses, and/or node ids it must pass (e.g. CAPE to force the route round Africa).
+#      Seaborne flows otherwise take the shortest sea route; pipeline flows use only the pipelines listed.
+# status: active, or stopped (a past flow shown for context; its volume is the last normal year, given in the note).
+resource,from,to,volume,mode,from_node,to_node,via,status,note
+oil,SAU,CHN,1.6,tanker,,,,active,
+oil,SAU,JPN,1.0,tanker,,,,active,
+oil,SAU,KOR,0.8,tanker,,,,active,
+oil,SAU,IND,0.7,tanker,,,,active,
+oil,SAU,USA,0.3,tanker,SAU_ABQ,,Petroline (East-West),active,Piped across Arabia and loaded at Yanbu on the Red Sea
+oil,IRQ,CHN,1.2,tanker,,,,active,
+oil,IRQ,IND,0.9,tanker,,,,active,
+oil,IRQ,ITA,0.3,tanker,,,,active,
+oil,ARE,JPN,0.8,tanker,,,,active,
+oil,ARE,CHN,0.5,tanker,,,,active,
+oil,ARE,IND,0.4,tanker,ARE_HAB,,ADCOP,active,Murban crude loaded at Fujairah outside the Strait of Hormuz
+oil,KWT,CHN,0.5,tanker,,,,active,
+oil,KWT,KOR,0.3,tanker,,,,active,
+oil,IRN,CHN,1.5,tanker,,,,active,Under US sanctions; mostly relabelled as Malaysian crude after ship-to-ship transfers
+oil,OMN,CHN,0.8,tanker,,,,active,Loaded outside the Strait of Hormuz
+oil,RUS,CHN,0.7,pipeline,RUS_TAI,CN_DAQ,ESPO;ESPO China spur,active,
+oil,RUS,CHN,0.9,tanker,RUS_TAI,,ESPO,active,ESPO Blend loaded at Kozmino
+oil,RUS,CHN,0.5,tanker,p_RUS_P,,,active,Baltic cargoes via Suez
+oil,RUS,IND,1.0,tanker,p_RUS_P,,,active,Urals crude from the Baltic; India became the top buyer after the 2022 EU embargo
+oil,RUS,IND,0.7,tanker,p_RUS_N,,,active,Urals crude from the Black Sea
+oil,RUS,TUR,0.3,tanker,p_RUS_N,,,active,
+oil,RUS,HUN,0.15,pipeline,RUS_ALM,HUN_SZ,Druzhba (south),active,EU embargo exemption for landlocked buyers
+oil,RUS,SVK,0.1,pipeline,RUS_ALM,SVK_BRA,Druzhba (south);Druzhba (Slovakia),active,EU embargo exemption for landlocked buyers
+oil,RUS,DEU,0.5,pipeline,RUS_ALM,DEU_SCH,Druzhba (south);Druzhba (north),stopped,2022 volume; Germany stopped Russian pipeline crude on 1 January 2023
+oil,KAZ,ITA,0.4,tanker,KAZ_TEN,,CPC,active,CPC Blend loaded near Novorossiysk
+oil,KAZ,NLD,0.3,tanker,KAZ_TEN,,CPC,active,CPC Blend loaded near Novorossiysk
+oil,AZE,ITA,0.25,tanker,AZE_SAN,,BTC,active,Azeri crude loaded at Ceyhan
+oil,CAN,USA,4.0,pipeline,CAN_HAR,US_CUS,Canada-US crude pipelines,active,About 90% of Canada's crude exports
+oil,USA,NLD,0.6,tanker,,,,active,
+oil,USA,GBR,0.25,tanker,,,,active,
+oil,USA,KOR,0.4,tanker,,,CAPE,active,Supertankers are too big for the Panama Canal
+oil,USA,IND,0.25,tanker,,,CAPE,active,
+oil,MEX,USA,0.5,tanker,,,,active,
+oil,BRA,CHN,0.9,tanker,,,,active,
+oil,NOR,NLD,0.4,tanker,,,,active,
+oil,NOR,GBR,0.35,tanker,,,,active,
+oil,NOR,DEU,0.2,tanker,,,,active,
+oil,NGA,IND,0.3,tanker,,,,active,
+oil,NGA,ESP,0.2,tanker,,,,active,
+oil,NGA,NLD,0.2,tanker,,,,active,
+oil,LBY,ITA,0.35,tanker,,,,active,
+oil,AGO,CHN,0.7,tanker,,,,active,
+oil,VEN,CHN,0.5,tanker,,,CAPE,active,Under US sanctions; often shipped via Malaysia. Supertankers are too big for the Panama Canal
+oil,VEN,USA,0.25,tanker,,,,active,Under Chevron's US licence
+oil,GUY,NLD,0.3,tanker,,,,active,
+oil,COL,USA,0.25,tanker,,,,active,
+oil,ECU,USA,0.2,tanker,,p_USA_W,,active,To US West Coast refineries
+gas,NOR,DEU,45,pipeline,NOR_KAR,DEU_DOR,Europipe & Norpipe,active,
+gas,NOR,GBR,30,pipeline,NOR_NYH,GBR_EAS,Langeled,active,
+gas,NOR,FRA,15,pipeline,NOR_KAR,FRA_DUN,Franpipe,active,
+gas,NOR,BEL,10,pipeline,NOR_KAR,BEL_ZEE,Zeepipe,active,
+gas,NOR,POL,8,pipeline,NOR_KAR,POL_NIE,Europipe & Norpipe;Baltic Pipe,active,
+gas,RUS,CHN,38,pipeline,RUS_CHA,CN_SHA,Power of Siberia,active,
+gas,RUS,TUR,21,pipeline,RUS_BER,TUR_ANK,Blue Stream,active,Blue Stream plus TurkStream's Turkish string
+gas,RUS,HUN,7.5,pipeline,RUS_ANA,HUN_KIS,TurkStream;Balkan Stream,active,
+gas,RUS,SRB,3,pipeline,RUS_ANA,SRB_BEL,TurkStream;Balkan Stream,active,
+gas,RUS,BLR,19,pipeline,RUS_TOR,BLR_NES,Yamal-Europe (Russia-Belarus),active,
+gas,RUS,DEU,55,pipeline,RUS_VYB,DEU_LUB,Nord Stream,stopped,2021 volume; flows stopped in August 2022 and the pipelines were sabotaged on 26 September 2022
+gas,RUS,DEU,30,pipeline,RUS_TOR,DEU_FO,Yamal-Europe (Russia-Belarus);Yamal-Europe (Belarus-Germany),stopped,2021 volume; halted in May 2022
+gas,RUS,AUT,15,pipeline,RUS_SUD,AUT_BAU,Ukraine transit,stopped,2024 volume; transit through Ukraine ended on 1 January 2025
+gas,RUS,FRA,6,LNG carrier,p_RUS_Y,,,active,Yamal LNG from the Arctic
+gas,RUS,BEL,5,LNG carrier,p_RUS_Y,,,active,Yamal LNG; EU ban on transshipment from March 2025
+gas,RUS,ESP,6,LNG carrier,p_RUS_Y,,,active,Yamal LNG from the Arctic
+gas,RUS,CHN,7,LNG carrier,p_RUS_Y,,,active,Winter route via Suez; in summer some cargoes use the Northern Sea Route
+gas,RUS,JPN,8,LNG carrier,p_RUS_S,,,active,Sakhalin-2 LNG
+gas,TKM,CHN,33,pipeline,TKM_GAL,CN_SHA,Central Asia-China,active,
+gas,AZE,TUR,9,pipeline,AZE_SAN,TUR_ESK,TANAP,active,
+gas,AZE,ITA,10,pipeline,AZE_SAN,ITA_MEL,TANAP;TAP,active,
+gas,DZA,ITA,21,pipeline,DZA_HRM,ITA_MIN,TransMed,active,
+gas,DZA,ESP,9,pipeline,DZA_HRM,ESP_ALM,Medgaz,active,
+gas,LBY,ITA,2,pipeline,LBY_MEL,ITA_GEL,Greenstream,active,
+gas,IRN,TUR,6,pipeline,IRN_TEH,TUR_ANK,Iran-Turkey,active,
+gas,IRN,IRQ,9,pipeline,IRN_TEH,IRQ_BAG,Iran-Iraq,active,
+gas,ISR,EGY,10,pipeline,ISR_LEV,EGY_ARI,EMG,active,
+gas,QAT,ARE,20,pipeline,QAT_RL,ARE_TAW,Dolphin,active,
+gas,CAN,USA,78,pipeline,CAN_ALB,US_CHI,Canada-US gas pipelines,active,
+gas,USA,MEX,63,pipeline,US_AGD,MEX_MTY,US-Mexico gas pipelines,active,
+gas,MMR,CHN,4,pipeline,MMR_KYA,CN_KUN,Myanmar-China pipelines,active,
+gas,BOL,BRA,6,pipeline,BOL_SCZ,BRA_SPA,GASBOL,active,
+gas,USA,NLD,14,LNG carrier,,,,active,
+gas,USA,FRA,13,LNG carrier,,,,active,
+gas,USA,GBR,10,LNG carrier,,,,active,
+gas,USA,ESP,9,LNG carrier,,,,active,
+gas,USA,DEU,6,LNG carrier,,,,active,Floating terminals opened after 2022
+gas,USA,ITA,5,LNG carrier,,,,active,
+gas,USA,JPN,8,LNG carrier,,,,active,
+gas,USA,KOR,6,LNG carrier,,,,active,
+gas,USA,CHN,5,LNG carrier,,,,active,Largely halted in 2025 by Chinese tariffs
+gas,USA,IND,5,LNG carrier,,,CAPE,active,
+gas,QAT,CHN,25,LNG carrier,,,,active,
+gas,QAT,IND,15,LNG carrier,,,,active,
+gas,QAT,KOR,11,LNG carrier,,,,active,
+gas,QAT,PAK,7,LNG carrier,,,,active,
+gas,QAT,TWN,7,LNG carrier,,,,active,
+gas,QAT,JPN,4,LNG carrier,,,,active,
+gas,QAT,ITA,6,LNG carrier,,,CAPE,active,Rerouted round Africa since the 2024 Red Sea attacks
+gas,QAT,GBR,5,LNG carrier,,,CAPE,active,Rerouted round Africa since the 2024 Red Sea attacks
+gas,QAT,BEL,5,LNG carrier,,,CAPE,active,Rerouted round Africa since the 2024 Red Sea attacks
+gas,AUS,JPN,35,LNG carrier,,,,active,
+gas,AUS,CHN,30,LNG carrier,p_AUS_E,,,active,Coal-seam gas LNG from Queensland
+gas,AUS,KOR,13,LNG carrier,,,,active,
+gas,AUS,TWN,10,LNG carrier,,,,active,
+gas,MYS,JPN,12,LNG carrier,p_MYS_B,,,active,
+gas,MYS,CHN,10,LNG carrier,p_MYS_B,,,active,
+gas,IDN,CHN,6,LNG carrier,,,,active,
+gas,NGA,ESP,4,LNG carrier,,,,active,
+gas,NGA,FRA,3,LNG carrier,,,,active,
+gas,OMN,KOR,5,LNG carrier,,,,active,Loaded outside the Strait of Hormuz
+ree,MMR,CHN,40,overland,MMR_KAC,CN_GAN,,active,Ionic-clay concentrates from Kachin State; trade disrupted by civil war
+ree,LAO,CHN,15,overland,LAO_N,CN_GAN,,active,
+ree,USA,CHN,40,bulk carrier,USA_MP,,,stopped,2024 volume; Mountain Pass concentrate exports to China stopped in April 2025 amid US–China tariffs
+ree,AUS,MYS,12,bulk carrier,p_AUS_W,p_MYS,,active,Lynas: Mount Weld concentrate processed in Malaysia
+ree,MYS,JPN,8,container,p_MYS,,,active,Lynas separated oxides for Japanese magnet makers
+ree,CHN,JPN,11,container,,,,active,Export licences required since April 2025
+ree,CHN,USA,7,container,,p_USA_W,,active,Export licences required since April 2025
+ree,CHN,NLD,6,container,,,,active,Rotterdam: entry point for EU imports
+ree,CHN,KOR,5,container,,,,active,

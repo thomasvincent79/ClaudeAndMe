@@ -1,0 +1,1025 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Who Governs the World</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=IBM+Plex+Mono:wght@400;500;600&family=Public+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: a night-time situation room. Hero title over the political spectrum bar, live KPIs,
+   an election ticker, then the map as the centrepiece and the GDP register underneath.
+   Single deliberate dark look. */
+:root {
+  color-scheme: dark;
+  --bg: #080c13;
+  --panel: #0f1520;
+  --panel-2: #151d2b;
+  --line: rgba(255, 255, 255, .08);
+  --line-2: rgba(255, 255, 255, .16);
+  --ink: #eef2f8;
+  --ink-2: #aab4c4;
+  --muted: #6e798b;
+  --gold: #f4b942;
+  --gold-soft: rgba(244, 185, 66, .14);
+  --warn: #ff6b4a;
+  --warn-soft: rgba(255, 107, 74, .16);
+  --ocean-1: #13233a;
+  --ocean-2: #0b1524;
+  --grat: rgba(255, 255, 255, .05);
+  --border-map: rgba(6, 9, 14, .85);
+  --off: #1b2331;
+  --off-line: #263042;
+  /* political leaning: diverging red (left) to blue (right), stone-grey centre, white unknown */
+  --o-FL: #a3172c;
+  --o-L: #d64045;
+  --o-CL: #f0957d;
+  --o-C: #b9b4a8;
+  --o-CR: #8dbbea;
+  --o-R: #3a78d0;
+  --o-FR: #2a4fb0;
+  --o-U: #f2f0ea;
+  --hatch-dark: rgba(8, 10, 16, .7);
+  --hatch-light: rgba(255, 255, 255, .5);
+  --f-display: "Bricolage Grotesque", "Arial Narrow", system-ui, sans-serif;
+  --f-body: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { background: var(--bg); }
+body {
+  margin: 0; color: var(--ink); font: 15px/1.5 var(--f-body);
+  background:
+    radial-gradient(1100px 520px at 12% -8%, rgba(214, 64, 69, .16), transparent 60%),
+    radial-gradient(1100px 520px at 92% -6%, rgba(58, 120, 208, .2), transparent 60%),
+    var(--bg);
+  background-repeat: no-repeat;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 26px 56px;
+}
+.wrap { max-width: 1360px; margin: 0 auto; display: grid; gap: 26px; }
+.mono { font-family: var(--f-mono); }
+.eyebrow { font: 500 12px var(--f-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-2); display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: center; }
+.live { display: inline-flex; align-items: center; gap: 7px; color: var(--gold); }
+.live::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 0 0 rgba(244,185,66,.6); animation: pulse 2s infinite; }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(244,185,66,.55); } 70% { box-shadow: 0 0 0 9px rgba(244,185,66,0); } 100% { box-shadow: 0 0 0 0 rgba(244,185,66,0); } }
+
+/* Hero */
+.hero { display: grid; gap: 18px; }
+h1 {
+  font: 800 clamp(44px, 8vw, 104px)/.9 var(--f-display); letter-spacing: -.035em; margin: 0; text-wrap: balance;
+  font-variation-settings: "opsz" 96;
+}
+h1 .grad { background: linear-gradient(90deg, var(--o-L) 0%, var(--o-CL) 30%, var(--o-C) 50%, var(--o-CR) 70%, var(--o-R) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.lede { color: var(--ink-2); max-width: 66ch; margin: 0; font-size: 16px; }
+h2 { font: 700 26px/1.1 var(--f-display); letter-spacing: -.02em; margin: 0; text-wrap: balance; }
+.section-label { font: 500 11.5px var(--f-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+
+/* Spectrum bar */
+.spectrum { display: grid; gap: 8px; }
+.spectrum-bar { display: flex; gap: 3px; height: 46px; }
+.seg {
+  position: relative; border: 0; padding: 0 10px; border-radius: 6px; cursor: pointer; min-width: 26px;
+  display: flex; align-items: center; justify-content: flex-start; overflow: hidden;
+  font: 700 18px var(--f-display); color: rgba(8,12,19,.85); transition: flex-grow .5s cubic-bezier(.2,.8,.2,1), opacity .25s, transform .2s;
+}
+.seg.dark-txt { color: rgba(255,255,255,.95); }
+.seg:hover { transform: translateY(-2px); }
+.seg.dim { opacity: .22; }
+.seg[data-v=""] { margin-left: 12px; }
+.spectrum-axis { display: flex; justify-content: space-between; font: 500 11.5px var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+
+/* KPI tiles */
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.kpi { position: relative; background: linear-gradient(180deg, var(--panel-2), var(--panel)); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; display: grid; gap: 4px; align-content: start; min-width: 0; overflow: hidden; }
+.kpi .label { font: 500 11.5px var(--f-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.kpi .value { font: 800 52px/1 var(--f-display); letter-spacing: -.03em; font-variation-settings: "opsz" 96; }
+.kpi .value small { font: 500 15px var(--f-body); color: var(--ink-2); letter-spacing: 0; margin-left: 4px; }
+.kpi .sub { font-size: 13px; color: var(--ink-2); }
+.kpi.accent .value { color: var(--gold); }
+.kpi .meter { height: 4px; border-radius: 2px; background: var(--line); margin-top: 8px; overflow: hidden; }
+.kpi .meter span { display: block; height: 100%; background: var(--ink-2); border-radius: 2px; transition: width .6s cubic-bezier(.2,.8,.2,1); }
+
+/* Election ticker */
+.ticker { display: grid; gap: 10px; }
+.ticker-row { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
+.tick {
+  flex: none; display: grid; gap: 2px; min-width: 172px; text-align: left; cursor: pointer;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; color: var(--ink); font: inherit;
+  transition: border-color .2s, transform .2s;
+}
+.tick:hover { border-color: var(--line-2); transform: translateY(-2px); }
+.tick .days { font: 800 26px/1 var(--f-display); color: var(--gold); }
+.tick .days small { font: 500 12px var(--f-mono); color: var(--ink-2); margin-left: 3px; }
+.tick .tc { font-weight: 600; display: flex; align-items: center; gap: 7px; }
+.tick .tt-sub { font-size: 12px; color: var(--muted); }
+
+/* Panels */
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 20px; display: grid; gap: 16px; min-width: 0; }
+.panel-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 12px; }
+.panel-head p { margin: 4px 0 0; color: var(--ink-2); font-size: 13.5px; max-width: 70ch; }
+
+/* Continent tabs */
+.tabs { display: flex; flex-wrap: wrap; gap: 4px; background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 4px; width: fit-content; max-width: 100%; }
+.tab { border: 0; background: transparent; color: var(--ink-2); font: 600 13px var(--f-body); padding: 8px 14px; border-radius: 9px; cursor: pointer; transition: background .2s, color .2s; }
+.tab:hover { color: var(--ink); background: var(--panel-2); }
+.tab[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.tab .n { font: 500 11px var(--f-mono); opacity: .6; margin-left: 4px; }
+
+/* Filter chips */
+.filters { display: flex; flex-wrap: wrap; gap: 14px 30px; align-items: end; }
+.filter-group { display: grid; gap: 8px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 8px; font: 500 13px var(--f-body); color: var(--ink);
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px 4px 5px; cursor: pointer;
+  transition: opacity .25s, border-color .2s, background .2s, box-shadow .2s;
+}
+.chip:hover { border-color: var(--line-2); }
+.chip .count { font: 500 11.5px var(--f-mono); color: var(--muted); }
+.has-sel .chip[aria-pressed="false"] { opacity: .38; }
+.chip[aria-pressed="true"] { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold) inset; background: var(--gold-soft); }
+.clear { border: 1px solid var(--line-2); background: transparent; color: var(--ink); font: 600 13px var(--f-body); border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+.clear:hover { background: var(--panel-2); }
+:is(.chip, .tab, .tick, .clear, .seg, button, input, th):focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.sw { width: 18px; height: 18px; border-radius: 50%; overflow: hidden; flex: none; display: block; box-shadow: 0 0 0 1px rgba(255,255,255,.14); }
+.sw-sq { width: 22px; height: 16px; border-radius: 4px; }
+
+/* Map */
+.map-box { position: relative; border-radius: 14px; overflow: hidden; background: radial-gradient(ellipse at 50% 45%, #101d31 0%, var(--panel) 75%); }
+#map { display: block; width: 100%; height: auto; cursor: grab; touch-action: none; user-select: none; }
+#map.dragging { cursor: grabbing; }
+#map .country { stroke: var(--border-map); stroke-width: .5; vector-effect: non-scaling-stroke; transition: fill .45s ease, opacity .45s ease; }
+#map .country.off { fill: var(--off); stroke: var(--off-line); }
+#map .hatch-shape { transition: opacity .45s ease; }
+#map .hatch-shape.off, #map .dot.off { opacity: 0; }
+#map .country.hover { stroke: #fff; stroke-width: 1.6; filter: drop-shadow(0 0 6px rgba(255,255,255,.45)); }
+#map .dot { stroke: var(--border-map); stroke-width: .8; vector-effect: non-scaling-stroke; transition: opacity .45s; }
+#map .dot.hover { stroke: #fff; stroke-width: 1.8; }
+#map .vb { transition: none; }
+.zoom { position: absolute; right: 12px; top: 12px; display: grid; gap: 6px; }
+.zoom button {
+  width: 34px; height: 34px; border-radius: 9px; border: 1px solid var(--line-2); background: rgba(15, 21, 32, .8); color: var(--ink);
+  font: 600 17px var(--f-body); cursor: pointer; backdrop-filter: blur(6px);
+}
+.zoom button:hover { background: var(--panel-2); }
+.map-caption { position: absolute; left: 14px; bottom: 12px; font: 500 11px var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); pointer-events: none; }
+.map-status { position: absolute; left: 14px; top: 12px; font: 600 13px var(--f-body); color: var(--ink); background: rgba(8, 12, 19, .7); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; backdrop-filter: blur(6px); pointer-events: none; }
+
+/* Tooltip */
+.tt {
+  position: fixed; z-index: 10; pointer-events: none; width: min(350px, calc(100vw - 24px));
+  background: rgba(17, 24, 36, .9); color: var(--ink); border: 1px solid var(--line-2); border-radius: 14px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, .55); padding: 14px 16px; font-size: 13px; line-height: 1.4; backdrop-filter: blur(12px);
+}
+.tt h3 { margin: 0; font: 800 22px/1.05 var(--f-display); letter-spacing: -.02em; display: flex; align-items: center; gap: 9px; }
+.tt .terr { font-size: 12px; color: var(--muted); margin-top: 3px; }
+.tt dl { display: grid; grid-template-columns: auto 1fr; gap: 5px 14px; margin: 12px 0 0; }
+.tt dt { color: var(--muted); font: 500 11px/1.9 var(--f-mono); letter-spacing: .06em; text-transform: uppercase; }
+.tt dd { margin: 0; font-weight: 500; min-width: 0; }
+.tt .pills { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+.tt .note { margin-top: 10px; color: var(--ink-2); font-size: 12px; border-top: 1px solid var(--line); padding-top: 8px; }
+.sub-txt { color: var(--muted); font-weight: 400; }
+.pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 3px 10px 3px 4px; border-radius: 999px; background: rgba(255,255,255,.06); color: var(--ink); white-space: nowrap; }
+.pill .sw { width: 14px; height: 14px; }
+.pill.far { background: rgba(255,255,255,.12); box-shadow: 0 0 0 1px var(--line-2) inset; }
+
+/* Mandate bar */
+.mandate { display: grid; grid-template-columns: minmax(80px, 1fr) auto; align-items: center; gap: 10px; min-width: 170px; }
+.bar { height: 8px; border-radius: 4px; background: var(--gold-soft); overflow: hidden; }
+.bar > span { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, #b9832a, var(--gold)); }
+.mandate.soon .bar { background: var(--warn-soft); }
+.mandate.soon .bar > span { background: linear-gradient(90deg, #c4462c, var(--warn)); }
+.mandate .pct { font: 600 14px var(--f-mono); }
+.mandate .left { grid-column: 1 / -1; font-size: 12px; color: var(--muted); line-height: 1.2; }
+.mandate.soon .left { color: var(--warn); font-weight: 600; }
+.none { color: var(--muted); font-size: 13px; }
+
+/* Register */
+.search { font: 14px var(--f-body); color: var(--ink); background: var(--bg); border: 1px solid var(--line-2); border-radius: 10px; padding: 9px 14px; width: min(340px, 100%); }
+.search::placeholder { color: var(--muted); }
+.table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; max-height: 760px; overflow-y: auto; }
+table { border-collapse: collapse; width: 100%; min-width: 1120px; font-size: 13.5px; }
+th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+th { position: sticky; top: 0; z-index: 1; background: var(--panel-2); font: 500 11px var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+th[data-sort] { cursor: pointer; }
+th[data-sort]:hover { color: var(--ink); }
+th .arrow { color: var(--gold); }
+tbody tr { transition: background .2s; }
+tbody tr:hover { background: rgba(255,255,255,.03); }
+tbody tr.flash { animation: flash 1.8s ease-out; }
+@keyframes flash { 0%, 35% { background: var(--gold-soft); } 100% { background: transparent; } }
+td.num { font-family: var(--f-mono); text-align: right; white-space: nowrap; }
+th.num { text-align: right; }
+td.rank { font: 500 12px var(--f-mono); color: var(--muted); width: 44px; }
+.cname { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+.cont-tag { font: 500 11px var(--f-mono); color: var(--muted); letter-spacing: .04em; }
+.who { font-weight: 600; }
+.role, .since-ago { color: var(--muted); font-size: 12.5px; }
+.party { color: var(--ink-2); }
+.date { white-space: nowrap; font-family: var(--f-mono); font-size: 13px; }
+.empty { text-align: center; color: var(--muted); padding: 40px; }
+.foot { color: var(--muted); font-size: 12px; margin: 0; max-width: 110ch; }
+
+/* Data refresh */
+.databar { margin-left: auto; display: inline-flex; align-items: center; gap: 12px; flex-wrap: wrap; text-transform: none; letter-spacing: 0; }
+.refresh {
+  font: 600 13px var(--f-body); color: var(--bg); background: var(--gold); border: 0; border-radius: 999px;
+  padding: 7px 16px; cursor: pointer; transition: transform .15s, box-shadow .2s;
+}
+.refresh:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(244, 185, 66, .3); }
+.refresh.busy { opacity: .6; pointer-events: none; }
+.linkish { font: 500 12.5px var(--f-body); color: var(--ink-2); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.linkish:hover { color: var(--ink); }
+.drop {
+  position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; background: rgba(8, 12, 19, .82);
+  backdrop-filter: blur(6px); font: 600 20px var(--f-body); color: var(--ink); pointer-events: none;
+}
+.drop > div { border: 2px dashed var(--gold); border-radius: 18px; padding: 40px 48px; text-align: center; }
+.toast {
+  position: fixed; z-index: 15; right: max(16px, env(safe-area-inset-right, 0px)); bottom: max(16px, env(safe-area-inset-bottom, 0px));
+  width: min(420px, calc(100vw - 32px)); background: rgba(17, 24, 36, .96); border: 1px solid var(--line-2); border-radius: 14px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, .55); padding: 14px 16px 12px; font-size: 13px; backdrop-filter: blur(12px);
+}
+.toast h4 { margin: 0 0 6px; font: 700 15px var(--f-body); display: flex; justify-content: space-between; gap: 10px; }
+.toast h4 button { background: none; border: 0; color: var(--muted); font-size: 18px; line-height: 1; cursor: pointer; padding: 0; }
+.toast.ok h4 span::before { content: "✓ "; color: #3fcf8e; }
+.toast.err h4 span::before { content: "✕ "; color: var(--warn); }
+.toast ul { margin: 6px 0 0; padding-left: 18px; color: var(--ink-2); max-height: 220px; overflow-y: auto; }
+.toast li { margin: 2px 0; }
+.toast .muted { color: var(--muted); font-size: 12px; margin-top: 6px; }
+
+@media (max-width: 960px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) {
+  .kpis { grid-template-columns: 1fr; } .kpi .value { font-size: 42px; }
+  .seg { font-size: 14px; padding: 0 6px; } .spectrum-bar { height: 38px; }
+  .map-status { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <div class="eyebrow"><span class="live" id="clock">Live</span><span id="snapshot">Data snapshot</span>
+      <span class="databar">
+        <button type="button" class="refresh" id="refresh" title="Re-read countries_politics.csv">↻ Refresh data</button>
+        <button type="button" class="linkish" id="pick">Choose another file</button>
+        <input type="file" id="file-input" accept=".csv,text/csv" hidden>
+      </span>
+    </div>
+    <h1>Who <span class="grad">governs</span><br>the world</h1>
+    <p class="lede">Every government on Earth, placed on the left–right spectrum and classified by how it holds power. Hover the map for the leader, party, time in office and next election; filter by continent, leaning or regime to isolate a group.</p>
+    <div class="spectrum" aria-label="Number of countries per governing leaning">
+      <div class="spectrum-bar" id="spectrum"></div>
+      <div class="spectrum-axis"><span>← Far-left</span><span>Countries by governing leaning · click to filter</span><span>Far-right →</span></div>
+    </div>
+  </header>
+
+  <section class="kpis" id="kpis" aria-label="Key figures"></section>
+
+  <section class="ticker" aria-labelledby="ticker-title">
+    <span class="section-label" id="ticker-title">Coming up · votes that decide a government</span>
+    <div class="ticker-row" id="ticker"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="map-title">
+    <div class="panel-head">
+      <div>
+        <h2 id="map-title">The political map</h2>
+        <p>Eckert IV projection. Click a filter to isolate it: everything else goes dark. Click several to combine them. Scroll to zoom, drag to pan, click a country to open its row.</p>
+      </div>
+      <button type="button" class="clear" id="clear" hidden>Clear filters</button>
+    </div>
+    <div class="tabs" id="f-cont" role="group" aria-label="Continent"></div>
+    <div class="filters">
+      <div class="filter-group"><span class="section-label">Colour · governing leaning</span><div class="chips" id="f-orient"></div></div>
+      <div class="filter-group"><span class="section-label">Pattern · type of regime</span><div class="chips" id="f-regime"></div></div>
+    </div>
+    <div class="map-box">
+      <svg id="map" role="img" aria-label="World map coloured by government leaning and patterned by regime type"></svg>
+      <div class="map-status" id="map-status"></div>
+      <div class="zoom">
+        <button type="button" id="zin" aria-label="Zoom in">+</button>
+        <button type="button" id="zout" aria-label="Zoom out">−</button>
+        <button type="button" id="zreset" aria-label="Reset view">⟲</button>
+      </div>
+      <div class="map-caption">Small states shown as dots · territories follow their sovereign state</div>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="table-title">
+    <div class="panel-head">
+      <div>
+        <h2 id="table-title">The register · ranked by GDP</h2>
+        <p>Mandate elapsed is the share of the normal term already used before the next election that decides the government. A 4-year term with 6 months left reads 87.5%.</p>
+      </div>
+      <input class="search" id="q" type="search" placeholder="Search country, leader or party" aria-label="Search the register">
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th data-sort="gdp" class="num" tabindex="0">#</th>
+            <th data-sort="country" tabindex="0">Country</th>
+            <th>Leader</th>
+            <th>Party · leaning</th>
+            <th>Regime</th>
+            <th data-sort="since" tabindex="0">In power since</th>
+            <th data-sort="next" tabindex="0">Next election</th>
+            <th data-sort="mandate" tabindex="0">Mandate elapsed</th>
+            <th data-sort="gdp" class="num" tabindex="0">GDP (US$)</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <p class="foot" id="foot"></p>
+  </section>
+</div>
+
+<div class="tt" id="tt" hidden></div>
+<div class="drop" id="drop" hidden><div>Drop <b>countries_politics.csv</b> to update the dashboard</div></div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs id="pattern-defs"></defs></svg>
+
+<script>
+const DATA = /*__DATA__*/null;
+
+const ORIENT = [
+  ["FL", "Far-left"], ["L", "Left"], ["CL", "Centre-left"], ["C", "Centre"], ["CR", "Centre-right"],
+  ["R", "Right"], ["FR", "Far-right"], ["", "Unknown / unclear"],
+];
+const REGIME = [
+  ["D", "Democracy (republic)"], ["CM", "Democracy, ceremonial monarch"], ["H", "Hybrid regime"],
+  ["M", "Ruling monarchy"], ["A", "Dictatorship / authoritarian"],
+];
+const CONTINENTS = ["Africa", "Asia", "Europe", "North & Central America", "South America", "Oceania"];
+const ORIENT_LABEL = Object.fromEntries(ORIENT);
+const REGIME_LABEL = Object.fromEntries(REGIME);
+const DARK_FILLS = new Set(["FL", "L", "R", "FR"]);   // fills that take a light hatch ink and light text
+const NS = "http://www.w3.org/2000/svg";
+const DAY = 864e5;
+const now = new Date();
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+let byIso = {}, tracked = [], gdpRank = {};
+function setCountries(list) {
+  DATA.countries = list;
+  byIso = Object.fromEntries(list.map(c => [c.iso3, c]));
+  tracked = list.filter(c => c.regime);
+  gdpRank = {};
+  list.filter(c => c.gdp_musd).sort((a, b) => b.gdp_musd - a.gdp_musd).forEach((c, i) => gdpRank[c.iso3] = i + 1);
+}
+const fillVar = o => `var(--o-${o || "U"})`;
+const patternId = (regime, orient) => regime && regime !== "D" ? `pat-${regime}-${DARK_FILLS.has(orient) ? "l" : "d"}` : null;
+const esc = s => String(s ?? "").replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
+
+/* ---------- patterns & swatches ---------- */
+function buildPatterns() {
+  const tiles = {
+    CM: ink => `<circle cx="2" cy="2" r=".62" fill="${ink}"/>`,
+    H: ink => `<path d="M-1,1 l2,-2 M0,4 l4,-4 M3,5 l2,-2" stroke="${ink}" stroke-width=".5"/>`,
+    M: ink => `<path d="M2,0 v4" stroke="${ink}" stroke-width=".55"/>`,
+    A: ink => `<path d="M-1,1 l2,-2 M0,4 l4,-4 M3,5 l2,-2 M-1,3 l2,2 M0,0 l4,4 M3,-1 l2,2" stroke="${ink}" stroke-width=".42"/>`,
+  };
+  let html = "";
+  for (const [r, f] of Object.entries(tiles))
+    for (const [sfx, ink] of [["d", "var(--hatch-dark)"], ["l", "var(--hatch-light)"]])
+      html += `<pattern id="pat-${r}-${sfx}" class="hatch" patternUnits="userSpaceOnUse" width="4" height="4">${f(ink)}</pattern>`;
+  document.getElementById("pattern-defs").innerHTML = html;
+}
+function swatch(orient, regime, cls = "sw") {
+  const pid = patternId(regime, orient);
+  return `<svg class="${cls}" viewBox="0 0 12 12" aria-hidden="true"><rect width="12" height="12" fill="${fillVar(orient)}"/>${pid ? `<rect width="12" height="12" fill="url(#${pid})"/>` : ""}</svg>`;
+}
+const orientPill = o => `<span class="pill${o === "FL" || o === "FR" ? " far" : ""}">${swatch(o, "D")}${ORIENT_LABEL[o]}</span>`;
+const regimePill = r => `<span class="pill">${swatch("", r)}${REGIME_LABEL[r] || "n/a"}</span>`;
+
+/* ---------- dates & mandate ---------- */
+function parseDate(s) {
+  if (!s) return null;
+  if (/^\d{4}-\d{2}$/.test(s)) s += "-15";
+  const d = new Date(s + "T00:00:00");
+  return isNaN(d) ? null : d;
+}
+const isMonthOnly = s => /^\d{4}-\d{2}$/.test(s || "");
+function fmtDate(s) {
+  const d = parseDate(s);
+  return d ? d.toLocaleDateString("en-GB", isMonthOnly(s) ? { month: "short", year: "numeric" } : { day: "numeric", month: "short", year: "numeric" }) : "";
+}
+function fmtSpan(days) {
+  const a = Math.abs(days);
+  if (a < 60) return `${Math.round(a)} days`;
+  if (a < 730) return `${Math.round(a / 30.44)} months`;
+  return `${(a / 365.25).toFixed(1)} years`;
+}
+function mandate(c) {
+  const next = parseDate(c.next_election);
+  if (!next || !c.term_years) return null;
+  const left = (next - now) / DAY;
+  return { pct: Math.min(1, Math.max(0, 1 - left / (c.term_years * 365.25))), left };
+}
+function mandateHTML(c) {
+  const m = mandate(c);
+  if (!m) {
+    const why = c.regime === "A" || c.regime === "M" ? "No competitive elections"
+      : (c.note && /suspend|postpon/i.test(c.note) ? "Elections suspended" : "No date set");
+    return `<span class="none">${why}</span>`;
+  }
+  const soon = m.pct >= 0.9;
+  const leftTxt = m.left < 0 ? "Vote held · result pending" : `${soon ? "⚠ Election soon · " : ""}${fmtSpan(m.left)} left of ${c.term_years}-yr term`;
+  return `<div class="mandate${soon ? " soon" : ""}"><div class="bar"><span style="width:${(m.pct * 100).toFixed(1)}%"></span></div><span class="pct">${(m.pct * 100).toFixed(1)}%</span><span class="left">${leftTxt}</span></div>`;
+}
+function fmtGDP(m) {
+  if (m == null) return "n/a";
+  if (m >= 1e6) return `$${(m / 1e6).toFixed(2)} T`;
+  if (m >= 1e4) return `$${Math.round(m / 1e3)} B`;
+  return `$${(m / 1e3).toFixed(1)} B`;
+}
+
+/* ---------- filter state ---------- */
+// empty set = no filter on that dimension; selecting a chip isolates it
+const sel = { orient: new Set(), regime: new Set(), cont: "" };
+const anyFilter = () => sel.orient.size || sel.regime.size || sel.cont;
+function matchCountry(c, cont = c.continent) {
+  return (!sel.orient.size || sel.orient.has(c.orientation))
+      && (!sel.regime.size || sel.regime.has(c.regime))
+      && (!sel.cont || sel.cont === cont);
+}
+function matchFeature(s) {
+  if (s.c) return matchCountry(s.c, s.feat.cont);
+  return !sel.orient.size && !sel.regime.size && (!sel.cont || sel.cont === s.feat.cont);
+}
+const contOnly = () => tracked.filter(c => !sel.cont || c.continent === sel.cont);
+const filtered = () => tracked.filter(c => matchCountry(c));
+
+/* ---------- spectrum ---------- */
+function buildSpectrum() {
+  const base = contOnly().filter(c => !sel.regime.size || sel.regime.has(c.regime));
+  const host = document.getElementById("spectrum");
+  if (!host.children.length) {
+    host.innerHTML = ORIENT.map(([o, label]) =>
+      `<button type="button" class="seg${DARK_FILLS.has(o) ? " dark-txt" : ""}" data-v="${o}" style="background:${fillVar(o)}" title="${label}"></button>`).join("");
+    host.addEventListener("click", e => { const b = e.target.closest(".seg"); if (b) toggle(sel.orient, b.dataset.v); });
+  }
+  [...host.children].forEach(b => {
+    const n = base.filter(c => c.orientation === b.dataset.v).length;
+    b.style.flexGrow = Math.max(n, 0.0001);
+    b.style.display = n ? "" : "none";
+    b.textContent = n;
+    b.setAttribute("aria-label", `${ORIENT_LABEL[b.dataset.v]}: ${n} countries`);
+    b.title = `${ORIENT_LABEL[b.dataset.v]} · ${n}`;
+    b.classList.toggle("dim", sel.orient.size > 0 && !sel.orient.has(b.dataset.v));
+  });
+}
+
+/* ---------- KPIs ---------- */
+let firstKPI = true;
+function countUp(elm, to) {
+  if (!firstKPI || reduceMotion) { elm.textContent = to; return; }
+  const t0 = performance.now(), dur = 900;
+  const step = t => { const p = Math.min(1, (t - t0) / dur); elm.textContent = Math.round(to * (1 - (1 - p) ** 3)); if (p < 1) requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+}
+function buildKPIs() {
+  const cs = filtered();
+  const n = cs.length;
+  const demo = cs.filter(c => c.regime === "D" || c.regime === "CM");
+  const hyb = cs.filter(c => c.regime === "H").length;
+  const auth = cs.filter(c => c.regime === "A").length, mon = cs.filter(c => c.regime === "M").length;
+  const far = cs.filter(c => c.orientation === "FL" || c.orientation === "FR");
+  const gdp = arr => arr.reduce((a, c) => a + (c.gdp_musd || 0), 0);
+  const total = gdp(cs) || 1;
+  const up = upcoming(cs);
+  const first = up[0];
+  const days = first ? Math.max(0, Math.ceil((first.d - now) / DAY)) : 0;
+  const scope = sel.cont || "the world";
+  document.getElementById("kpis").innerHTML = `
+    <div class="kpi"><span class="label">Democracies</span><span class="value"><span data-n="${demo.length}">0</span><small>of ${n}</small></span>
+      <span class="sub">${(gdp(demo) / total * 100).toFixed(0)}% of the GDP in ${esc(scope)}</span><div class="meter"><span style="width:${n ? demo.length / n * 100 : 0}%"></span></div></div>
+    <div class="kpi"><span class="label">Dictators &amp; ruling monarchs</span><span class="value"><span data-n="${auth + mon}">0</span><small>countries</small></span>
+      <span class="sub">${auth} authoritarian · ${mon} monarchies · ${hyb} hybrid</span><div class="meter"><span style="width:${n ? (auth + mon) / n * 100 : 0}%"></span></div></div>
+    <div class="kpi"><span class="label">Far-left or far-right</span><span class="value"><span data-n="${far.length}">0</span><small>governments</small></span>
+      <span class="sub">${cs.filter(c => c.orientation === "FL").length} far-left · ${cs.filter(c => c.orientation === "FR").length} far-right · ${(gdp(far) / total * 100).toFixed(0)}% of GDP</span><div class="meter"><span style="width:${n ? far.length / n * 100 : 0}%"></span></div></div>
+    <div class="kpi accent"><span class="label">Next decisive vote</span><span class="value">${first ? `<span data-n="${days}">0</span><small>days</small>` : "–"}</span>
+      <span class="sub">${first ? `${esc(first.c.country)} · ${esc(first.c.election_type)} · ${fmtDate(first.c.next_election)}` : "No vote scheduled in this selection"}<br>${up.filter(x => (x.d - now) / DAY <= 365).length} in the next 12 months</span></div>`;
+  document.querySelectorAll("#kpis [data-n]").forEach(e => countUp(e, +e.dataset.n));
+  firstKPI = false;
+}
+function upcoming(cs) {
+  const today = new Date(now.toDateString());
+  return cs.map(c => ({ c, d: parseDate(c.next_election) })).filter(x => x.d && x.d >= today).sort((a, b) => a.d - b.d);
+}
+
+/* ---------- ticker ---------- */
+function buildTicker() {
+  const up = upcoming(filtered()).slice(0, 12);
+  const host = document.getElementById("ticker");
+  host.innerHTML = up.length ? up.map(({ c, d }) => `
+    <button type="button" class="tick" data-iso="${c.iso3}">
+      <span class="days">${Math.max(0, Math.ceil((d - now) / DAY))}<small>days</small></span>
+      <span class="tc">${swatch(c.orientation, c.regime)}${esc(c.country)}</span>
+      <span class="tt-sub">${esc(c.election_type)} · ${fmtDate(c.next_election)}</span>
+    </button>`).join("") : `<span class="none">No upcoming vote in this selection.</span>`;
+}
+document.getElementById("ticker").addEventListener("click", e => { const b = e.target.closest(".tick"); if (b) jumpToRow(b.dataset.iso); });
+
+/* ---------- filter controls ---------- */
+function toggle(set, v) { set.has(v) ? set.delete(v) : set.add(v); applyFilters(); }
+function buildControls() {
+  const contHost = document.getElementById("f-cont");
+  contHost.innerHTML = [["", "All continents"], ...CONTINENTS.map(c => [c, c])].map(([v, label]) =>
+    `<button type="button" class="tab" data-v="${v}" aria-pressed="${v === ""}">${label}<span class="n">${v ? tracked.filter(c => c.continent === v).length : tracked.length}</span></button>`).join("");
+  contHost.addEventListener("click", e => {
+    const b = e.target.closest(".tab"); if (!b) return;
+    sel.cont = b.dataset.v;
+    flyTo(sel.cont ? DATA.continentViews[sel.cont] : [VX, VY, VW, VH]);
+    applyFilters();
+  });
+  const mk = (id, list, key, set, swFn) => {
+    const host = document.getElementById(id);
+    host.innerHTML = list.map(([v, label]) =>
+      `<button type="button" class="chip" aria-pressed="false" data-v="${v}">${swFn(v)}${label}<span class="count" data-count="${v}"></span></button>`).join("");
+    host.addEventListener("click", e => { const b = e.target.closest(".chip"); if (b) toggle(set, b.dataset.v); });
+  };
+  mk("f-orient", ORIENT, "orientation", sel.orient, v => swatch(v, "D"));
+  mk("f-regime", REGIME, "regime", sel.regime, v => swatch("", v, "sw sw-sq"));
+  document.getElementById("clear").onclick = () => {
+    sel.orient.clear(); sel.regime.clear(); sel.cont = "";
+    flyTo([VX, VY, VW, VH]); applyFilters();
+  };
+}
+function syncControls() {
+  document.querySelectorAll("#f-cont .tab").forEach(b => {
+    b.setAttribute("aria-pressed", b.dataset.v === sel.cont);
+    b.querySelector(".n").textContent = b.dataset.v ? tracked.filter(c => c.continent === b.dataset.v).length : tracked.length;
+  });
+  for (const [id, set, key] of [["f-orient", sel.orient, "orientation"], ["f-regime", sel.regime, "regime"]]) {
+    const host = document.getElementById(id);
+    host.parentElement.classList.toggle("has-sel", set.size > 0);
+    host.querySelectorAll(".chip").forEach(b => b.setAttribute("aria-pressed", set.has(b.dataset.v)));
+    const base = contOnly();
+    host.querySelectorAll("[data-count]").forEach(s => s.textContent = base.filter(c => c[key] === s.dataset.count).length);
+  }
+  document.getElementById("clear").hidden = !anyFilter();
+}
+
+/* ---------- map ---------- */
+const svg = document.getElementById("map");
+const [VX, VY, VW, VH] = DATA.viewBox;
+let view = { x: VX, y: VY, w: VW, h: VH };
+const shapes = [];
+
+function el(tag, attrs, parent) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function buildMap() {
+  svg.setAttribute("viewBox", DATA.viewBox.join(" "));
+  const defs = el("defs", {}, svg);
+  defs.innerHTML = `<radialGradient id="ocean" cx="50%" cy="45%" r="65%"><stop offset="0" stop-color="var(--ocean-1)"/><stop offset="1" stop-color="var(--ocean-2)"/></radialGradient>`;
+  el("path", { d: DATA.sphere, fill: "url(#ocean)" }, svg);
+  el("path", { d: DATA.graticule, fill: "none", stroke: "var(--grat)", "stroke-width": .7, "vector-effect": "non-scaling-stroke" }, svg);
+  const gBase = el("g", {}, svg), gHatch = el("g", { "pointer-events": "none" }, svg), gDots = el("g", {}, svg);
+  DATA.features.forEach(f => {
+    const c = byIso[f.code];
+    const o = c ? c.orientation : "", r = c ? c.regime : "";
+    const p = el("path", { d: f.d, class: "country", fill: fillVar(o) }, gBase);
+    const pid = patternId(r, o);
+    const ov = el("path", { d: f.d, class: "hatch-shape", fill: pid ? `url(#${pid})` : "none" }, gHatch);
+    const dot = f.dot ? el("circle", { cx: f.dot[0], cy: f.dot[1], r: 2.4, class: "dot", fill: fillVar(o) }, gDots) : null;
+    const s = { el: p, overlay: ov, dot, feat: f, c, fill: fillVar(o) };
+    shapes.push(s);
+    for (const t of [p, dot].filter(Boolean)) {
+      t.addEventListener("pointerenter", e => hover(s, e));
+      t.addEventListener("pointermove", moveTip);
+      t.addEventListener("pointerleave", () => unhover(s));
+      t.addEventListener("click", () => { if (!dragMoved && s.c && !s.el.classList.contains("off")) jumpToRow(s.c.iso3); });
+    }
+  });
+  el("path", { d: DATA.sphere, fill: "none", stroke: "rgba(255,255,255,.18)", "stroke-width": 1, "vector-effect": "non-scaling-stroke" }, svg);
+  if (!reduceMotion) svg.animate([{ opacity: 0, transform: "scale(.985)" }, { opacity: 1, transform: "none" }], { duration: 900, easing: "cubic-bezier(.2,.8,.2,1)" });
+}
+
+/* zoom & pan */
+function clampView(v) {
+  v.w = Math.min(VW, Math.max(VW / 14, v.w)); v.h = v.w * VH / VW;
+  v.x = Math.min(VX + VW - v.w, Math.max(VX, v.x)); v.y = Math.min(VY + VH - v.h, Math.max(VY, v.y));
+  return v;
+}
+function setView(v) {
+  view = clampView(v);
+  svg.setAttribute("viewBox", `${view.x} ${view.y} ${view.w} ${view.h}`);
+  const k = view.w / VW;
+  document.querySelectorAll("pattern.hatch").forEach(p => p.setAttribute("patternTransform", `scale(${k})`));
+  shapes.forEach(s => s.dot && s.dot.setAttribute("r", Math.max(.6, 2.4 * k ** .7)));
+}
+let flight = 0;
+function flyTo([x, y, w, h]) {
+  // fit the target box at the map's aspect ratio, with a margin
+  const pad = 1.08, aspect = VW / VH;
+  let tw = w * pad, th = h * pad;
+  if (tw / th < aspect) tw = th * aspect; else th = tw / aspect;
+  const target = clampView({ x: x + w / 2 - tw / 2, y: y + h / 2 - th / 2, w: tw, h: th });
+  const from = { ...view }, t0 = performance.now(), dur = reduceMotion ? 0 : 750, id = ++flight;
+  const step = t => {
+    if (id !== flight) return;
+    const p = dur ? Math.min(1, (t - t0) / dur) : 1, e = p < .5 ? 4 * p ** 3 : 1 - (-2 * p + 2) ** 3 / 2;
+    setView({ x: from.x + (target.x - from.x) * e, y: from.y + (target.y - from.y) * e, w: from.w + (target.w - from.w) * e, h: 0 });
+    if (p < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+function zoomAt(f, cx, cy) { flight++; setView({ x: cx - (cx - view.x) * f, y: cy - (cy - view.y) * f, w: view.w * f, h: 0 }); }
+function svgPoint(e) {
+  const r = svg.getBoundingClientRect();
+  return [view.x + (e.clientX - r.left) / r.width * view.w, view.y + (e.clientY - r.top) / r.height * view.h];
+}
+svg.addEventListener("wheel", e => { e.preventDefault(); const [x, y] = svgPoint(e); zoomAt(e.deltaY > 0 ? 1.18 : 1 / 1.18, x, y); }, { passive: false });
+let drag = null, dragMoved = false;
+svg.addEventListener("pointerdown", e => { drag = { sx: e.clientX, sy: e.clientY, v: { ...view } }; dragMoved = false; flight++; });
+window.addEventListener("pointermove", e => {
+  if (!drag) return;
+  const r = svg.getBoundingClientRect();
+  if (Math.abs(e.clientX - drag.sx) + Math.abs(e.clientY - drag.sy) > 4) { dragMoved = true; svg.classList.add("dragging"); hideTip(); }
+  if (dragMoved) setView({ ...drag.v, x: drag.v.x - (e.clientX - drag.sx) / r.width * drag.v.w, y: drag.v.y - (e.clientY - drag.sy) / r.height * drag.v.h });
+});
+window.addEventListener("pointerup", () => { drag = null; svg.classList.remove("dragging"); setTimeout(() => dragMoved = false, 0); });
+document.getElementById("zin").onclick = () => zoomAt(1 / 1.5, view.x + view.w / 2, view.y + view.h / 2);
+document.getElementById("zout").onclick = () => zoomAt(1.5, view.x + view.w / 2, view.y + view.h / 2);
+document.getElementById("zreset").onclick = () => flyTo([VX, VY, VW, VH]);
+
+/* ---------- tooltip ---------- */
+const tt = document.getElementById("tt");
+function tipHTML(s) {
+  const c = s.c, f = s.feat;
+  if (!c) return `<h3>${esc(f.name)}</h3><div class="note">No data for this territory.</div>`;
+  const since = parseDate(c.since), next = parseDate(c.next_election);
+  let nextTxt;
+  if (next) {
+    const d = (next - now) / DAY;
+    nextTxt = `${fmtDate(c.next_election)} · ${esc(c.election_type)}<br><span class="sub-txt">${d < 0 ? "held · result pending" : "in " + fmtSpan(d)}</span>`;
+  } else nextTxt = c.regime === "A" || c.regime === "M" ? "No competitive elections" : "Not scheduled";
+  return `
+    <h3>${swatch(c.orientation, c.regime)}${esc(f.terr ? f.name : c.country)}</h3>
+    <div class="terr">${f.terr ? `Territory of ${esc(c.country)} · shows ${esc(c.country)}'s government` : esc(c.continent)}</div>
+    <div class="pills">${orientPill(c.orientation)}${regimePill(c.regime)}</div>
+    <dl>
+      <dt>Leader</dt><dd>${esc(c.leader) || "n/a"}<br><span class="sub-txt">${esc(c.role)}</span></dd>
+      ${c.head_of_state ? `<dt>Head of state</dt><dd>${esc(c.head_of_state)}</dd>` : ""}
+      <dt>Party</dt><dd>${esc(c.party) || "n/a"}</dd>
+      <dt>In power</dt><dd>${since ? `since ${fmtDate(c.since)}<br><span class="sub-txt">${fmtSpan((now - since) / DAY)}</span>` : "n/a"}</dd>
+      <dt>Next vote</dt><dd>${nextTxt}</dd>
+      <dt>Mandate</dt><dd>${mandateHTML(c)}</dd>
+      <dt>GDP</dt><dd class="mono">${fmtGDP(c.gdp_musd)}</dd>
+    </dl>
+    ${c.note ? `<div class="note">${esc(c.note)}</div>` : ""}`;
+}
+function hover(s, e) {
+  if ((drag && dragMoved) || s.el.classList.contains("off")) return;
+  s.el.classList.add("hover"); s.dot && s.dot.classList.add("hover");
+  s.el.parentNode.appendChild(s.el);
+  tt.innerHTML = tipHTML(s); tt.hidden = false; moveTip(e);
+}
+function unhover(s) { s.el.classList.remove("hover"); s.dot && s.dot.classList.remove("hover"); hideTip(); }
+window.addEventListener("scroll", () => { hideTip(); document.querySelectorAll("#map .hover").forEach(n => n.classList.remove("hover")); }, { passive: true });
+function hideTip() { tt.hidden = true; }
+function moveTip(e) {
+  if (tt.hidden) return;
+  const pad = 18, w = tt.offsetWidth, h = tt.offsetHeight;
+  let x = e.clientX + pad, y = e.clientY + pad;
+  if (x + w > innerWidth - 8) x = e.clientX - w - pad;
+  if (y + h > innerHeight - 8) y = Math.max(8, innerHeight - h - 8);
+  tt.style.left = Math.max(8, x) + "px"; tt.style.top = y + "px";
+}
+
+/* ---------- register ---------- */
+let sortKey = "gdp", sortDir = -1;
+function sortValue(c, key) {
+  switch (key) {
+    case "gdp": return c.gdp_musd ?? -1;
+    case "country": return c.country;
+    case "since": return parseDate(c.since)?.getTime() ?? Infinity;
+    case "next": return parseDate(c.next_election)?.getTime() ?? Infinity;
+    case "mandate": return mandate(c)?.pct ?? -1;
+  }
+}
+function buildTable() {
+  const q = document.getElementById("q").value.trim().toLowerCase();
+  const rows = filtered()
+    .filter(c => !q || [c.country, c.leader, c.party, c.head_of_state].join(" ").toLowerCase().includes(q))
+    .sort((a, b) => {
+      const va = sortValue(a, sortKey), vb = sortValue(b, sortKey);
+      if (typeof va === "string") return va.localeCompare(vb) * sortDir;
+      if (va === vb) return (b.gdp_musd ?? 0) - (a.gdp_musd ?? 0);
+      return (va < vb ? -1 : 1) * sortDir;
+    });
+  document.getElementById("rows").innerHTML = rows.length ? rows.map(c => {
+    const since = parseDate(c.since), next = parseDate(c.next_election);
+    return `<tr id="row-${c.iso3}">
+      <td class="rank">${gdpRank[c.iso3] ?? "–"}</td>
+      <td><div class="cname">${swatch(c.orientation, c.regime)}<div>${esc(c.country)}<div class="cont-tag">${esc(c.continent)}</div></div></div></td>
+      <td><div class="who">${esc(c.leader)}</div><div class="role">${esc(c.role)}</div></td>
+      <td><div class="party">${esc(c.party)}</div><div style="margin-top:4px">${orientPill(c.orientation)}</div></td>
+      <td>${regimePill(c.regime)}</td>
+      <td><div class="date">${since ? fmtDate(c.since) : "–"}</div><div class="since-ago">${since ? fmtSpan((now - since) / DAY) : ""}</div></td>
+      <td><div class="date">${next ? fmtDate(c.next_election) : "–"}</div><div class="since-ago">${next ? esc(c.election_type) : ""}</div></td>
+      <td>${mandateHTML(c)}</td>
+      <td class="num">${fmtGDP(c.gdp_musd)}</td>
+    </tr>`;
+  }).join("") : `<tr><td colspan="9" class="empty">No country matches these filters.</td></tr>`;
+  document.querySelectorAll("th[data-sort]").forEach(th => {
+    const on = th.dataset.sort === sortKey;
+    th.querySelector(".arrow")?.remove();
+    if (on && !(th.textContent === "#" && sortKey === "gdp")) th.insertAdjacentHTML("beforeend", ` <span class="arrow">${sortDir < 0 ? "↓" : "↑"}</span>`);
+    th.setAttribute("aria-sort", on ? (sortDir < 0 ? "descending" : "ascending") : "none");
+  });
+}
+document.querySelectorAll("th[data-sort]").forEach(th => {
+  const go = () => {
+    const k = th.dataset.sort;
+    if (k === sortKey) sortDir = -sortDir; else { sortKey = k; sortDir = (k === "gdp" || k === "mandate") ? -1 : 1; }
+    buildTable();
+  };
+  th.addEventListener("click", go);
+  th.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } });
+});
+document.getElementById("q").addEventListener("input", buildTable);
+
+function jumpToRow(iso) {
+  const q = document.getElementById("q");
+  let row = document.getElementById("row-" + iso);
+  if (!row && (q.value || anyFilter())) { q.value = ""; sel.orient.clear(); sel.regime.clear(); sel.cont = ""; applyFilters(); row = document.getElementById("row-" + iso); }
+  if (!row) return;
+  row.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
+  row.classList.remove("flash"); void row.offsetWidth; row.classList.add("flash");
+}
+
+/* ---------- apply ---------- */
+function applyFilters() {
+  shapes.forEach(s => {
+    const on = matchFeature(s);
+    s.el.classList.toggle("off", !on);
+    s.overlay && s.overlay.classList.toggle("off", !on);
+    s.dot && s.dot.classList.toggle("off", !on);
+  });
+  const n = filtered().length;
+  const parts = [sel.cont, [...sel.orient].map(o => ORIENT_LABEL[o]).join(" + "), [...sel.regime].map(r => REGIME_LABEL[r]).join(" + ")].filter(Boolean);
+  const status = document.getElementById("map-status");
+  status.textContent = parts.length ? `${n} ${n === 1 ? "country" : "countries"} · ${parts.join(" · ")}` : `${n} countries`;
+  syncControls(); buildSpectrum(); buildKPIs(); buildTicker(); buildTable();
+}
+
+/* ---------- clock & boot ---------- */
+function tickClock() {
+  document.getElementById("clock").textContent = new Date().toLocaleString("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+}
+
+/* ---------- data refresh: re-read countries_politics.csv without rebuilding ---------- */
+const CSV_NAME = "countries_politics.csv";
+const CACHE_KEY = "wgw-csv-v1";
+const MONTHS = { jan: 1, janv: 1, feb: 2, fev: 2, "févr": 2, fevr: 2, mar: 3, mars: 3, apr: 4, avr: 4, may: 5, mai: 5, jun: 6, juin: 6,
+  jul: 7, juil: 7, aug: 8, "août": 8, aou: 8, aout: 8, sep: 9, sept: 9, oct: 10, nov: 11, dec: 12, "déc": 12 };
+let dataInfo = { name: "built into the page", modified: DATA.builtAt, loaded: DATA.builtAt };
+
+function splitCSV(text, delim) {
+  const rows = []; let row = [], cell = "", q = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (q) {
+      if (ch === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; }
+      else cell += ch;
+    } else if (ch === '"') q = true;
+    else if (ch === delim) { row.push(cell); cell = ""; }
+    else if (ch === "\n" || ch === "\r") {
+      if (ch === "\r" && text[i + 1] === "\n") i++;
+      row.push(cell); rows.push(row); row = []; cell = "";
+    } else cell += ch;
+  }
+  if (cell || row.length) { row.push(cell); rows.push(row); }
+  return rows;
+}
+const pad2 = n => String(n).padStart(2, "0");
+function normDate(raw) {
+  const s = (raw || "").trim();
+  if (!s) return "";
+  let m;
+  if ((m = s.match(/^(\d{4})-(\d{1,2})(?:-(\d{1,2}))?/))) return m[3] ? `${m[1]}-${pad2(m[2])}-${pad2(m[3])}` : `${m[1]}-${pad2(m[2])}`;
+  if ((m = s.match(/^(\d{1,2})[\/.](\d{1,2})[\/.](\d{2,4})$/))) {           // dd/mm/yyyy (European, as Excel writes it)
+    const y = m[3].length === 2 ? "20" + m[3] : m[3];
+    return `${y}-${pad2(m[2])}-${pad2(m[1])}`;
+  }
+  if ((m = s.match(/^(\d{1,2})[\/.](\d{4})$/))) return `${m[2]}-${pad2(m[1])}`;
+  if ((m = s.match(/^([a-zéûô]+)\.?[-\s](\d{2,4})$/i)) && MONTHS[m[1].toLowerCase()]) {
+    const y = m[2].length === 2 ? "20" + m[2] : m[2];
+    return `${y}-${pad2(MONTHS[m[1].toLowerCase()])}`;
+  }
+  if ((m = s.match(/^(\d{4})$/))) return `${m[1]}-07`;
+  return null;   // unreadable
+}
+function num(raw) {
+  let s = (raw || "").replace(/[\s  ]/g, "");
+  if (!s) return null;
+  if (s.includes(",") && !s.includes(".")) s = /,\d{3}(,|$)/.test(s) && s.split(",").length > 2 ? s.replace(/,/g, "") : s.replace(",", ".");
+  else s = s.replace(/,/g, "");
+  const v = parseFloat(s);
+  return isNaN(v) ? null : v;
+}
+function parseCountriesCSV(text) {
+  text = text.replace(/^﻿/, "");
+  const headerLine = text.split(/\r?\n/).find(l => l.trim() && !l.trim().startsWith("#")) || "";
+  const delim = (headerLine.match(/;/g) || []).length > (headerLine.match(/,/g) || []).length ? ";" : ",";
+  const rows = splitCSV(text, delim).filter(r => r.some(c => c.trim()) && !r[0].trim().startsWith("#"));
+  if (!rows.length) throw new Error("The file is empty.");
+  const head = rows[0].map(h => h.trim().toLowerCase());
+  const missing = ["iso3", "country", "orientation", "regime"].filter(k => !head.includes(k));
+  if (missing.length) throw new Error(`Missing column${missing.length > 1 ? "s" : ""}: ${missing.join(", ")}. Is this ${CSV_NAME}?`);
+  const warnings = [], oldByIso = byIso, okOrient = new Set(ORIENT.map(o => o[0])), okRegime = new Set(["", ...REGIME.map(r => r[0])]);
+  const records = rows.slice(1).map((r, i) => {
+    const get = k => { const j = head.indexOf(k); return j < 0 ? "" : (r[j] ?? "").trim(); };
+    const iso3 = get("iso3").toUpperCase();
+    if (!iso3) return null;
+    const rec = {};
+    head.forEach((k, j) => rec[k] = (r[j] ?? "").trim());
+    rec.iso3 = iso3;
+    rec.orientation = get("orientation").toUpperCase();
+    rec.regime = get("regime").toUpperCase();
+    if (!okOrient.has(rec.orientation)) { warnings.push(`${rec.country || iso3}: unknown leaning "${rec.orientation}" (shown as unknown)`); rec.orientation = ""; }
+    if (!okRegime.has(rec.regime)) { warnings.push(`${rec.country || iso3}: unknown regime "${rec.regime}"`); rec.regime = ""; }
+    for (const k of ["since", "next_election"]) {
+      const d = normDate(get(k));
+      if (d === null) { warnings.push(`${rec.country || iso3}: can't read ${k} "${get(k)}"`); rec[k] = ""; } else rec[k] = d;
+    }
+    rec.gdp_musd = num(get("gdp_musd"));
+    rec.term_years = num(get("term_years"));
+    rec.continent = oldByIso[iso3]?.continent || DATA.continentOf[iso3] || "";
+    for (const k of ["leader", "role", "head_of_state", "party", "election_type", "note", "country"]) rec[k] = rec[k] ?? "";
+    return rec;
+  }).filter(Boolean);
+  return { records, warnings };
+}
+function diffCountries(oldList, newList) {
+  const oldMap = Object.fromEntries(oldList.map(c => [c.iso3, c])), changes = [];
+  const label = { leader: "leader", party: "party", orientation: "leaning", regime: "regime", next_election: "next election", since: "in power since", gdp_musd: "GDP" };
+  const show = (k, v) => k === "orientation" ? ORIENT_LABEL[v] : k === "regime" ? (REGIME_LABEL[v] || "none") : k === "gdp_musd" ? fmtGDP(v)
+    : (k === "next_election" || k === "since") ? (fmtDate(v) || "none") : (v || "none");
+  for (const c of newList) {
+    const o = oldMap[c.iso3];
+    if (!o) { changes.push(`<b>${esc(c.country)}</b> added`); continue; }
+    for (const k of Object.keys(label))
+      if ((o[k] ?? "") !== (c[k] ?? "")) changes.push(`<b>${esc(c.country)}</b> · ${label[k]}: ${esc(show(k, o[k]))} → ${esc(show(k, c[k]))}`);
+  }
+  const newIsos = new Set(newList.map(c => c.iso3));
+  for (const o of oldList) if (!newIsos.has(o.iso3)) changes.push(`<b>${esc(o.country)}</b> removed`);
+  return changes;
+}
+function refreshMap() {
+  shapes.forEach(s => {
+    s.c = byIso[s.feat.code];
+    const o = s.c ? s.c.orientation : "", pid = patternId(s.c ? s.c.regime : "", o);
+    s.el.setAttribute("fill", fillVar(o));
+    s.overlay.setAttribute("fill", pid ? `url(#${pid})` : "none");
+    s.dot && s.dot.setAttribute("fill", fillVar(o));
+  });
+}
+const fmtStamp = iso => iso ? new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+function renderDataStatus() {
+  document.getElementById("snapshot").textContent =
+    `Data: ${dataInfo.name} · saved ${fmtStamp(dataInfo.modified)} · ${tracked.length} states`;
+}
+function toast(kind, title, items = [], extra = "") {
+  const t = document.getElementById("toast");
+  t.className = `toast ${kind}`;
+  t.innerHTML = `<h4><span>${title}</span><button type="button" aria-label="Close">×</button></h4>` +
+    (items.length ? `<ul>${items.slice(0, 40).map(i => `<li>${i}</li>`).join("")}${items.length > 40 ? `<li>…and ${items.length - 40} more</li>` : ""}</ul>` : "") +
+    (extra ? `<div class="muted">${extra}</div>` : "");
+  t.hidden = false;
+  t.querySelector("button").onclick = () => t.hidden = true;
+  clearTimeout(toast.timer);
+  if (kind === "ok" && items.length <= 3) toast.timer = setTimeout(() => t.hidden = true, 6000);
+}
+function applyCSV(text, info, { quiet = false, silent = false } = {}) {
+  let parsed;
+  try { parsed = parseCountriesCSV(text); }
+  catch (err) { toast("err", "Couldn't read the file", [], esc(err.message)); return false; }
+  if (parsed.records.length < 10) { toast("err", "Couldn't read the file", [], `Only ${parsed.records.length} countries found. Is this ${CSV_NAME}?`); return false; }
+  const changes = diffCountries(DATA.countries, parsed.records);
+  setCountries(parsed.records);
+  dataInfo = { ...info, loaded: new Date().toISOString() };
+  refreshMap(); applyFilters(); renderDataStatus();
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ text, info: dataInfo })); } catch (e) { /* storage unavailable */ }
+  if (!silent && (!quiet || changes.length)) {
+    toast("ok", changes.length ? `Data refreshed · ${changes.length} change${changes.length > 1 ? "s" : ""}` : "Data refreshed · no changes",
+      changes, `${parsed.records.length} countries from ${esc(info.name)}` + (parsed.warnings.length ? `<br>⚠ ${parsed.warnings.map(esc).join("<br>⚠ ")}` : ""));
+  }
+  return true;
+}
+async function readFileText(file) {
+  const buf = await file.arrayBuffer();
+  try { return new TextDecoder("utf-8", { fatal: true }).decode(buf); }
+  catch { return new TextDecoder("windows-1252").decode(buf); }   // Excel "CSV (semicolon)" saves in ANSI
+}
+async function applyFile(file, opts) {
+  return applyCSV(await readFileText(file), { name: file.name, modified: new Date(file.lastModified).toISOString() }, opts);
+}
+
+/* remember the chosen file (Chrome / Edge) so the next refresh is one click */
+function idb(mode, fn) {
+  return new Promise((resolve, reject) => {
+    const open = indexedDB.open("wgw", 1);
+    open.onupgradeneeded = () => open.result.createObjectStore("kv");
+    open.onerror = () => reject(open.error);
+    open.onsuccess = () => {
+      const tx = open.result.transaction("kv", mode), req = fn(tx.objectStore("kv"));
+      tx.oncomplete = () => resolve(req.result); tx.onerror = () => reject(tx.error);
+    };
+  });
+}
+const getHandle = () => idb("readonly", s => s.get("csv")).catch(() => null);
+const saveHandle = h => idb("readwrite", s => s.put(h, "csv")).catch(() => null);
+
+async function fetchServed(opts) {
+  if (!location.protocol.startsWith("http")) return false;
+  try {
+    const res = await fetch(`${CSV_NAME}?t=${Date.now()}`, { cache: "no-store" });
+    if (!res.ok) return false;
+    const text = await readFileText(new Blob([await res.arrayBuffer()]));
+    return applyCSV(text, { name: CSV_NAME, modified: res.headers.get("last-modified") ? new Date(res.headers.get("last-modified")).toISOString() : new Date().toISOString() }, opts);
+  } catch { return false; }
+}
+async function pickFile() {
+  if (window.showOpenFilePicker) {
+    try {
+      const [h] = await showOpenFilePicker({ types: [{ description: "Countries CSV", accept: { "text/csv": [".csv"] } }], multiple: false });
+      await saveHandle(h);
+      await applyFile(await h.getFile());
+    } catch (err) { if (err.name !== "AbortError") toast("err", "Couldn't open the file", [], esc(err.message)); }
+  } else document.getElementById("file-input").click();
+}
+async function refreshData() {
+  const btn = document.getElementById("refresh");
+  btn.classList.add("busy");
+  try {
+    if (await fetchServed()) return;
+    const h = window.showOpenFilePicker ? await getHandle() : null;
+    if (h) {
+      try {
+        if ((await h.queryPermission({ mode: "read" })) !== "granted" && (await h.requestPermission({ mode: "read" })) !== "granted") throw new Error("Permission to read the file was refused.");
+        await applyFile(await h.getFile());
+        return;
+      } catch (err) { if (err.name === "NotFoundError") toast("err", "File not found", [], "It may have been moved or renamed. Choose it again."); else throw err; }
+    }
+    await pickFile();
+  } catch (err) { toast("err", "Refresh failed", [], esc(err.message)); }
+  finally { btn.classList.remove("busy"); }
+}
+document.getElementById("refresh").onclick = refreshData;
+document.getElementById("pick").onclick = pickFile;
+document.getElementById("file-input").onchange = e => { const f = e.target.files[0]; if (f) applyFile(f); e.target.value = ""; };
+
+/* drag & drop a CSV anywhere on the page */
+let dragDepth = 0;
+const hasFiles = e => [...(e.dataTransfer?.types || [])].includes("Files");
+window.addEventListener("dragenter", e => { if (hasFiles(e)) { dragDepth++; document.getElementById("drop").hidden = false; } });
+window.addEventListener("dragleave", e => { if (hasFiles(e) && --dragDepth <= 0) { dragDepth = 0; document.getElementById("drop").hidden = true; } });
+window.addEventListener("dragover", e => { if (hasFiles(e)) e.preventDefault(); });
+window.addEventListener("drop", e => {
+  if (!hasFiles(e)) return;
+  e.preventDefault(); dragDepth = 0; document.getElementById("drop").hidden = true;
+  const f = e.dataTransfer.files[0];
+  if (f) applyFile(f);
+});
+
+/* on open: reuse the last CSV you loaded (if newer than the build), then re-read the file if allowed */
+async function bootData() {
+  try {
+    const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || "null");
+    if (cached && new Date(cached.info.modified) > new Date(DATA.builtAt)) applyCSV(cached.text, cached.info, { silent: true });
+  } catch (e) { /* no cache */ }
+  if (await fetchServed({ quiet: true })) return;
+  const h = window.showOpenFilePicker ? await getHandle() : null;
+  if (h) {
+    try { if ((await h.queryPermission({ mode: "read" })) === "granted") await applyFile(await h.getFile(), { quiet: true }); } catch (e) { /* ask on next click */ }
+  }
+}
+setCountries(DATA.countries);
+document.getElementById("foot").textContent =
+  "Sources: leaders and parties from Wikipedia's list of current heads of state and government and news reports (Oct 2026); GDP is the IMF World Economic Outlook's latest nominal estimate. " +
+  "Leaning follows how mainstream references describe the ruling party: far-left covers communist one-party states and chavismo, far-right covers radical-right parties and theocracies. " +
+  "Regime type is a simplified judgement inspired by the EIU Democracy Index, V-Dem and Freedom House. Borders: Natural Earth.";
+tickClock(); setInterval(tickClock, 30000);
+buildPatterns();
+buildControls();
+buildMap();
+applyFilters();
+renderDataStatus();
+bootData();
+</script>
+</body>
+</html>

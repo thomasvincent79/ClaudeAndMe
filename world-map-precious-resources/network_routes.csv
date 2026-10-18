@@ -1,0 +1,113 @@
+# Links of the transport network: each row is a chain of node ids from network_nodes.csv, separated by spaces.
+# type: sea (shipping lane, usable by every seaborne flow, both directions), land (rail/road, e.g. rare-earth concentrates),
+#       pipeline (used only by flows that name it in their "via" column).
+# status (pipelines): active, halted, destroyed.  capacity: design capacity as text.  Pipeline names must match flows.csv exactly.
+type,name,resource,status,capacity,note,path
+sea,,,,,,p_IRQ g_N g_C g_E HORMUZ GOO AS
+sea,,,,,,p_KWT g_N
+sea,,,,,,p_IRN g_N
+sea,,,,,,p_SAU g_C
+sea,,,,,,p_QAT g_C
+sea,,,,,,p_ARE g_E
+sea,,,,,,p_ARE_F GOO
+sea,,,,,,p_OMN GOO
+sea,,,,,,p_OMN AS
+sea,,,,,,AS p_PAK
+sea,,,,,,AS p_IND
+sea,,,,,,AS IO1 SL AND MAL_N MALACCA p_SGP SCS_S SCS_M SCS_N LUZ TW_E ECS p_CHN
+sea,,,,,,SCS_N TWS ECS
+sea,,,,,,TWS p_TWN LUZ
+sea,,,,,,LUZ PHS KYU SHK IZU p_JPN
+sea,,,,,,PHS ECS
+sea,,,,,,p_CHN JEJU_E KS p_KOR
+sea,,,,,,JEJU_E KYU
+sea,,,,,,KS SOJ p_RUS_K
+sea,,,,,,SOJ LAP p_RUS_S KUR PAC_N BOSO p_JPN
+sea,,,,,,SCS_S p_MYS
+sea,,,,,,SCS_S p_MYS_B SCS_M
+sea,,,,,,SCS_S KARIM JAVA_N SUNDA SUNDA_S IO_AUS p_AUS_W
+sea,,,,,,p_AUS AUS_NW LOMBOK MAKASSAR CELEBES MIND_S PH_E PHS
+sea,,,,,,MAKASSAR p_IDN
+sea,,,,,,p_AUS_E CORAL SOL_E SOL_N PAC_W IZU
+sea,,,,,,PAC_W LUZ
+sea,,,,,,AS SOC GADEN BAM RS_S RS_M RS_N SUEZ PSAID
+sea,,,,,,RS_M p_SAU_W
+sea,,,,,,RS_N p_SUMED_S
+sea,,,,,,p_SUMED_N CRETE_SE
+sea,,,,,,p_SUMED_N PSAID
+sea,,,,,,PSAID CRETE_SE CRETE_S IONIAN MALTA_S SICILY_CH ALB_S ALM GIB CSV IB_W FIN USH CHAN DOVER p_GBR
+sea,,,,,,DOVER p_FRA
+sea,,,,,,DOVER p_BEL p_NLD
+sea,,,,,,DOVER NS_S p_NLD
+sea,,,,,,NS_S FRIS p_DEU
+sea,,,,,,NS_S NS_C NS_N p_NOR
+sea,,,,,,NS_C SKAG SKAW KATT DANISH BALT_SW BALT_S BALT_C BALT_N GOF p_RUS_P
+sea,,,,,,BALT_S p_POL
+sea,,,,,,NS_N NOR_SEA NCAPE BAR BAR_N KARA_N OB_N p_RUS_Y
+sea,,,,,,IB_W CANARY WAF2 WAF GG p_NGA
+sea,,,,,,GG p_AGO SAT_E CAPE
+sea,,,,,,CAPE SA_SE IO_S IO_SW IO_W AS
+sea,,,,,,IO_S IO_C SUM_W AND
+sea,,,,,,CAPE SATL p_BRA
+sea,,,,,,SATL SATL_N p_GUY VEN_E VEN_N p_VEN
+sea,,,,,,p_GUY ATL_M IB_W
+sea,,,,,,p_VEN CARIB_E YUC
+sea,,,,,,CARIB_E CARIB
+sea,,,,,,p_USA GOM FLS FLS_E ATL_W NA_C NA_E USH
+sea,,,,,,NA_E FIN
+sea,,,,,,GOM YUC CARIB PANAMA PAN_S PAC_E PAC_M PAC_JE IZU
+sea,,,,,,PAC_JE BOSO
+sea,,,,,,CARIB p_COL
+sea,,,,,,p_MEX GOM
+sea,,,,,,p_ECU MEX_W BAJA p_USA_W PAC_M
+sea,,,,,,CSV p_ESP GIB
+sea,,,,,,p_DZA ALM
+sea,,,,,,p_DZA ALB_S
+sea,,,,,,p_LBY IONIAN
+sea,,,,,,p_LBY MALTA_S
+sea,,,,,,IONIAN ADR1 ADR2 ADR3 p_ITA
+sea,,,,,,p_RUS_N BS_E BS_W BOSP MARM DARD AEG1 AEG2 AEG3 CRETE_E CRETE_SE
+sea,,,,,,MARM p_TUR
+sea,,,,,,p_TUR_C CYP_N RHO_S CRETE_SE
+sea,,,,,,PSAID RHO_S
+land,,ree,,,,MMR_KAC CN_KUN CN_GAN
+land,,ree,,,,LAO_N CN_KUN
+land,,ree,,,,USA_MP p_USA_W
+pipeline,Petroline (East-West),oil,active,5–7 mb/d,"Saudi Arabia's Hormuz bypass, from the Abqaiq hub to Yanbu on the Red Sea.",SAU_ABQ PL_SAU1 p_SAU_W
+pipeline,ADCOP,oil,active,1.5 mb/d,"Habshan–Fujairah line letting Abu Dhabi crude reach the Gulf of Oman without crossing Hormuz.",ARE_HAB p_ARE_F
+pipeline,SUMED,oil,active,2.5 mb/d,"Parallel to the Suez Canal: supertankers too deep for the canal unload here and reload on the Mediterranean side.",p_SUMED_S p_SUMED_N
+pipeline,ESPO,oil,active,1.6 mb/d,"Eastern Siberia–Pacific Ocean pipeline, Russia's main oil outlet to Asia, ending at the port of Kozmino.",RUS_TAI ES1 ESPO_SKO ES2 p_RUS_K
+pipeline,ESPO China spur,oil,active,0.6 mb/d,"Skovorodino–Mohe–Daqing branch feeding Chinese refineries directly.",ESPO_SKO CN_MOHE CN_DAQ
+pipeline,Druzhba (south),oil,active,about 0.25 mb/d in use,"Soviet-era 'Friendship' pipeline through Belarus and Ukraine; the southern leg still supplies Hungary and Slovakia under an EU exemption.",RUS_ALM DR1 DR_UNE DR_MOZ DR_BRO DR_UZH HUN_SZ
+pipeline,Druzhba (Slovakia),oil,active,,"Branch of the southern Druzhba to the Bratislava refinery.",DR_UZH SVK_BRA
+pipeline,Druzhba (north),oil,halted,1.2 mb/d,"Poland and Germany stopped buying Russian pipeline crude in early 2023 under the EU embargo; Schwedt now runs on other crude, including Kazakh oil.",DR_MOZ DR_ADZ POL_PL DEU_SCH
+pipeline,CPC,oil,active,1.5 mb/d,"Caspian Pipeline Consortium: carries about 80% of Kazakhstan's oil exports to the Russian Black Sea coast, then by tanker through the Turkish Straits.",KAZ_TEN CPC1 CPC2 p_RUS_N
+pipeline,BTC,oil,active,1.2 mb/d,"Baku–Tbilisi–Ceyhan: Azerbaijani crude to the Mediterranean while bypassing Russia.",AZE_SAN GEO_TBI TUR_ERZ BTC1 p_TUR_C
+pipeline,Canada-US crude pipelines,oil,active,about 4.5 mb/d,"Enbridge Mainline and Keystone carry oil-sands crude from Alberta to US Midwest and Gulf Coast refineries.",CAN_HAR PL_C1 PL_C2 US_CUS
+pipeline,Myanmar-China pipelines,oil gas,active,"0.44 mb/d oil, 12 bcm/yr gas","Twin pipelines from the Bay of Bengal to Kunming, letting China bypass the Strait of Malacca.",MMR_KYA MM1 MM2 CN_KUN
+pipeline,Nord Stream,gas,destroyed,110 bcm/yr (NS1 + NS2),"Direct Russia–Germany link under the Baltic. Flows stopped in August 2022; explosions on 26 September 2022 ruptured three of the four strings. Nord Stream 2 was never put into service.",RUS_VYB NS1 NS2 NS3 NS4 NS5 NS_BORN NS6 DEU_LUB
+pipeline,Yamal-Europe (Russia-Belarus),gas,active,,"Still supplies Belarus.",RUS_TOR YM1 BLR_NES
+pipeline,Yamal-Europe (Belarus-Germany),gas,halted,33 bcm/yr,"Halted in May 2022 after Russia sanctioned the Polish owner of the line; Poland now imports via Baltic Pipe and LNG.",BLR_NES POL_KON POL_WLO DEU_FO
+pipeline,Ukraine transit,gas,halted,about 40 bcm/yr in recent use,"Russian gas transit through Ukraine to Slovakia and Austria ended on 1 January 2025 when the transit contract expired. About 15 bcm/yr flowed in 2024.",RUS_SUD UA1 UA2 UA_UZH AUT_BAU
+pipeline,TurkStream,gas,active,31.5 bcm/yr,"Under the Black Sea to Turkish Thrace. Since 2025 it is the only route for Russian pipeline gas into the EU.",RUS_ANA TS1 TS2 TUR_KIY
+pipeline,Balkan Stream,gas,active,,"TurkStream's onward leg through Bulgaria and Serbia to Hungary.",TUR_KIY BGR1 BGR2 SRB_BEL HUN_KIS
+pipeline,Blue Stream,gas,active,16 bcm/yr,"Russia–Turkey line across the Black Sea to Samsun and Ankara.",RUS_BER BL1 TUR_SAM TUR_ANK
+pipeline,Power of Siberia,gas,active,38 bcm/yr,"Russia's first gas pipeline to China, at full capacity since late 2024. A second line through Mongolia is planned.",RUS_CHA PS1 RUS_BLA PS2 PS3 PS4 CN_SHA
+pipeline,Central Asia-China,gas,active,55 bcm/yr,"Turkmen gas across Uzbekistan and Kazakhstan, continuing east through China's West–East pipeline system.",TKM_GAL UZB_BUK KAZ_SHY CN_KHO CN_URU CN_LAN CN_XIA CN_WUH CN_SHA
+pipeline,Langeled,gas,active,26 bcm/yr,"Norway to England: about a fifth of UK gas demand.",NOR_NYH LG0 LG1 LG2 LG3 GBR_EAS
+pipeline,Europipe & Norpipe,gas,active,about 55 bcm/yr,"Norway's trunk lines to Germany. Norway became Europe's largest gas supplier after 2022.",NOR_KAR EP1 EP2 DEU_DOR
+pipeline,Franpipe,gas,active,19.6 bcm/yr,"Norway to Dunkirk.",NOR_KAR FP1 FP2 FRA_DUN
+pipeline,Zeepipe,gas,active,15 bcm/yr,"Norway to Zeebrugge.",NOR_KAR ZP1 ZP2 BEL_ZEE
+pipeline,Baltic Pipe,gas,active,10 bcm/yr,"Opened October 2022: Norwegian gas across Denmark to Poland, replacing Russian supply.",EP1 DNK_BLA DNK_FAX POL_NIE
+pipeline,Medgaz,gas,active,10.5 bcm/yr,"Algeria to Almería under the Alboran Sea. The Maghreb–Europe line through Morocco has been shut since 2021.",DZA_HRM MG1 DZA_BSF ESP_ALM
+pipeline,TransMed,gas,active,33.5 bcm/yr,"Algeria to Italy via Tunisia and Sicily.",DZA_HRM TM1 TUN_CB ITA_MAZ ITA_MES TM2 TM3 ITA_MIN
+pipeline,Greenstream,gas,active,8 bcm/yr,"Libya to Sicily.",LBY_MEL ITA_GEL
+pipeline,TANAP,gas,active,16 bcm/yr,"Trans-Anatolian pipeline, the core of the Southern Gas Corridor from Azerbaijan's Shah Deniz field.",AZE_SAN GEO_TBI TUR_ERZ TANAP1 TUR_ESK GRC_KIP
+pipeline,TAP,gas,active,10 bcm/yr,"Trans-Adriatic pipeline: TANAP's extension through Greece and Albania to southern Italy.",GRC_KIP GRC_THE ALB_FIE ITA_MEL
+pipeline,Dolphin,gas,active,33 bcm/yr,"Qatar to the UAE and Oman, the Gulf's only cross-border gas pipeline.",QAT_RL DOL1 ARE_TAW
+pipeline,EMG,gas,active,7 bcm/yr,"Israel's Leviathan and Tamar gas to Egypt, partly re-exported as LNG.",ISR_LEV ISR_ASH EGY_ARI
+pipeline,Iran-Turkey,gas,active,14 bcm/yr,"Tabriz–Ankara line; its 25-year supply contract was due to expire in July 2026.",IRN_TEH IRN_TAB IT1 TUR_ERZ TUR_ANK
+pipeline,Iran-Iraq,gas,active,,"Supplies Baghdad power plants; flows often cut by payment disputes and US sanctions waivers.",IRN_TEH II1 IRQ_BAG
+pipeline,Canada-US gas pipelines,gas,active,,"Dense network from Alberta to the US Midwest and West.",CAN_ALB CG1 CG2 US_CHI
+pipeline,US-Mexico gas pipelines,gas,active,,"Texas shale gas supplies about 70% of Mexico's gas use.",US_AGD MEX_MTY
+pipeline,GASBOL,gas,active,11 bcm/yr,"Bolivia–Brazil pipeline; Bolivian output is declining.",BOL_SCZ BR1 BRA_SPA

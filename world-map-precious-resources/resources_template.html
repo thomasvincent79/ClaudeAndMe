@@ -1,0 +1,1027 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>What Lies Beneath</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=IBM+Plex+Mono:wght@400;500;600&family=Public+Sans:wght@400;500;600&display=swap">
+<style>
+/* Companion to the "Who governs the world" dashboard: same night-time look, same map engine.
+   Resource picker and measure on top, one KPI tile per resource, the map with bubbles, trade routes,
+   pipelines and chokepoints, then the country table and the from → to flow table. */
+:root {
+  color-scheme: dark;
+  --bg: #080c13;
+  --panel: #0f1520;
+  --panel-2: #151d2b;
+  --line: rgba(255, 255, 255, .08);
+  --line-2: rgba(255, 255, 255, .16);
+  --ink: #eef2f8;
+  --ink-2: #aab4c4;
+  --muted: #6e798b;
+  --gold: #f4b942;
+  --warn: #ff5d4a;
+  --ocean-1: #13233a;
+  --ocean-2: #0b1524;
+  --grat: rgba(255, 255, 255, .05);
+  --border-map: rgba(6, 9, 14, .85);
+  --land: #1f2938;
+  --off: #141b27;
+  --off-line: #1d2533;
+  --pipe: #c9d2e0;
+  /* one hue per resource */
+  --r-oil: #f2994a;
+  --r-gas: #3fb6e8;
+  --r-ree: #b78cff;
+  --f-display: "Bricolage Grotesque", "Arial Narrow", system-ui, sans-serif;
+  --f-body: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { background: var(--bg); }
+body {
+  margin: 0; color: var(--ink); font: 15px/1.5 var(--f-body);
+  background:
+    radial-gradient(1000px 500px at 8% -8%, rgba(242, 153, 74, .15), transparent 60%),
+    radial-gradient(900px 480px at 55% -12%, rgba(63, 182, 232, .12), transparent 60%),
+    radial-gradient(1000px 500px at 96% -6%, rgba(183, 140, 255, .15), transparent 60%),
+    var(--bg);
+  background-repeat: no-repeat;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 26px 56px;
+}
+.wrap { max-width: 1360px; margin: 0 auto; display: grid; gap: 26px; }
+.mono { font-family: var(--f-mono); }
+.eyebrow { font: 500 12px var(--f-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-2); display: flex; flex-wrap: wrap; gap: 6px 18px; }
+
+/* Hero */
+.hero { display: grid; gap: 18px; }
+h1 { font: 800 clamp(44px, 8vw, 104px)/.9 var(--f-display); letter-spacing: -.035em; margin: 0; text-wrap: balance; font-variation-settings: "opsz" 96; }
+h1 .grad { background: linear-gradient(90deg, var(--r-oil), var(--r-gas) 55%, var(--r-ree)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.lede { color: var(--ink-2); max-width: 74ch; margin: 0; font-size: 16px; }
+h2 { font: 700 26px/1.1 var(--f-display); letter-spacing: -.02em; margin: 0; text-wrap: balance; }
+.section-label { font: 500 11.5px var(--f-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+
+/* Resource picker */
+.picker { display: grid; gap: 10px; }
+.picker-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 10px 20px; }
+.res-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.res {
+  --c: var(--ink-2);
+  position: relative; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 4px 14px; text-align: left;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; color: var(--ink); font: inherit; cursor: pointer;
+  transition: border-color .2s, background .2s, opacity .2s, transform .2s;
+}
+.res:hover { transform: translateY(-2px); border-color: var(--line-2); }
+.res .ico { width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center; background: color-mix(in srgb, var(--c) 18%, transparent); color: var(--c); grid-row: span 2; }
+.res .ico svg { width: 22px; height: 22px; }
+.res .nm { font: 700 18px/1.1 var(--f-display); }
+.res .tot { font: 500 12px var(--f-mono); color: var(--muted); grid-column: 2; }
+.res .check { grid-row: 1 / span 2; grid-column: 3; width: 22px; height: 22px; border-radius: 6px; border: 1.5px solid var(--line-2); display: grid; place-items: center; transition: background .2s, border-color .2s; }
+.res .check svg { width: 14px; height: 14px; opacity: 0; color: var(--bg); }
+.res[aria-pressed="true"] { border-color: var(--c); background: color-mix(in srgb, var(--c) 9%, var(--panel)); }
+.res[aria-pressed="true"] .check { background: var(--c); border-color: var(--c); }
+.res[aria-pressed="true"] .check svg { opacity: 1; }
+.res[aria-pressed="false"] { opacity: .55; }
+
+/* segmented control & tabs */
+.seg { display: flex; flex-wrap: wrap; gap: 4px; background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 4px; width: fit-content; max-width: 100%; }
+.seg button { border: 0; background: transparent; color: var(--ink-2); font: 600 13px var(--f-body); padding: 8px 14px; border-radius: 9px; cursor: pointer; transition: background .2s, color .2s; }
+.seg button:hover { color: var(--ink); background: var(--panel-2); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+:is(.res, .seg button, button, input, th, tr.click):focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+/* KPI tiles */
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+.kpi { --c: var(--ink); background: linear-gradient(180deg, var(--panel-2), var(--panel)); border: 1px solid var(--line); border-top: 3px solid var(--c); border-radius: 14px; padding: 16px 20px 18px; display: grid; gap: 6px; min-width: 0; }
+.kpi .label { font: 500 11.5px var(--f-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.kpi .value { font: 800 46px/1 var(--f-display); letter-spacing: -.03em; font-variation-settings: "opsz" 96; color: var(--c); }
+.kpi .value small { font: 500 15px var(--f-body); color: var(--ink-2); letter-spacing: 0; margin-left: 6px; }
+.kpi .sub { font-size: 13px; color: var(--ink-2); }
+.kpi .sub b { color: var(--ink); font-weight: 600; }
+.stack { display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: var(--line); margin-top: 6px; }
+.stack span { height: 100%; background: var(--c); border-right: 2px solid var(--panel); }
+.stack span:nth-child(2) { opacity: .8; } .stack span:nth-child(3) { opacity: .62; } .stack span:nth-child(4) { opacity: .48; } .stack span:nth-child(5) { opacity: .36; }
+.stack-legend { display: flex; flex-wrap: wrap; gap: 2px 12px; font-size: 12px; color: var(--muted); }
+.stack-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.stack-legend b { color: var(--ink-2); font: 500 12px var(--f-mono); }
+
+/* Panels */
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 20px; display: grid; gap: 16px; min-width: 0; }
+.panel-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 12px; }
+.panel-head p { margin: 4px 0 0; color: var(--ink-2); font-size: 13.5px; max-width: 80ch; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; justify-content: space-between; }
+.toggles { display: flex; flex-wrap: wrap; gap: 6px 16px; }
+.tgl { display: inline-flex; align-items: center; gap: 8px; font: 500 13px var(--f-body); color: var(--ink-2); cursor: pointer; user-select: none; }
+.tgl input { appearance: none; width: 30px; height: 18px; border-radius: 9px; background: var(--line-2); position: relative; cursor: pointer; transition: background .2s; margin: 0; }
+.tgl input::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--ink); transition: transform .2s; }
+.tgl input:checked { background: var(--gold); }
+.tgl input:checked::after { transform: translateX(12px); background: var(--bg); }
+.chk-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 8px; font: 500 13px var(--f-body); color: var(--ink);
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px 5px 10px; cursor: pointer;
+  transition: opacity .25s, border-color .2s, background .2s, box-shadow .2s;
+}
+.chip::before { content: ""; width: 8px; height: 8px; background: var(--gold); transform: rotate(45deg); flex: none; }
+.chip:hover { border-color: var(--line-2); }
+.chip .count { font: 500 11.5px var(--f-mono); color: var(--muted); }
+.chips.has-sel .chip[aria-pressed="false"] { opacity: .45; }
+.chip[aria-pressed="true"] { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold) inset; background: color-mix(in srgb, var(--gold) 14%, transparent); }
+.chip:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.focusbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; background: color-mix(in srgb, var(--gold) 10%, var(--panel)); border: 1px solid color-mix(in srgb, var(--gold) 45%, transparent); border-radius: 12px; padding: 9px 12px 9px 14px; font-size: 13.5px; }
+.focusbar b { font-weight: 600; }
+.focusbar .stats { color: var(--ink-2); font: 500 12.5px var(--f-mono); }
+.focusbar button { margin-left: auto; border: 1px solid var(--line-2); background: var(--panel); color: var(--ink); font: 600 12.5px var(--f-body); border-radius: 999px; padding: 5px 12px; cursor: pointer; }
+
+/* Map */
+.map-box { position: relative; border-radius: 14px; overflow: hidden; background: radial-gradient(ellipse at 50% 45%, #101d31 0%, var(--panel) 75%); }
+#map { display: block; width: 100%; height: auto; cursor: grab; touch-action: none; user-select: none; }
+#map.dragging { cursor: grabbing; }
+#map .country { stroke: var(--border-map); stroke-width: .5; vector-effect: non-scaling-stroke; transition: fill .45s ease; cursor: pointer; }
+#map .country.off { fill: var(--off); stroke: var(--off-line); }
+#map .country.hover { stroke: #fff; stroke-width: 1.4; }
+#map .country.focus { stroke: var(--gold); stroke-width: 1.8; }
+#map .bub { stroke-width: 1.1; vector-effect: non-scaling-stroke; fill-opacity: .4; transition: opacity .35s, fill-opacity .35s; cursor: pointer; }
+#map.with-flows .bub { fill-opacity: .16; stroke-opacity: .55; }
+#map .bub.off { opacity: 0; pointer-events: none; }
+#map .bub.hover { fill-opacity: .7; stroke: #fff; }
+#map .flow, #map .pipe { fill: none; vector-effect: non-scaling-stroke; stroke-linecap: round; stroke-linejoin: round; transition: opacity .35s; }
+#map .flow.base { stroke-opacity: .5; }
+#map .flow.dash { stroke: #fff; stroke-opacity: .7; stroke-width: 1.2; stroke-dasharray: 1.5 9; animation: flow 1.4s linear infinite; pointer-events: none; }
+#map .flow.stopped.base { stroke-dasharray: 5 5; stroke-opacity: .5; }
+#map .flow.hit { stroke: transparent; stroke-width: 10; cursor: pointer; }
+#map .fg.dim { opacity: .07; }
+#map .fg.dim .hit { pointer-events: none; }
+#map .fg.hover .base { stroke-opacity: .95; }
+#map .fg.focus .base { stroke-opacity: .9; }
+@keyframes flow { to { stroke-dashoffset: -10.5; } }
+#map .pipe.line { stroke-width: 1.4; stroke-opacity: .55; }
+#map .pipe.halted { stroke: var(--muted) !important; stroke-dasharray: 3 3; stroke-opacity: .8; }
+#map .pipe.destroyed { stroke: var(--warn) !important; stroke-dasharray: 3 3; stroke-opacity: .9; }
+#map .pipe.hit { stroke: transparent; stroke-width: 8; cursor: pointer; }
+#map .pg.hover .line, #map .pg.focus .line { stroke-opacity: 1; stroke-width: 2.4; }
+#map .chk { cursor: pointer; }
+#map .chk rect { fill: var(--gold); stroke: var(--bg); vector-effect: non-scaling-stroke; stroke-width: 1.2; }
+#map .chk text { fill: var(--ink); font-family: var(--f-body); font-weight: 600; paint-order: stroke; stroke: rgba(8,12,19,.85); stroke-linejoin: round; pointer-events: none; }
+#map .chk.hover rect, #map .chk.focus rect { fill: #fff; }
+#map .chk.dim { opacity: .3; }
+#map .dmg path { stroke: var(--warn); vector-effect: non-scaling-stroke; stroke-width: 2.2; stroke-linecap: round; }
+#map .dmg circle { fill: rgba(255,93,74,.18); stroke: var(--warn); vector-effect: non-scaling-stroke; stroke-width: 1; }
+#map .layer-off { display: none; }
+.zoom { position: absolute; right: 12px; top: 12px; display: grid; gap: 6px; }
+.zoom button { width: 34px; height: 34px; border-radius: 9px; border: 1px solid var(--line-2); background: rgba(15, 21, 32, .8); color: var(--ink); font: 600 17px var(--f-body); cursor: pointer; backdrop-filter: blur(6px); }
+.zoom button:hover { background: var(--panel-2); }
+.map-status { position: absolute; left: 14px; top: 12px; font: 600 13px var(--f-body); color: var(--ink); background: rgba(8, 12, 19, .7); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; backdrop-filter: blur(6px); pointer-events: none; }
+.legend { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 26px; font-size: 12.5px; color: var(--ink-2); }
+.legend .item { display: inline-flex; align-items: center; gap: 8px; }
+.legend svg { display: block; overflow: visible; }
+.legend .t { font: 500 10.5px var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+
+/* Tooltip */
+.tt { position: fixed; z-index: 10; pointer-events: none; width: min(350px, calc(100vw - 24px)); background: rgba(17, 24, 36, .94); color: var(--ink); border: 1px solid var(--line-2); border-radius: 14px; box-shadow: 0 18px 50px rgba(0, 0, 0, .55); padding: 14px 16px; font-size: 13px; line-height: 1.4; backdrop-filter: blur(12px); }
+.tt h3 { margin: 0; font: 800 21px/1.1 var(--f-display); letter-spacing: -.02em; display: flex; align-items: center; gap: 10px; }
+.tt h3 .flag { width: 28px; height: 21px; }
+.tt .cont { font-size: 12px; color: var(--muted); margin-top: 3px; }
+.tt .rows { display: grid; gap: 10px; margin-top: 12px; }
+.tt .r { --c: var(--ink); display: grid; gap: 3px; }
+.tt .r .k { font: 500 11px var(--f-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--c); }
+.tt .r dl { display: grid; grid-template-columns: auto 1fr auto; gap: 1px 10px; margin: 0; font-size: 12.5px; }
+.tt .r dt { color: var(--muted); }
+.tt .r dd { margin: 0; font-family: var(--f-mono); text-align: right; }
+.tt .r dd.p { color: var(--ink-2); }
+.tt .r dt.on, .tt .r dd.on { color: var(--ink); font-weight: 600; }
+.tt .partners { font-size: 12px; color: var(--ink-2); }
+.tt .none { color: var(--muted); }
+.tt .note { margin-top: 10px; color: var(--ink-2); font-size: 12px; border-top: 1px solid var(--line); padding-top: 8px; }
+.tt .big { font: 700 15px var(--f-mono); }
+.tt .hint { margin-top: 8px; font-size: 11.5px; color: var(--muted); }
+.tt .route { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin-top: 8px; font-size: 12px; color: var(--ink-2); }
+.pill { display: inline-flex; align-items: center; gap: 5px; font: 600 11.5px var(--f-body); padding: 2px 9px; border-radius: 999px; background: rgba(255,255,255,.07); color: var(--ink); white-space: nowrap; }
+.pill.chk::before { content: ""; width: 7px; height: 7px; background: var(--gold); transform: rotate(45deg); }
+.pill.pipe::before { content: ""; width: 10px; height: 2px; background: var(--pipe); border-radius: 1px; }
+.pill.stopped { background: rgba(255,93,74,.15); color: #ff9c8f; }
+.pill.halted { background: rgba(110,121,139,.2); color: var(--ink-2); }
+.pill.active { background: rgba(63,207,142,.13); color: #6fe0ad; }
+
+/* Tables */
+.search { font: 14px var(--f-body); color: var(--ink); background: var(--bg); border: 1px solid var(--line-2); border-radius: 10px; padding: 9px 14px; width: min(320px, 100%); }
+.search::placeholder { color: var(--muted); }
+.table-scroll { overflow: auto; border: 1px solid var(--line); border-radius: 14px; max-height: 720px; }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+thead th { position: sticky; top: 0; z-index: 1; background: var(--panel-2); font: 500 11px var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+thead tr.grp th { color: var(--c, var(--muted)); border-bottom: 0; padding-bottom: 2px; }
+thead tr.cols th.under-grp { top: 27px; }
+th[data-sort] { cursor: pointer; }
+th[data-sort]:hover { color: var(--ink); }
+th .arrow { color: var(--gold); }
+th.res-start, td.res-start { border-left: 1px solid var(--line); }
+tbody tr { transition: background .2s; }
+tbody tr.click { cursor: pointer; }
+tbody tr:hover { background: rgba(255,255,255,.035); }
+tbody tr.sel { background: color-mix(in srgb, var(--gold) 9%, transparent); }
+tbody tr.stopped td { color: var(--muted); }
+tfoot td { position: sticky; bottom: 0; background: var(--panel-2); font-weight: 600; border-top: 1px solid var(--line-2); border-bottom: 0; }
+td.num, th.num { text-align: right; white-space: nowrap; }
+td.num { font-family: var(--f-mono); }
+td.rank { font: 500 12px var(--f-mono); color: var(--muted); width: 44px; }
+td.dim { color: var(--muted); }
+.cname { display: flex; align-items: center; gap: 10px; font-weight: 600; white-space: nowrap; }
+.cname small { display: block; font: 500 11px var(--f-mono); color: var(--muted); letter-spacing: .04em; }
+.flag { width: 22px; height: 16.5px; border-radius: 3px; object-fit: cover; flex: none; box-shadow: 0 0 0 1px rgba(255,255,255,.14); background: var(--panel-2); }
+.share { display: grid; grid-template-columns: 90px auto; align-items: center; gap: 10px; justify-content: end; }
+.bar { height: 7px; border-radius: 4px; background: var(--line); overflow: hidden; }
+.bar > span { display: block; height: 100%; border-radius: 4px; background: var(--c); }
+.share .pct { font: 600 13px var(--f-mono); min-width: 52px; text-align: right; }
+.route-mode .share { grid-template-columns: auto 70px auto; }
+.rdot { display: inline-flex; align-items: center; gap: 7px; font-weight: 600; white-space: nowrap; }
+.rdot::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--c); }
+.arrow-cell { color: var(--muted); width: 18px; padding-inline: 0; text-align: center; }
+.route-cell { display: flex; flex-wrap: wrap; gap: 4px; min-width: 220px; }
+.mode { color: var(--ink-2); white-space: nowrap; font-size: 12.5px; }
+.empty { text-align: center; color: var(--muted); padding: 40px; }
+.foot { color: var(--muted); font-size: 12px; margin: 0; max-width: 130ch; }
+
+@media (max-width: 760px) {
+  .res-row { grid-template-columns: 1fr; }
+  .map-status { display: none; }
+  .share { grid-template-columns: 50px auto; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before { animation: none !important; transition: none !important; } #map .flow.dash { display: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <div class="eyebrow"><span>Strategic resources atlas</span><span id="snapshot"></span></div>
+    <h1>What lies <span class="grad">beneath</span></h1>
+    <p class="lede">Where the world's oil, natural gas and rare-earth elements lie, who sells them, who buys them, and which straits and pipelines they must pass through on the way. Pick the resources and the measure to compare, then follow the routes on the map.</p>
+    <div class="picker">
+      <div class="picker-head">
+        <span class="section-label">Resources shown · click to toggle</span>
+        <div class="seg" id="metric" role="group" aria-label="Measure">
+          <button type="button" data-v="reserves" aria-pressed="true">Reserves</button>
+          <button type="button" data-v="exports" aria-pressed="false">Exports</button>
+          <button type="button" data-v="imports" aria-pressed="false">Imports</button>
+        </div>
+      </div>
+      <div class="res-row" id="picker" role="group" aria-label="Resources"></div>
+    </div>
+  </header>
+
+  <section class="kpis" id="kpis" aria-label="Key figures"></section>
+
+  <section class="panel" aria-labelledby="map-title">
+    <div class="panel-head">
+      <div>
+        <h2 id="map-title">The map · reserves, routes and chokepoints</h2>
+        <p>Bubble area is a country's share of the world total for the selected measure. Lines are the main trade flows, thicker for bigger volumes, with moving dashes showing the direction. Gold diamonds are strategic chokepoints. Hover over anything for details, and click a country, flow, pipeline or chokepoint to isolate the trade passing through it.</p>
+      </div>
+    </div>
+    <div class="toolbar">
+      <div class="seg" id="f-cont" role="group" aria-label="Continent"></div>
+      <div class="toggles">
+        <label class="tgl"><input type="checkbox" id="l-flows" checked>Trade flows</label>
+        <label class="tgl"><input type="checkbox" id="l-infra" checked>Pipelines &amp; chokepoints</label>
+        <label class="tgl"><input type="checkbox" id="l-stopped" checked>Stopped routes</label>
+      </div>
+    </div>
+    <div class="chk-row">
+      <span class="section-label">Filter by chokepoint</span>
+      <div class="chips" id="f-chk" role="group" aria-label="Chokepoints"></div>
+    </div>
+    <div class="focusbar" id="focusbar" hidden></div>
+    <div class="map-box">
+      <svg id="map" role="img" aria-label="World map of reserves, trade flows, pipelines and chokepoints for the selected resources"></svg>
+      <div class="map-status" id="map-status"></div>
+      <div class="zoom">
+        <button type="button" id="zin" aria-label="Zoom in">+</button>
+        <button type="button" id="zout" aria-label="Zoom out">−</button>
+        <button type="button" id="zreset" aria-label="Reset view">⟲</button>
+      </div>
+    </div>
+    <div class="legend" id="legend"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="table-title">
+    <div class="panel-head">
+      <div>
+        <h2 id="table-title">By country</h2>
+        <p id="table-sub"></p>
+      </div>
+      <input class="search" id="q" type="search" placeholder="Search a country" aria-label="Search the country table">
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead id="thead"></thead>
+        <tbody id="rows"></tbody>
+        <tfoot id="tfoot"></tfoot>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="flows-title">
+    <div class="panel-head">
+      <div>
+        <h2 id="flows-title">Trade flows · from → to</h2>
+        <p>The main bilateral flows, with the chokepoints and pipelines each one passes through. The share is that flow's part of world exports of the resource. Click a row to show it on the map.</p>
+      </div>
+      <input class="search" id="fq" type="search" placeholder="Search a country, strait or pipeline" aria-label="Search the trade flows">
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead id="fhead"></thead>
+        <tbody id="frows"></tbody>
+      </table>
+    </div>
+    <p class="foot" id="foot"></p>
+  </section>
+</div>
+
+<div class="tt" id="tt" hidden></div>
+
+<script>
+const DATA = /*__DATA__*/null;
+
+const ICONS = {
+  oil: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c3 4.2 6 7.6 6 11a6 6 0 0 1-12 0c0-3.4 3-6.8 6-11z"/></svg>`,
+  gas: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c-3.9 0-6-2.6-6-5.6 0-3.7 3.4-5.4 3.6-9.4 2.6 1.6 3.7 4 3.6 6.3 1-.6 1.7-1.9 1.9-3.3 1.8 1.6 2.9 3.8 2.9 6.2 0 3.3-2.1 5.8-6 5.8z"/></svg>`,
+  ree: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5l8 4.6v9.8l-8 4.6-8-4.6V7.1z"/><path d="M12 12l8-4.9M12 12L4 7.1M12 12v9.5"/></svg>`,
+};
+const CHECK = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 8.5l3 3 6-7"/></svg>`;
+const METRICS = { reserves: "Reserves", exports: "Exports", imports: "Imports" };
+const RES = [
+  { id: "oil", name: "Crude oil", short: "Oil", color: "var(--r-oil)",
+    col: { reserves: "oil_bbn", exports: "oil_exp_mbd", imports: "oil_imp_mbd" },
+    unit: { reserves: "bn bbl", exports: "mb/d", imports: "mb/d" },
+    long: { reserves: "bn barrels", exports: "million barrels a day", imports: "million barrels a day" } },
+  { id: "gas", name: "Natural gas", short: "Gas", color: "var(--r-gas)",
+    col: { reserves: "gas_tcm", exports: "gas_exp_bcm", imports: "gas_imp_bcm" },
+    unit: { reserves: "tcm", exports: "bcm/yr", imports: "bcm/yr" },
+    long: { reserves: "trillion m³", exports: "billion m³ a year", imports: "billion m³ a year" } },
+  { id: "ree", name: "Rare-earth elements", short: "Rare earths", color: "var(--r-ree)",
+    col: { reserves: "ree_kt", exports: "ree_exp_kt", imports: "ree_imp_kt" },
+    unit: { reserves: "kt REO", exports: "kt/yr", imports: "kt/yr" },
+    long: { reserves: "kt of oxide", exports: "kt of oxide a year", imports: "kt of oxide a year" } },
+];
+const RES_BY_ID = Object.fromEntries(RES.map(r => [r.id, r]));
+const CONTINENTS = ["Africa", "Asia", "Europe", "North & Central America", "South America", "Oceania"];
+const NS = "http://www.w3.org/2000/svg";
+const FLAG_CDN = "https://cdn.jsdelivr.net/npm/flag-icons@7.2.3/flags/4x3/";
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const esc = s => String(s ?? "").replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
+const pctTxt = p => p >= 10 ? `${p.toFixed(1)}%` : p >= 0.1 ? `${p.toFixed(2)}%` : p > 0 ? "<0.1%" : "0%";
+const fmt = v => v >= 100 ? Math.round(v).toLocaleString("en-GB") : (+v.toFixed(v >= 10 ? 1 : 2)).toLocaleString("en-GB", { maximumFractionDigits: 2 });
+const flag = (a2, cls = "flag") => a2 ? `<img class="${cls}" src="${FLAG_CDN}${a2}.svg" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : "";
+
+/* ---------- data ---------- */
+const countries = DATA.countries;
+const byIso = Object.fromEntries(countries.map(c => [c.iso3, c]));
+const WORLD = {}, RANK = {};
+for (const r of RES) {
+  WORLD[r.id] = {}; RANK[r.id] = {};
+  for (const m in METRICS) {
+    const col = r.col[m];
+    WORLD[r.id][m] = countries.reduce((a, c) => a + (c[col] || 0), 0);
+    RANK[r.id][m] = {};
+    countries.filter(c => c[col]).sort((a, b) => b[col] - a[col]).forEach((c, i) => RANK[r.id][m][c.iso3] = i + 1);
+  }
+}
+const val = (c, r, m = sel.metric) => c[r.col[m]] || 0;
+const share = (c, r, m = sel.metric) => WORLD[r.id][m] ? val(c, r, m) / WORLD[r.id][m] * 100 : 0;
+const flows = DATA.flows.map((f, i) => ({ ...f, i, r: RES_BY_ID[f.res] }));
+const flowShare = f => f.v / WORLD[f.res].exports * 100;
+const CHK = Object.fromEntries(DATA.chokepoints.map(c => [c.id, c]));
+const PIPE = Object.fromEntries(DATA.pipelines.map(p => [p.name, p]));
+const MAXV = {};
+for (const r of RES) MAXV[r.id] = Math.max(...flows.filter(f => f.res === r.id && f.status !== "stopped").map(f => f.v), 1);
+
+/* ---------- state ---------- */
+const STORE = "lies-beneath-v2";
+const sel = { res: new Set(RES.map(r => r.id)), metric: "reserves", cont: "", focus: null,
+  layers: { flows: true, infra: true, stopped: true } };
+try {
+  const saved = JSON.parse(localStorage.getItem(STORE) || "null");
+  if (saved?.res?.length) sel.res = new Set(saved.res.filter(id => RES_BY_ID[id]));
+  if (!sel.res.size) sel.res = new Set(RES.map(r => r.id));
+  if (METRICS[saved?.metric]) sel.metric = saved.metric;
+  if (saved?.layers) Object.assign(sel.layers, saved.layers);
+} catch (e) { /* storage unavailable */ }
+const save = () => { try { localStorage.setItem(STORE, JSON.stringify({ res: [...sel.res], metric: sel.metric, layers: sel.layers })); } catch (e) { /* storage unavailable */ } };
+const active = () => RES.filter(r => sel.res.has(r.id));
+const holds = c => active().some(r => val(c, r));
+const inCont = cont => !sel.cont || sel.cont === cont;
+const sameFocus = (t, id) => sel.focus && sel.focus.t === t && sel.focus.id === id;
+
+function flowVisible(f) {   // drawn at all
+  return sel.res.has(f.res) && (sel.layers.stopped || f.status !== "stopped");
+}
+function flowMatch(f) {     // highlighted (not dimmed)
+  if (!flowVisible(f)) return false;
+  if (sel.cont && !(byIso[f.from]?.continent === sel.cont || byIso[f.to]?.continent === sel.cont)) return false;
+  const fc = sel.focus;
+  if (!fc) return true;
+  if (fc.t === "country") return f.from === fc.id || f.to === fc.id;
+  if (fc.t === "chk") return f.chk.includes(fc.id);
+  if (fc.t === "pipe") return f.pipes.includes(fc.id);
+  if (fc.t === "flow") return f.i === fc.id;
+  return true;
+}
+function setFocus(t, id) {
+  sel.focus = sameFocus(t, id) || t == null ? null : { t, id };
+  if (sel.focus && !sel.layers.flows) { sel.layers.flows = true; document.getElementById("l-flows").checked = true; }
+  apply();
+}
+
+/* ---------- picker & measure ---------- */
+function buildPicker() {
+  const host = document.getElementById("picker");
+  host.innerHTML = RES.map(r => `
+    <button type="button" class="res" data-id="${r.id}" style="--c:${r.color}" aria-pressed="${sel.res.has(r.id)}">
+      <span class="ico">${ICONS[r.id]}</span>
+      <span class="nm">${r.name}</span>
+      <span class="tot"></span>
+      <span class="check">${CHECK}</span>
+    </button>`).join("");
+  host.addEventListener("click", e => {
+    const b = e.target.closest(".res"); if (!b) return;
+    const id = b.dataset.id;
+    if (sel.res.has(id)) { if (sel.res.size > 1) sel.res.delete(id); } else sel.res.add(id);
+    save(); apply();
+  });
+  document.getElementById("metric").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    sel.metric = b.dataset.v; save(); apply();
+  });
+}
+function bigNum(r, m, v) {
+  if (r.id === "ree" && m === "reserves") return [(v / 1000).toFixed(0), "Mt of oxide"];
+  return [v >= 100 ? Math.round(v).toLocaleString("en-GB") : v.toFixed(v >= 10 ? 0 : 1), r.long[m]];
+}
+function syncPicker() {
+  document.querySelectorAll("#picker .res").forEach(b => {
+    const on = sel.res.has(b.dataset.id), r = RES_BY_ID[b.dataset.id];
+    b.setAttribute("aria-pressed", on);
+    b.title = on && sel.res.size === 1 ? "At least one resource stays selected" : "";
+    const [n, u] = bigNum(r, sel.metric, WORLD[r.id][sel.metric]);
+    b.querySelector(".tot").textContent = `World ${METRICS[sel.metric].toLowerCase()} · ${n} ${u}`;
+  });
+  document.querySelectorAll("#metric button").forEach(b => b.setAttribute("aria-pressed", b.dataset.v === sel.metric));
+}
+
+/* ---------- route filter: a chokepoint or pipeline is selected ---------- */
+const routeFocus = () => sel.focus && (sel.focus.t === "chk" || sel.focus.t === "pipe") ? sel.focus : null;
+const routeName = fc => fc.t === "chk" ? CHK[fc.id].label : `the ${fc.id} pipeline`;
+const passing = () => flows.filter(f => flowMatch(f) && f.status !== "stopped");
+function passBy(list, r, key) {   // volume per country sent (key "from") or received (key "to") through the route
+  const out = {};
+  for (const f of list) if (f.res === r.id) out[f[key]] = (out[f[key]] || 0) + f.v;
+  return out;
+}
+
+/* ---------- KPIs ---------- */
+function buildRouteKPIs(fc) {
+  const list = passing();
+  document.getElementById("kpis").innerHTML = active().map(r => {
+    const fs = list.filter(f => f.res === r.id);
+    const total = fs.reduce((a, f) => a + f.v, 0);
+    const sent = Object.entries(passBy(fs, r, "from")).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    const pc = v => total ? v / total * 100 : 0;
+    return `<div class="kpi" style="--c:${r.color}">
+      <span class="label">${r.name} · through ${esc(fc.t === "chk" ? CHK[fc.id].label : fc.id)}</span>
+      <span class="value">${fmt(total)}<small>${r.long.exports}</small></span>
+      <span class="sub">${fs.length ? `<b>${pctTxt(total / WORLD[r.id].exports * 100)}</b> of world exports · ${fs.length} mapped flow${fs.length > 1 ? "s" : ""} · main senders:` : "No mapped flow of this resource passes here."}</span>
+      <div class="stack" aria-hidden="true">${sent.map(([iso, v]) => `<span style="width:${pc(v)}%" title="${esc(byIso[iso].country)} ${pctTxt(pc(v))}"></span>`).join("")}</div>
+      <div class="stack-legend">${sent.map(([iso, v]) => `<span>${flag(byIso[iso].a2)}${esc(byIso[iso].country)} <b>${pctTxt(pc(v))}</b></span>`).join("")}</div>
+    </div>`;
+  }).join("");
+}
+function buildKPIs() {
+  const fc = routeFocus();
+  if (fc) return buildRouteKPIs(fc);
+  const m = sel.metric, verb = { reserves: "hold", exports: "supply", imports: "take" }[m];
+  document.getElementById("kpis").innerHTML = active().map(r => {
+    const list = countries.filter(c => val(c, r) && inCont(c.continent)).sort((a, b) => val(b, r) - val(a, r));
+    const total = list.reduce((a, c) => a + val(c, r), 0);
+    const top = list.slice(0, 5);
+    const top5 = top.reduce((a, c) => a + share(c, r), 0);
+    const [n, u] = bigNum(r, m, WORLD[r.id][m]);
+    const head = sel.cont
+      ? `<span class="value">${pctTxt(total / (WORLD[r.id][m] || 1) * 100)}<small>of world ${METRICS[m].toLowerCase()}</small></span>
+         <span class="sub"><b>${esc(sel.cont)}</b> · ${fmt(total)} ${r.unit[m]} across ${list.length} countries</span>`
+      : `<span class="value">${n}<small>${u}</small></span>
+         <span class="sub">World ${METRICS[m].toLowerCase()} · ${list.length} countries · top 5 ${verb} <b>${top5.toFixed(0)}%</b></span>`;
+    return `<div class="kpi" style="--c:${r.color}">
+      <span class="label">${r.name} · ${METRICS[m]}</span>${head}
+      <div class="stack" aria-hidden="true">${top.map(c => `<span style="width:${share(c, r)}%" title="${esc(c.country)} ${pctTxt(share(c, r))}"></span>`).join("")}</div>
+      <div class="stack-legend">${top.map(c => `<span>${flag(c.a2)}${esc(c.country)} <b>${pctTxt(share(c, r))}</b></span>`).join("")}</div>
+    </div>`;
+  }).join("");
+}
+
+/* ---------- map ---------- */
+const svg = document.getElementById("map");
+const [VX, VY, VW, VH] = DATA.viewBox;
+let view = { x: VX, y: VY, w: VW, h: VH };
+const shapes = [], bubbles = [], flowEls = [], pipeEls = [], chkEls = [], dmgEls = [];
+const BUB_K = 5.2;               // radius (map units) for a 1% share; area grows with share
+const bubR = pct => Math.max(1.1, BUB_K * Math.sqrt(pct));
+const flowW = f => 1 + 7 * Math.sqrt(f.v / MAXV[f.res]);
+let gFlows, gPipes, gChk;
+
+function el(tag, attrs, parent) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function onHover(target, enter, leave, click) {
+  target.addEventListener("pointerenter", e => { if (!(drag && dragMoved)) { enter(e); } });
+  target.addEventListener("pointermove", moveTip);
+  target.addEventListener("pointerleave", () => { leave(); hideTip(); });
+  target.addEventListener("click", e => { if (!dragMoved) click(e); });
+}
+function buildMap() {
+  svg.setAttribute("viewBox", DATA.viewBox.join(" "));
+  const defs = el("defs", {}, svg);
+  defs.innerHTML = `<radialGradient id="ocean" cx="50%" cy="45%" r="65%"><stop offset="0" stop-color="var(--ocean-1)"/><stop offset="1" stop-color="var(--ocean-2)"/></radialGradient>`;
+  el("path", { d: DATA.sphere, fill: "url(#ocean)" }, svg);
+  el("path", { d: DATA.graticule, fill: "none", stroke: "var(--grat)", "stroke-width": .7, "vector-effect": "non-scaling-stroke" }, svg);
+  const gBase = el("g", {}, svg), gBub = el("g", {}, svg);
+  gPipes = el("g", {}, svg); gFlows = el("g", {}, svg); gChk = el("g", {}, svg);
+
+  DATA.features.forEach(f => {
+    const p = el("path", { d: f.d, class: "country", fill: "var(--land)" }, gBase);
+    const s = { el: p, feat: f, c: byIso[f.code] };
+    shapes.push(s);
+    onHover(p, e => { p.classList.add("hover"); showTip(countryTip(s), e); }, () => p.classList.remove("hover"),
+      () => { if (s.c) setFocus("country", s.c.iso3); });
+  });
+
+  // one circle per country and resource, largest drawn first so small ones stay clickable
+  for (const c of countries) if (c.at) for (const r of RES) if (Object.keys(METRICS).some(m => val(c, r, m)))
+    bubbles.push({ c, r, el: el("circle", { cx: c.at[0], cy: c.at[1], r: 0, class: "bub", fill: r.color, stroke: r.color }, gBub) });
+  bubbles.forEach(b => {
+    const s = shapes.find(s => s.c === b.c);
+    onHover(b.el, e => { b.el.classList.add("hover"); s && s.el.classList.add("hover"); showTip(countryTip(s || { c: b.c, feat: { cont: b.c.continent } }), e); },
+      () => { b.el.classList.remove("hover"); s && s.el.classList.remove("hover"); }, () => setFocus("country", b.c.iso3));
+  });
+
+  DATA.pipelines.forEach(p => {
+    const g = el("g", { class: "pg" }, gPipes);
+    const color = p.res.includes("gas") && !p.res.includes("oil") ? "var(--r-gas)" : "var(--r-oil)";
+    el("path", { d: p.d, class: `pipe line ${p.status}`, stroke: `color-mix(in srgb, ${color} 55%, var(--pipe))` }, g);
+    const hit = el("path", { d: p.d, class: "pipe hit" }, g);
+    pipeEls.push({ p, g });
+    onHover(hit, e => { g.classList.add("hover"); showTip(pipeTip(p), e); }, () => g.classList.remove("hover"), () => setFocus("pipe", p.name));
+  });
+
+  flows.forEach(f => {
+    const g = el("g", { class: "fg" }, gFlows);
+    el("path", { d: f.d, class: `flow base ${f.status}`, stroke: f.r.color, "stroke-width": flowW(f) }, g);
+    if (f.status !== "stopped") el("path", { d: f.d, class: "flow dash" }, g);
+    const hit = el("path", { d: f.d, class: "flow hit" }, g);
+    flowEls.push({ f, g });
+    onHover(hit, e => { g.classList.add("hover"); showTip(flowTip(f), e); }, () => g.classList.remove("hover"), () => setFocus("flow", f.i));
+  });
+
+  DATA.damage.forEach(d => {
+    const g = el("g", { class: "dmg" }, gChk);
+    el("circle", { cx: d.at[0], cy: d.at[1], r: 3 }, g);
+    const x = el("path", { d: "" }, g);
+    dmgEls.push({ d, g, x, circle: g.firstChild });
+    onHover(g, e => showTip(`<h3>✕ ${esc(d.label)}</h3><div class="note">${esc(d.note)}</div>`, e), () => {}, () => setFocus("pipe", "Nord Stream"));
+  });
+  DATA.chokepoints.forEach(c => {
+    const g = el("g", { class: "chk" }, gChk);
+    const rect = el("rect", {}, g);
+    const text = el("text", {}, g);
+    text.textContent = c.label;
+    chkEls.push({ c, g, rect, text });
+    onHover(g, e => { g.classList.add("hover"); showTip(chkTip(c), e); }, () => g.classList.remove("hover"), () => setFocus("chk", c.id));
+  });
+  el("path", { d: DATA.sphere, fill: "none", stroke: "rgba(255,255,255,.18)", "stroke-width": 1, "vector-effect": "non-scaling-stroke", "pointer-events": "none" }, svg);
+  if (!reduceMotion) svg.animate([{ opacity: 0, transform: "scale(.985)" }, { opacity: 1, transform: "none" }], { duration: 900, easing: "cubic-bezier(.2,.8,.2,1)" });
+}
+function tint(c) {
+  // the selected resource this country has the largest world share of; intensity on a log scale of that share
+  let best = null, bp = 0;
+  for (const r of active()) { const p = share(c, r); if (p > bp) { bp = p; best = r; } }
+  if (!best) return "var(--land)";
+  const k = Math.round(Math.min(85, Math.max(22, 22 + (Math.log10(bp) + 1) * 26)));
+  return `color-mix(in srgb, ${best.color} ${k}%, var(--land))`;
+}
+function paintMap() {
+  const fc = sel.focus;
+  shapes.forEach(s => {
+    s.el.classList.toggle("off", !inCont(s.feat.cont));
+    s.el.classList.toggle("focus", !!(fc && fc.t === "country" && s.c && s.c.iso3 === fc.id));
+    s.el.setAttribute("fill", s.c && holds(s.c) ? tint(s.c) : "var(--land)");
+  });
+  bubbles.forEach(b => b.el.classList.toggle("off", !sel.res.has(b.r.id) || !val(b.c, b.r) || !inCont(b.c.continent)));
+  svg.classList.toggle("with-flows", sel.layers.flows);
+  gFlows.classList.toggle("layer-off", !sel.layers.flows);
+  gPipes.classList.toggle("layer-off", !sel.layers.infra);
+  gChk.classList.toggle("layer-off", !sel.layers.infra);
+  flowEls.forEach(({ f, g }) => {
+    g.style.display = flowVisible(f) ? "" : "none";
+    g.classList.toggle("dim", flowVisible(f) && !flowMatch(f));
+    g.classList.toggle("focus", !!fc && flowMatch(f));
+  });
+  const matching = flows.filter(flowMatch);
+  pipeEls.forEach(({ p, g }) => {
+    g.style.display = p.res.some(id => sel.res.has(id)) ? "" : "none";
+    g.classList.toggle("focus", sameFocus("pipe", p.name));
+  });
+  chkEls.forEach(({ c, g }) => {
+    g.classList.toggle("focus", sameFocus("chk", c.id));
+    g.classList.toggle("dim", !!fc && !matching.some(f => f.chk.includes(c.id)));
+  });
+  setView(view);
+  const n = countries.filter(c => holds(c) && inCont(c.continent)).length;
+  document.getElementById("map-status").textContent =
+    `${METRICS[sel.metric]} · ${active().map(r => r.short).join(" + ")}${sel.cont ? " · " + sel.cont : ""} · ${n} countries · ${matching.length} flows`;
+  buildFocusbar(matching);
+  buildLegend();
+}
+function totalsText(list) {
+  return active().map(r => {
+    const fs = list.filter(f => f.res === r.id && f.status !== "stopped");
+    if (!fs.length) return "";
+    const v = fs.reduce((a, f) => a + f.v, 0);
+    return `${fmt(v)} ${r.unit.exports} ${r.short.toLowerCase()} (${pctTxt(v / WORLD[r.id].exports * 100)} of world exports)`;
+  }).filter(Boolean).join(" · ");
+}
+function buildFocusbar(matching) {
+  const bar = document.getElementById("focusbar"), fc = sel.focus;
+  if (!fc) { bar.hidden = true; return; }
+  let title;
+  if (fc.t === "country") title = `${flag(byIso[fc.id].a2)} Trade of <b>${esc(byIso[fc.id].country)}</b>`;
+  else if (fc.t === "chk") title = `Flows through <b>${esc(CHK[fc.id].label)}</b>`;
+  else if (fc.t === "pipe") title = `Flows through the <b>${esc(fc.id)}</b> pipeline`;
+  else { const f = flows[fc.id]; title = `<b>${esc(byIso[f.from].country)} → ${esc(byIso[f.to].country)}</b> · ${f.r.name.toLowerCase()}`; }
+  const stats = totalsText(matching);
+  bar.innerHTML = `<span>${title}</span><span class="stats">${matching.length} flow${matching.length === 1 ? "" : "s"}${stats ? " · " + stats : ""}</span><button type="button" id="clear-focus">Show all</button>`;
+  bar.hidden = false;
+  document.getElementById("clear-focus").onclick = () => setFocus(null);
+}
+function buildLegend() {
+  const k = Math.max(.25, view.w / VW) ** .55;
+  const px = (svg.getBoundingClientRect().width || VW) / view.w;
+  const steps = [1, 10, 40].map(p => ({ p, r: bubR(p) * k * px }));
+  const h = Math.ceil(steps[2].r * 2) + 2;
+  let x = 0;
+  const circles = steps.map(s => {
+    const cx = x + s.r; x += s.r * 2 + 16;
+    return `<circle cx="${cx}" cy="${h - s.r - 1}" r="${s.r}" fill="none" stroke="var(--ink-2)"/>
+      <text x="${cx}" y="${h + 12}" fill="var(--muted)" font-size="10" font-family="IBM Plex Mono, monospace" text-anchor="middle">${s.p}%</text>`;
+  }).join("");
+  const line = (stroke, w, dash = "") => `<svg width="34" height="10"><path d="M2 5H32" stroke="${stroke}" stroke-width="${w}" stroke-linecap="round" ${dash ? `stroke-dasharray="${dash}"` : ""}/></svg>`;
+  const a = active()[0];
+  document.getElementById("legend").innerHTML = `
+    <span class="item"><span class="t">Share of world ${METRICS[sel.metric].toLowerCase()}</span><svg width="${x}" height="${h + 14}" aria-hidden="true">${circles}</svg></span>
+    <span class="item">${line(a.color, 7)}${line(a.color, 2)}<span>Trade flow, width by volume</span></span>
+    <span class="item">${line(a.color, 2, "5 5")}<span>Stopped flow</span></span>
+    <span class="item">${line("color-mix(in srgb, var(--r-gas) 55%, var(--pipe))", 1.6)}<span>Pipeline</span></span>
+    <span class="item">${line("var(--muted)", 1.6, "3 3")}<span>Halted</span></span>
+    <span class="item">${line("var(--warn)", 1.6, "3 3")}<span>Destroyed</span></span>
+    <span class="item"><svg width="12" height="12"><rect x="2" y="2" width="8" height="8" fill="var(--gold)" transform="rotate(45 6 6)"/></svg><span>Chokepoint</span></span>`;
+}
+
+/* zoom & pan */
+function clampView(v) {
+  v.w = Math.min(VW, Math.max(VW / 16, v.w)); v.h = v.w * VH / VW;
+  v.x = Math.min(VX + VW - v.w, Math.max(VX, v.x)); v.y = Math.min(VY + VH - v.h, Math.max(VY, v.y));
+  return v;
+}
+function setView(v) {
+  view = clampView(v);
+  svg.setAttribute("viewBox", `${view.x} ${view.y} ${view.w} ${view.h}`);
+  const z = view.w / VW, k = Math.max(.25, z) ** .55;
+  // bubbles grow on screen when zooming in, but slower than the land so they don't swallow neighbours
+  bubbles.forEach(b => b.el.setAttribute("r", val(b.c, b.r) ? bubR(share(b.c, b.r)) * k : 0));
+  // markers and labels keep a constant size on screen
+  const s = z, half = 4.2 * s;
+  chkEls.forEach(({ c, rect, text }) => {
+    const [x, y] = c.at;
+    Object.entries({ x: x - half, y: y - half, width: half * 2, height: half * 2, transform: `rotate(45 ${x} ${y})` }).forEach(([a, v]) => rect.setAttribute(a, v));
+    Object.entries({ x: x + 8 * s, y: y + 3.6 * s, "font-size": 10.5 * s, "stroke-width": 3 * s }).forEach(([a, v]) => text.setAttribute(a, v));
+  });
+  dmgEls.forEach(({ d, x, circle }) => {
+    const [cx, cy] = d.at, r = 4 * s;
+    circle.setAttribute("r", 7 * s);
+    x.setAttribute("d", `M${cx - r},${cy - r}L${cx + r},${cy + r}M${cx - r},${cy + r}L${cx + r},${cy - r}`);
+  });
+}
+let flight = 0;
+function flyTo([x, y, w, h]) {
+  const pad = 1.08, aspect = VW / VH;
+  let tw = w * pad, th = h * pad;
+  if (tw / th < aspect) tw = th * aspect; else th = tw / aspect;
+  const target = clampView({ x: x + w / 2 - tw / 2, y: y + h / 2 - th / 2, w: tw, h: th });
+  const from = { ...view }, t0 = performance.now(), dur = reduceMotion ? 0 : 750, id = ++flight;
+  const step = t => {
+    if (id !== flight) return;
+    const p = dur ? Math.min(1, (t - t0) / dur) : 1, e = p < .5 ? 4 * p ** 3 : 1 - (-2 * p + 2) ** 3 / 2;
+    setView({ x: from.x + (target.x - from.x) * e, y: from.y + (target.y - from.y) * e, w: from.w + (target.w - from.w) * e, h: 0 });
+    if (p < 1) requestAnimationFrame(step); else buildLegend();
+  };
+  requestAnimationFrame(step);
+}
+function zoomAt(f, cx, cy) { flight++; setView({ x: cx - (cx - view.x) * f, y: cy - (cy - view.y) * f, w: view.w * f, h: 0 }); buildLegend(); }
+function svgPoint(e) {
+  const r = svg.getBoundingClientRect();
+  return [view.x + (e.clientX - r.left) / r.width * view.w, view.y + (e.clientY - r.top) / r.height * view.h];
+}
+svg.addEventListener("wheel", e => { e.preventDefault(); const [x, y] = svgPoint(e); zoomAt(e.deltaY > 0 ? 1.18 : 1 / 1.18, x, y); }, { passive: false });
+let drag = null, dragMoved = false;
+svg.addEventListener("pointerdown", e => { drag = { sx: e.clientX, sy: e.clientY, v: { ...view } }; dragMoved = false; flight++; });
+window.addEventListener("pointermove", e => {
+  if (!drag) return;
+  const r = svg.getBoundingClientRect();
+  if (Math.abs(e.clientX - drag.sx) + Math.abs(e.clientY - drag.sy) > 4) { dragMoved = true; svg.classList.add("dragging"); hideTip(); }
+  if (dragMoved) setView({ ...drag.v, x: drag.v.x - (e.clientX - drag.sx) / r.width * drag.v.w, y: drag.v.y - (e.clientY - drag.sy) / r.height * drag.v.h });
+});
+window.addEventListener("pointerup", () => { drag = null; svg.classList.remove("dragging"); setTimeout(() => dragMoved = false, 0); });
+window.addEventListener("resize", buildLegend);
+document.getElementById("zin").onclick = () => zoomAt(1 / 1.5, view.x + view.w / 2, view.y + view.h / 2);
+document.getElementById("zout").onclick = () => zoomAt(1.5, view.x + view.w / 2, view.y + view.h / 2);
+document.getElementById("zreset").onclick = () => flyTo([VX, VY, VW, VH]);
+
+/* ---------- chokepoint chips ---------- */
+function buildChkChips() {
+  const host = document.getElementById("f-chk");
+  host.innerHTML = DATA.chokepoints.map(c =>
+    `<button type="button" class="chip" data-id="${c.id}" aria-pressed="false">${esc(c.label)}<span class="count"></span></button>`).join("");
+  host.addEventListener("click", e => { const b = e.target.closest(".chip"); if (b) setFocus("chk", b.dataset.id); });
+}
+function syncChkChips() {
+  const host = document.getElementById("f-chk"), fc = sel.focus;
+  host.classList.toggle("has-sel", !!(fc && fc.t === "chk"));
+  host.querySelectorAll(".chip").forEach(b => {
+    const id = b.dataset.id;
+    b.setAttribute("aria-pressed", sameFocus("chk", id));
+    // volume of the first selected resource that crosses here, to rank the passages at a glance
+    const parts = active().map(r => {
+      const v = flows.filter(f => f.res === r.id && f.status !== "stopped" && f.chk.includes(id)).reduce((a, f) => a + f.v, 0);
+      return v ? `${fmt(v)} ${r.unit.exports}` : "";
+    }).filter(Boolean);
+    b.querySelector(".count").textContent = parts.join(" · ") || "–";
+    b.title = `${CHK[id].label}: click to show only the trade passing through`;
+  });
+}
+
+/* ---------- toolbar ---------- */
+function buildToolbar() {
+  buildChkChips();
+  const host = document.getElementById("f-cont");
+  host.innerHTML = [["", "World"], ...CONTINENTS.map(c => [c, c])].map(([v, label]) =>
+    `<button type="button" data-v="${v}" aria-pressed="${v === sel.cont}">${label}</button>`).join("");
+  host.addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    sel.cont = b.dataset.v;
+    host.querySelectorAll("button").forEach(t => t.setAttribute("aria-pressed", t.dataset.v === sel.cont));
+    flyTo(sel.cont ? DATA.continentViews[sel.cont] : [VX, VY, VW, VH]);
+    apply();
+  });
+  for (const k of ["flows", "infra", "stopped"]) {
+    const box = document.getElementById("l-" + k);
+    box.checked = sel.layers[k];
+    box.onchange = () => { sel.layers[k] = box.checked; save(); apply(); };
+  }
+}
+
+/* ---------- tooltips ---------- */
+const tt = document.getElementById("tt");
+function partners(c, r) {
+  const out = flows.filter(f => f.res === r.id && f.status !== "stopped" && f.from === c.iso3).sort((a, b) => b.v - a.v);
+  const inn = flows.filter(f => f.res === r.id && f.status !== "stopped" && f.to === c.iso3).sort((a, b) => b.v - a.v);
+  const list = (fs, key, arrow) => fs.slice(0, 3).map(f => `${arrow} ${esc(byIso[f[key]].country)} ${fmt(f.v)}`).join(", ");
+  return [out.length ? list(out, "to", "→") : "", inn.length ? list(inn, "from", "←") : ""].filter(Boolean).join("<br>");
+}
+function countryTip(s) {
+  const c = s.c, f = s.feat || {};
+  const name = c ? c.country : f.name;
+  const head = `<h3>${flag(c ? c.a2 : f.a2)}${esc(name)}</h3><div class="cont">${esc(c ? c.continent : f.cont)}</div>`;
+  if (!c) return head + `<div class="rows"><span class="none">No data for this country.</span></div>`;
+  const rows = active().map(r => {
+    const cells = Object.keys(METRICS).map(m => {
+      const v = val(c, r, m), on = m === sel.metric ? " on" : "";
+      return `<dt class="${on}">${METRICS[m]}</dt><dd class="${on}">${v ? `${fmt(v)} ${r.unit[m]}` : "–"}</dd><dd class="p${on}">${v ? pctTxt(share(c, r, m)) : ""}</dd>`;
+    }).join("");
+    const p = partners(c, r);
+    return `<div class="r" style="--c:${r.color}"><span class="k">${r.short}</span><dl>${cells}</dl>${p ? `<div class="partners">${p}</div>` : ""}</div>`;
+  }).join("");
+  return head + `<div class="rows">${rows}</div><div class="hint">Click to isolate this country's trade</div>`;
+}
+function routePills(f) {
+  const chk = f.chk.map(id => `<span class="pill chk">${esc(CHK[id].label)}</span>`);
+  const pipes = f.pipes.map(n => `<span class="pill pipe">${esc(n)}</span>`);
+  return [...pipes, ...chk].join("");
+}
+function flowTip(f) {
+  const a = byIso[f.from], b = byIso[f.to];
+  return `<h3>${flag(a.a2)}<span style="color:var(--muted)">→</span>${flag(b.a2)}</h3>
+    <div style="font-weight:600;margin-top:6px">${esc(a.country)} → ${esc(b.country)}</div>
+    <div class="cont">${f.r.name} · ${esc(f.mode)}${f.status === "stopped" ? ` · <span class="pill stopped">stopped</span>` : ""}</div>
+    <div style="margin-top:8px"><span class="big" style="color:${f.r.color}">${fmt(f.v)} ${f.r.unit.exports}</span>
+      ${f.status === "stopped" ? "" : `<span style="color:var(--ink-2)"> · ${pctTxt(flowShare(f))} of world exports</span>`}</div>
+    ${f.chk.length || f.pipes.length ? `<div class="route">Via ${routePills(f)}</div>` : ""}
+    ${f.note ? `<div class="note">${esc(f.note)}</div>` : ""}`;
+}
+function chkTip(c) {
+  const through = flows.filter(f => f.chk.includes(c.id) && f.status !== "stopped");
+  const rows = RES.map(r => {
+    const fs = through.filter(f => f.res === r.id);
+    if (!fs.length) return "";
+    const v = fs.reduce((a, f) => a + f.v, 0);
+    return `<div class="r" style="--c:${r.color}"><span class="k">${r.short} · ${fs.length} mapped flows</span>
+      <dl><dt>Volume</dt><dd>${fmt(v)} ${r.unit.exports}</dd><dd class="p">${pctTxt(v / WORLD[r.id].exports * 100)} of world exports</dd></dl></div>`;
+  }).join("");
+  return `<h3><svg width="14" height="14"><rect x="3" y="3" width="8" height="8" fill="var(--gold)" transform="rotate(45 7 7)"/></svg>${esc(c.label)}</h3>
+    <div class="cont">Strategic chokepoint</div>
+    <div class="rows">${rows || `<span class="none">No mapped flow through here for these resources.</span>`}</div>
+    <div class="note">${esc(c.note)}</div><div class="hint">Mapped flows only cover the main routes. Click to isolate them.</div>`;
+}
+function pipeTip(p) {
+  const using = flows.filter(f => f.pipes.includes(p.name));
+  return `<h3>${esc(p.name)}</h3>
+    <div class="cont">${p.res.map(id => RES_BY_ID[id].name).join(" & ")} pipeline · <span class="pill ${p.status === "active" ? "active" : p.status === "destroyed" ? "stopped" : "halted"}">${esc(p.status)}</span></div>
+    ${p.cap ? `<div style="margin-top:8px">Capacity <span class="mono">${esc(p.cap)}</span></div>` : ""}
+    ${using.length ? `<div class="partners" style="margin-top:6px">${using.map(f => `${esc(byIso[f.from].country)} → ${esc(byIso[f.to].country)} ${fmt(f.v)} ${f.r.unit.exports}${f.status === "stopped" ? " (stopped)" : ""}`).join("<br>")}</div>` : ""}
+    ${p.note ? `<div class="note">${esc(p.note)}</div>` : ""}`;
+}
+function showTip(html, e) { tt.innerHTML = html; tt.hidden = false; moveTip(e); }
+function hideTip() { tt.hidden = true; }
+window.addEventListener("scroll", hideTip, { passive: true });
+function moveTip(e) {
+  if (tt.hidden) return;
+  const pad = 18, w = tt.offsetWidth, h = tt.offsetHeight;
+  let x = e.clientX + pad, y = e.clientY + pad;
+  if (x + w > innerWidth - 8) x = e.clientX - w - pad;
+  if (y + h > innerHeight - 8) y = Math.max(8, innerHeight - h - 8);
+  tt.style.left = Math.max(8, x) + "px"; tt.style.top = y + "px";
+}
+
+/* ---------- country table ---------- */
+let sortKey = "oil", sortDir = -1;
+function wireSort(head, get, set, rebuild) {
+  head.querySelectorAll("th[data-sort]").forEach(th => {
+    const go = () => {
+      const k = th.dataset.sort, [key, dir] = get();
+      set(k, k === key ? -dir : (k === "country" || k === "from" || k === "to") ? 1 : -1);
+      rebuild();
+    };
+    th.onclick = go;
+    th.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } };
+  });
+}
+let routeSortKey = "", routeSortDir = -1;
+function buildRouteTable(fc) {
+  const rs = active(), list = passing();
+  const by = {};
+  for (const r of rs) by[r.id] = { from: passBy(list, r, "from"), to: passBy(list, r, "to"),
+    total: list.filter(f => f.res === r.id).reduce((a, f) => a + f.v, 0) };
+  const v = (c, k) => { const [rid, side] = k.split(":"); return by[rid]?.[side][c.iso3] || 0; };
+  if (!routeSortKey.includes(":") || !by[routeSortKey.split(":")[0]]) routeSortKey = rs[0].id + ":from";
+  const arrow = k => k === routeSortKey ? ` <span class="arrow">${routeSortDir < 0 ? "↓" : "↑"}</span>` : "";
+  document.getElementById("table-sub").textContent =
+    `Volumes each country sends and receives through ${routeName(fc)}, from the mapped flows, and their share of the total crossing. Click a row to see that country's whole trade.`;
+  const thead = document.getElementById("thead");
+  thead.innerHTML = `
+    <tr class="grp"><th></th><th></th>${rs.map(r => `<th colspan="2" class="res-start" style="--c:${r.color}">${r.name} · ${fmt(by[r.id].total)} ${r.unit.exports} through</th>`).join("")}</tr>
+    <tr class="cols"><th class="under-grp"></th><th class="under-grp" data-sort="country" tabindex="0">Country${arrow("country")}</th>
+      ${rs.map(r => `<th class="num res-start under-grp" data-sort="${r.id}:from" tabindex="0">Sends${arrow(r.id + ":from")}</th>
+        <th class="num under-grp" data-sort="${r.id}:to" tabindex="0">Receives${arrow(r.id + ":to")}</th>`).join("")}</tr>`;
+  wireSort(thead, () => [routeSortKey, routeSortDir], (k, d) => { routeSortKey = k; routeSortDir = d; }, buildTable);
+
+  const q = document.getElementById("q").value.trim().toLowerCase();
+  const isos = new Set(list.flatMap(f => [f.from, f.to]));
+  const rows = countries.filter(c => isos.has(c.iso3) && rs.some(r => v(c, r.id + ":from") || v(c, r.id + ":to")) && (!q || c.country.toLowerCase().includes(q)))
+    .sort((a, b) => routeSortKey === "country" ? a.country.localeCompare(b.country) * routeSortDir
+      : (v(a, routeSortKey) - v(b, routeSortKey)) * routeSortDir || a.country.localeCompare(b.country));
+  const cell = (c, r, side, first) => {
+    const x = v(c, r.id + ":" + side), p = by[r.id].total ? x / by[r.id].total * 100 : 0;
+    if (!x) return `<td class="num dim${first ? " res-start" : ""}">–</td>`;
+    return `<td class="num${first ? " res-start" : ""}"><div class="share" style="--c:${r.color}"><span>${fmt(x)}</span><div class="bar"><span style="width:${Math.max(1.5, p)}%"></span></div><span class="pct">${pctTxt(p)}</span></div></td>`;
+  };
+  document.getElementById("rows").innerHTML = rows.length ? rows.map(c => `<tr class="click" data-iso="${c.iso3}" tabindex="0"><td class="rank"></td>
+      <td><div class="cname">${flag(c.a2)}<div>${esc(c.country)}<small>${esc(c.continent)}</small></div></div></td>
+      ${rs.map(r => cell(c, r, "from", true) + cell(c, r, "to", false)).join("")}</tr>`).join("")
+    : `<tr><td colspan="${2 + rs.length * 2}" class="empty">No mapped flow passes here for these resources.</td></tr>`;
+  document.getElementById("tfoot").innerHTML = `<tr><td></td><td>${rows.length} countries involved</td>${rs.map(r =>
+    `<td class="num res-start">${fmt(by[r.id].total)} ${r.unit.exports}</td><td class="num">${pctTxt(by[r.id].total / WORLD[r.id].exports * 100)} of world exports</td>`).join("")}</tr>`;
+}
+function buildTable() {
+  const route = routeFocus();
+  document.getElementById("table-title").textContent = route ? `By country · through ${route.t === "chk" ? CHK[route.id].label : route.id}` : "By country";
+  document.querySelector("#rows").closest("table").classList.toggle("route-mode", !!route);
+  if (route) return buildRouteTable(route);
+  const rs = active(), m = sel.metric;
+  if (sortKey !== "country" && !sel.res.has(sortKey)) sortKey = rs[0].id;
+  const arrow = k => k === sortKey ? ` <span class="arrow">${sortDir < 0 ? "↓" : "↑"}</span>` : "";
+  const ariaSort = k => k === sortKey ? (sortDir < 0 ? "descending" : "ascending") : "none";
+  document.getElementById("table-sub").textContent = {
+    reserves: "Proved reserves and each country's share of the world total.",
+    exports: "Exports (crude oil; pipeline gas plus LNG; rare-earth concentrates and compounds) and each country's share of world exports.",
+    imports: "Imports and each country's share of world imports.",
+  }[m] + " Click a column to sort, or a row to show the country's trade on the map.";
+  const thead = document.getElementById("thead");
+  thead.innerHTML = `
+    <tr class="grp"><th></th><th></th>${rs.map(r => `<th colspan="2" class="res-start" style="--c:${r.color}">${r.name}</th>`).join("")}</tr>
+    <tr class="cols"><th class="under-grp">#</th><th class="under-grp" data-sort="country" tabindex="0" aria-sort="${ariaSort("country")}">Country${arrow("country")}</th>
+      ${rs.map(r => `<th class="num res-start under-grp" data-sort="${r.id}" tabindex="0" aria-sort="${ariaSort(r.id)}">${METRICS[m]} (${r.unit[m]})${arrow(r.id)}</th>
+        <th class="num under-grp" data-sort="${r.id}" tabindex="0">% of world</th>`).join("")}</tr>`;
+  wireSort(thead, () => [sortKey, sortDir], (k, d) => { sortKey = k; sortDir = d; }, buildTable);
+
+  const q = document.getElementById("q").value.trim().toLowerCase();
+  const list = countries
+    .filter(c => holds(c) && inCont(c.continent) && (!q || c.country.toLowerCase().includes(q)))
+    .sort((a, b) => sortKey === "country" ? a.country.localeCompare(b.country) * sortDir
+      : (val(a, RES_BY_ID[sortKey]) - val(b, RES_BY_ID[sortKey])) * sortDir || a.country.localeCompare(b.country));
+  const cells = (c, r) => {
+    if (!val(c, r)) return `<td class="num dim res-start">–</td><td class="num dim">–</td>`;
+    const p = share(c, r);
+    return `<td class="num res-start">${fmt(val(c, r))}</td>
+      <td class="num"><div class="share" style="--c:${r.color}"><div class="bar"><span style="width:${Math.max(1.5, Math.min(100, p / 50 * 100))}%"></span></div><span class="pct">${pctTxt(p)}</span></div></td>`;
+  };
+  const rankRes = sortKey === "country" ? rs[0] : RES_BY_ID[sortKey];
+  const fc = sel.focus;
+  document.getElementById("rows").innerHTML = list.length ? list.map(c => `<tr class="click${fc && fc.t === "country" && fc.id === c.iso3 ? " sel" : ""}" data-iso="${c.iso3}" tabindex="0">
+      <td class="rank">${RANK[rankRes.id][m][c.iso3] ?? "–"}</td>
+      <td><div class="cname">${flag(c.a2)}<div>${esc(c.country)}<small>${esc(c.continent)}</small></div></div></td>
+      ${rs.map(r => cells(c, r)).join("")}</tr>`).join("")
+    : `<tr><td colspan="${2 + rs.length * 2}" class="empty">No country matches.</td></tr>`;
+
+  document.getElementById("tfoot").innerHTML = `<tr><td></td><td>${list.length} countries listed</td>${rs.map(r => {
+    const t = list.reduce((a, c) => a + val(c, r), 0), p = t / (WORLD[r.id][m] || 1) * 100;
+    return `<td class="num res-start">${fmt(t)}</td><td class="num"><div class="share" style="--c:${r.color}"><div class="bar"><span style="width:${p}%"></span></div><span class="pct">${pctTxt(p)}</span></div></td>`;
+  }).join("")}</tr>`;
+}
+document.getElementById("q").addEventListener("input", buildTable);
+function rowActivate(tbody, attr, fn) {
+  tbody.addEventListener("click", e => { const tr = e.target.closest("tr[" + attr + "]"); if (tr) fn(tr.getAttribute(attr)); });
+  tbody.addEventListener("keydown", e => { if (e.key !== "Enter") return; const tr = e.target.closest("tr[" + attr + "]"); if (tr) fn(tr.getAttribute(attr)); });
+}
+const toMap = () => document.querySelector(".map-box").scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
+rowActivate(document.getElementById("rows"), "data-iso", iso => { if (!sameFocus("country", iso)) setFocus("country", iso); toMap(); });
+
+/* ---------- flow table ---------- */
+let fSortKey = "share", fSortDir = -1;
+function buildFlowTable() {
+  const arrow = k => k === fSortKey ? ` <span class="arrow">${fSortDir < 0 ? "↓" : "↑"}</span>` : "";
+  const head = document.getElementById("fhead");
+  head.innerHTML = `<tr>
+    <th data-sort="res" tabindex="0">Resource${arrow("res")}</th>
+    <th data-sort="from" tabindex="0">From${arrow("from")}</th><th class="arrow-cell"></th>
+    <th data-sort="to" tabindex="0">To${arrow("to")}</th>
+    <th class="num" data-sort="share" tabindex="0">Volume${arrow("share")}</th>
+    <th class="num" data-sort="share" tabindex="0">% of world exports</th>
+    <th>Mode</th><th>Route · chokepoints &amp; pipelines</th></tr>`;
+  wireSort(head, () => [fSortKey, fSortDir], (k, d) => { fSortKey = k; fSortDir = d; }, buildFlowTable);
+
+  const q = document.getElementById("fq").value.trim().toLowerCase();
+  const text = f => [byIso[f.from].country, byIso[f.to].country, f.mode, ...f.pipes, ...f.chk.map(id => CHK[id].label)].join(" ").toLowerCase();
+  const key = f => ({ res: RES.indexOf(f.r), from: byIso[f.from].country, to: byIso[f.to].country, share: f.status === "stopped" ? -1 : flowShare(f) })[fSortKey];
+  const list = flows.filter(f => flowMatch(f) && (!q || text(f).includes(q)))
+    .sort((a, b) => { const va = key(a), vb = key(b); return (typeof va === "string" ? va.localeCompare(vb) : va - vb) * fSortDir || flowShare(b) - flowShare(a); });
+  const fc = sel.focus;
+  document.getElementById("frows").innerHTML = list.length ? list.map(f => {
+    const a = byIso[f.from], b = byIso[f.to], p = flowShare(f);
+    return `<tr class="click${f.status === "stopped" ? " stopped" : ""}${fc && fc.t === "flow" && fc.id === f.i ? " sel" : ""}" data-flow="${f.i}" tabindex="0">
+      <td><span class="rdot" style="--c:${f.r.color}">${f.r.short}</span></td>
+      <td><div class="cname">${flag(a.a2)}${esc(a.country)}</div></td><td class="arrow-cell">→</td>
+      <td><div class="cname">${flag(b.a2)}${esc(b.country)}</div></td>
+      <td class="num">${fmt(f.v)} <span style="color:var(--muted)">${f.r.unit.exports}</span></td>
+      <td class="num">${f.status === "stopped" ? `<span class="pill stopped">stopped</span>`
+        : `<div class="share" style="--c:${f.r.color}"><div class="bar"><span style="width:${Math.max(1.5, Math.min(100, p / 30 * 100))}%"></span></div><span class="pct">${pctTxt(p)}</span></div>`}</td>
+      <td class="mode">${esc(f.mode)}</td>
+      <td><div class="route-cell">${routePills(f) || `<span style="color:var(--muted);font-size:12.5px">open sea</span>`}</div></td>
+    </tr>`;
+  }).join("") : `<tr><td colspan="8" class="empty">No mapped flow matches.</td></tr>`;
+}
+document.getElementById("fq").addEventListener("input", buildFlowTable);
+rowActivate(document.getElementById("frows"), "data-flow", i => { if (!sameFocus("flow", +i)) setFocus("flow", +i); toMap(); });
+
+/* ---------- boot ---------- */
+function apply() { syncPicker(); syncChkChips(); buildKPIs(); paintMap(); buildTable(); buildFlowTable(); }
+document.getElementById("snapshot").textContent =
+  `Built ${new Date(DATA.builtAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })} · ${countries.length} countries · ${flows.length} flows · ${DATA.pipelines.length} pipelines`;
+document.getElementById("foot").textContent =
+  "Reserves are proved reserves: oil (incl. Canadian oil sands) from OPEC, the Energy Institute and US EIA, mostly end-2023; gas from the Energy Institute (end-2020, its last reserves edition); rare earths from USGS Mineral Commodity Summaries 2025, in rare-earth oxide. " +
+  "Trade figures are rounded approximations of 2024 volumes (Energy Institute, EIA, IEA, GIIGNL, USGS, press reports): crude oil only (no refined products), gas by pipeline and LNG, rare earths as concentrates and compounds. " +
+  "Only the main bilateral flows are mapped, so the flows through a chokepoint understate its real traffic; the chokepoint notes give published estimates. Routes follow the shortest sea lane between ports unless a flow is set to go round the Cape. Stopped routes show the last normal year's volume for context. " +
+  "Shares are against the sum of all listed countries. Greenland is shown on its own. Borders: Natural Earth. Flags: flag-icons.";
+buildPicker();
+buildToolbar();
+buildMap();
+apply();
+</script>
+</body>
+</html>
