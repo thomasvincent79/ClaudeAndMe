@@ -326,6 +326,37 @@ svg text { font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; }
 .recipe { display: grid; grid-template-columns: 38px minmax(0, 1fr); gap: 12px; align-items: start; }
 .recipe .ico { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; font-size: 1.1rem; background: var(--soft); }
 
+/* ================= dbt platform page ================= */
+.muted { color: var(--muted); }
+.ci-steps { --prog: 0%; position: relative; display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; margin-bottom: 14px; }
+.ci-step { border: 1px solid var(--line); background: var(--card); color: var(--muted); border-radius: 12px; padding: 10px 8px; cursor: pointer;
+           display: flex; flex-direction: column; align-items: center; gap: 4px; font: 600 .78rem "Inter", sans-serif; transition: .25s; }
+.ci-step .ci-ico { font-size: 1.3rem; filter: grayscale(1); opacity: .6; transition: .25s; }
+.ci-step.done { color: var(--ink); border-color: color-mix(in srgb, var(--v112) 50%, var(--line)); }
+.ci-step.done .ci-ico, .ci-step.on .ci-ico { filter: none; opacity: 1; }
+.ci-step.on { color: #fff; background: var(--grad); border-color: transparent; transform: translateY(-3px); box-shadow: 0 10px 22px -10px var(--accent); }
+.pr-comment { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--card); }
+.pr-head { background: var(--soft); padding: 9px 12px; font-size: .85rem; border-bottom: 1px solid var(--line); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.pr-avatar { width: 22px; height: 22px; border-radius: 50%; background: var(--grad); color: #fff; font: 800 .55rem "Inter", sans-serif; display: grid; place-items: center; }
+.pr-body { padding: 12px; font-size: .88rem; }
+.pr-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 6px; }
+.pr-stats div { background: var(--soft); border: 1px solid var(--line); border-radius: 9px; padding: 6px 9px; display: flex; flex-direction: column; }
+.pr-stats span { font-size: .68rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 700; }
+.pr-stats b { font: 700 .86rem "JetBrains Mono", monospace; }
+.pr-stats .pos b { color: var(--new-ink); } .pr-stats .neg b { color: var(--del-ink); } .pr-stats .mod b { color: var(--upd-ink); }
+.pr-stats .pos { background: var(--new); } .pr-stats .neg { background: var(--del); } .pr-stats .mod { background: var(--upd); }
+table.state-grid { border-collapse: separate; border-spacing: 3px; font: .78rem "JetBrains Mono", monospace; width: 100%; }
+table.state-grid th { color: var(--muted); font-weight: 600; text-align: center; padding: 4px; }
+table.state-grid th:first-child, table.state-grid td:first-child { text-align: left; white-space: nowrap; padding-right: 10px; }
+table.state-grid td { text-align: center; padding: 6px 4px; border-radius: 6px; transition: background .3s; }
+table.state-grid td.b { background: var(--grad); color: #fff; animation: pop .35s ease; }
+table.state-grid td.s { background: var(--soft); color: var(--muted); }
+table.state-grid td.fut, table.state-grid th.fut { opacity: .25; }
+table.state-grid tr.src td { color: #2fa36b; font-size: .74rem; }
+table.state-grid tr.src td:not(:first-child) { font-size: 1rem; }
+.meter { height: 10px; background: var(--soft); border-radius: 10px; overflow: hidden; margin-bottom: 8px; border: 1px solid var(--line); }
+.meter-bar { height: 100%; background: var(--grad); transition: width .6s ease; }
+
 </style>
 </head>
 <body>
@@ -345,6 +376,7 @@ svg text { font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; }
 <a href="flags.html" class="" title="CLI flags">Flags</a>
 <a href="clone.html" class="" title="dbt clone">Clone</a>
 <a href="freshness.html" class="" title="Source freshness">Freshness</a>
+<a href="dbt-cloud.html" class="" title="dbt Cloud (dbt platform)">dbt Cloud</a>
     </nav>
     <div class="vswitch" role="group" aria-label="dbt version">
       <span class="vlabel">dbt Core</span>

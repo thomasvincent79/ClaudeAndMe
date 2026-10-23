@@ -1,0 +1,279 @@
+<section class="hero">
+<span class="eyebrow">☁️ dbt Cloud → dbt platform</span>
+<h1>What you get <span class="grad">on top of dbt Core</span></h1>
+<p class="lead">dbt Cloud was renamed the <strong>dbt platform</strong> in 2025. It runs the same dbt engine you use (<span class="tag v18">1.8.6</span> today) and adds everything <em>around</em> it:
+a browser IDE, a scheduler, CI that understands dbt, lineage and catalog, cross-project refs, a Semantic Layer API, and smart rebuilds.
+This page goes through the top features, each with a concrete example and what it would take to do the same with Core alone.</p>
+<div class="toc">
+  <a href="#map">1 · Core vs platform map</a>
+  <a href="#versions">2 · No more pip upgrades</a>
+  <a href="#ci">3 · CI that understands dbt</a>
+  <a href="#compare">4 · Compare changes</a>
+  <a href="#state">5 · dbt State</a>
+  <a href="#mesh">6 · Mesh</a>
+  <a href="#sl">7 · Semantic Layer</a>
+  <a href="#more">8 · Catalog, IDE, Copilot…</a>
+  <a href="#choose">9 · Core or platform?</a>
+</div>
+</section>
+
+<h2 id="map">1 · Core vs platform: the map</h2>
+<div class="diagram">
+<svg viewBox="0 0 900 300" role="img" aria-label="dbt platform layers on top of dbt Core">
+  <defs><linearGradient id="core-g" x1="0" x2="1"><stop offset="0" stop-color="#ff5f3f"/><stop offset="1" stop-color="#ff9f43"/></linearGradient></defs>
+  <rect x="20" y="236" width="860" height="52" rx="12" fill="url(#core-g)"/>
+  <text x="450" y="259" text-anchor="middle" fill="#fff" font-weight="800" font-size="14" font-family="Inter, sans-serif">dbt engine: Core 1.x (open source) · or dbt v2 / Fusion</text>
+  <text x="450" y="277" text-anchor="middle" fill="#fff" font-size="11" font-family="Inter, sans-serif" opacity=".9">models · tests · snapshots · seeds · macros · packages · CLI · manifest</text>
+  <g font-family="Inter, sans-serif">
+    <rect x="20" y="20" width="205" height="200" rx="12" class="d-box"/>
+    <text x="122" y="44" text-anchor="middle" class="d-txt" font-weight="800">DEVELOP</text>
+    <text x="36" y="72" class="d-mut">• Studio IDE (browser)</text><text x="36" y="94" class="d-mut">• Canvas (drag &amp; drop)</text>
+    <text x="36" y="116" class="d-mut">• Copilot (AI)</text><text x="36" y="138" class="d-mut">• platform CLI / VS Code ext.</text>
+    <text x="36" y="160" class="d-mut">• auto --defer to prod</text><text x="36" y="182" class="d-mut">• Insights (query tool)</text>
+    <rect x="238" y="20" width="205" height="200" rx="12" class="d-box"/>
+    <text x="340" y="44" text-anchor="middle" class="d-txt" font-weight="800">DEPLOY</text>
+    <text x="254" y="72" class="d-mut">• environments &amp; jobs</text><text x="254" y="94" class="d-mut">• scheduler, chaining, API</text>
+    <text x="254" y="116" class="d-mut">• CI jobs + PR schemas</text><text x="254" y="138" class="d-mut">• Advanced CI (compare)</text>
+    <text x="254" y="160" class="d-mut">• dbt State (skip unchanged)</text><text x="254" y="182" class="d-mut">• release tracks</text>
+    <rect x="456" y="20" width="205" height="200" rx="12" class="d-box"/>
+    <text x="558" y="44" text-anchor="middle" class="d-txt" font-weight="800">DISCOVER</text>
+    <text x="472" y="72" class="d-mut">• Catalog (lineage, health)</text><text x="472" y="94" class="d-mut">• column-level lineage</text>
+    <text x="472" y="116" class="d-mut">• hosted docs</text><text x="472" y="138" class="d-mut">• Discovery API (GraphQL)</text>
+    <text x="472" y="160" class="d-mut">• auto-exposures (BI)</text><text x="472" y="182" class="d-mut">• run &amp; cost insights</text>
+    <rect x="674" y="20" width="206" height="200" rx="12" class="d-box"/>
+    <text x="777" y="44" text-anchor="middle" class="d-txt" font-weight="800">GOVERN &amp; SCALE</text>
+    <text x="690" y="72" class="d-mut">• Mesh: cross-project ref</text><text x="690" y="94" class="d-mut">• Semantic Layer APIs</text>
+    <text x="690" y="116" class="d-mut">• SSO, RBAC, audit log</text><text x="690" y="138" class="d-mut">• notifications</text>
+    <text x="690" y="160" class="d-mut">• git integrations</text><text x="690" y="182" class="d-mut">• SOC 2 hosting</text>
+  </g>
+  <g stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4 4" opacity=".6">
+    <line x1="122" y1="220" x2="122" y2="236"/><line x1="340" y1="220" x2="340" y2="236"/><line x1="558" y1="220" x2="558" y2="236"/><line x1="777" y1="220" x2="777" y2="236"/>
+  </g>
+</svg>
+</div>
+<div class="callout"><b>The key idea</b><p>Your SQL, YAML and macros are the same project in Core and on the platform. The platform doesn't change how dbt <em>transforms</em> data.
+It replaces the glue you would otherwise build yourself: cron/Airflow jobs, CI scripts, manifest storage, schema cleanup, a docs server, a metrics API.
+Features marked <span class="badge">Enterprise</span> need the Enterprise or Enterprise+ plan. Others exist on all or most paid plans (check the pricing page).</p></div>
+
+<h2 id="versions">2 · No more pip upgrades: release tracks</h2>
+<div class="vgrid">
+  <div class="vcol only-v18"><span class="tag v18">dbt Core 1.8.6</span>
+    <p>You pin and upgrade yourself, and every upgrade is a project:</p>
+<pre class="code">pip install "dbt-core==1.8.6" "dbt-snowflake==1.8.4"
+<span class="c"># later: read the changelogs for 1.9, 1.10, 1.11, 1.12, fix the
+# deprecations, upgrade the CI image, the Airflow image, every laptop…</span></pre>
+  </div>
+  <div class="vcol only-v112"><span class="tag v112">dbt Core 1.12</span>
+    <p>The same, one version later. The 1.9–1.12 features on this site (microbatch, <code>hard_deletes</code>, <code>--sample</code>…) only arrive when <em>you</em> upgrade.</p>
+<pre class="code">pip install "dbt-core~=1.12.0" "dbt-snowflake~=1.12.0"</pre>
+  </div>
+  <div class="vcol"><span class="badge" style="background:var(--accent);color:#fff">dbt platform</span>
+    <p>Each environment follows a <strong>release track</strong> and is upgraded automatically:</p>
+    <table class="prose">
+      <tr><th>Track</th><th>Cadence</th><th>For</th></tr>
+      <tr><td><b>v1 Latest</b></td><td>continuous</td><td>v1 features, often before OSS</td></tr>
+      <tr><td><b>v1 Compatible</b></td><td>monthly</td><td>aligned with the latest OSS 1.x + adapters</td></tr>
+      <tr><td><b>v1 Extended</b></td><td>monthly, 1 behind</td><td>Enterprise: prod stability</td></tr>
+      <tr><td><b>v2 Stable</b> (default for new projects)</td><td>weekly</td><td>dbt v2 / Fusion engine</td></tr>
+    </table>
+    <p class="muted" style="font-size:.85rem">Projects still on 1.3–1.7 must migrate by January 31, 2027. Packages are <em>not</em> auto-upgraded: pin them and commit <code>package-lock.yml</code>.</p>
+  </div>
+</div>
+
+<h2 id="ci">3 · CI that understands dbt</h2>
+<p>Follow one pull request from opening to cleanup. For each step, compare what the platform does for you with what you would script with Core.</p>
+<div class="sim" id="cisim">
+  <div class="controls" style="margin-bottom:12px"><button class="btn primary" id="ci-play">▶ Play the PR</button>
+    <span class="muted" style="font-size:.85rem">or click a step</span></div>
+  <div class="ci-steps" id="ci-steps"></div>
+  <div id="ci-detail"></div>
+</div>
+<div class="vgrid">
+  <div class="vcol only-v18"><span class="tag v18">The Core equivalent (1.8.6)</span>
+<div class="file">.github/workflows/dbt-ci.yml (abridged)</div>
+<pre class="code">on: pull_request
+jobs:
+  ci:
+    steps:
+      - run: pip install dbt-snowflake==1.8.*
+      - run: aws s3 cp s3://dbt-artifacts/prod/manifest.json prod/   <span class="c"># you store it</span>
+      - run: dbt build -s state:modified+ --defer --state prod/ --target ci
+        env: { DBT_SCHEMA: "pr_${{ github.event.number }}" }
+      <span class="c"># + lint, + cleanup job, + cancel-in-progress, + secrets…</span></pre>
+  </div>
+  <div class="vcol only-v112"><span class="tag v112">The Core equivalent (1.12)</span>
+<pre class="code">dbt build -s state:modified+ --defer --state prod/ --empty -x   <span class="c"># schema check</span>
+dbt build -s state:modified+ --defer --state prod/ --sample=<span class="s">"3 days"</span>
+<span class="c"># env vars renamed DBT_ENGINE_* (1.11)</span></pre>
+    <p>Core 1.12 gives you better building blocks (<code>--empty</code>, <code>--sample</code>). You still own the plumbing.</p>
+  </div>
+  <div class="vcol"><span class="badge" style="background:var(--accent);color:#fff">dbt platform CI job</span>
+<pre class="code">Job type:     Continuous integration
+Trigger:      ✓ Triggered by pull requests
+Defer to:     Production
+Commands:     dbt build --select state:modified+
+Linting:      ✓ (stop on error)
+dbt compare:  ✓ (Enterprise)
+<span class="c"># schema dbt_cloud_pr_&lt;job&gt;_&lt;pr&gt; created and dropped for you</span></pre>
+  </div>
+</div>
+
+<h2 id="compare">4 · Compare changes (Advanced CI) <span class="badge">Enterprise</span></h2>
+<p>Tests tell you whether the code is <em>valid</em>. Compare changes tells the reviewer <em>what the PR does to the data</em> versus production. Pick a change:</p>
+<div class="sim" id="ccsim">
+  <div class="controls" style="margin-bottom:12px"><span class="ctl-label">PR change</span><div id="cc-scen"></div></div>
+  <div class="sim-cols" style="grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr)">
+    <div><div class="pane-title"><span>diff</span></div><div id="cc-diff"></div></div>
+    <div><div class="pane-title"><span>comment posted on the pull request</span></div><div id="cc-comment"></div></div>
+  </div>
+</div>
+<p class="muted" style="font-size:.88rem">Works on Snowflake, BigQuery, Databricks, Redshift and Postgres when CI and prod share the same connection. With <code>event_time</code> configured, only the time range present in both is compared,
+so a CI run on 3 days of data doesn't report every older row as "removed". With Core: <code>audit_helper.compare_relations</code> in a hand-written step.</p>
+
+<h2 id="state">5 · dbt State: build only what changed <span class="badge">Enterprise</span></h2>
+<p>Formerly "state-aware orchestration". The job keeps a model-level state and skips a model when <strong>neither its code nor its upstream data changed</strong>.
+A freshness/lag setting can also make a model wait a minimum interval before rebuilding again. Here's an hourly job, run with Core and with dbt State:</p>
+<div class="sim" id="statesim">
+  <div class="controls" style="margin-bottom:8px"><span class="ctl-label">Run with</span><div id="state-mode"></div></div>
+  <div class="controls" style="margin-bottom:12px">
+    <label class="toggle on"><input type="checkbox" data-sk="codeChange" checked>PR merged at 09:00 changes dim_customers</label>
+    <label class="toggle on"><input type="checkbox" data-sk="lag" checked>mart_revenue: rebuild at most every 3h</label>
+    <button class="btn primary" id="state-play">▶ Run the day</button>
+  </div>
+  <div id="state-grid"></div>
+  <div class="narration" id="state-out"></div>
+  <div class="legend"><span>● new data landed</span><span><i style="background:var(--accent)"></i>model built</span><span>· skipped (reused)</span></div>
+</div>
+<div class="vgrid">
+  <div class="vcol only-v18"><span class="tag v18">Closest with Core 1.8.6</span>
+<pre class="code">dbt source freshness
+dbt build -s <span class="s">"source_status:fresher+"</span> --state last-run/</pre>
+    <p>This skips the branches whose sources didn't get data (see the Freshness page). It doesn't track code changes per model, wait intervals, or reuse across concurrent jobs.</p>
+  </div>
+  <div class="vcol only-v112"><span class="tag v112">Closest with Core 1.12</span>
+    <p>Same <code>source_status:fresher+</code> pattern. Microbatch (1.9+) also limits each run to recent batches. The model-level skip-and-reuse logic remains a platform feature.</p>
+  </div>
+</div>
+
+<h2 id="mesh">6 · Mesh: ref() across projects <span class="badge">Enterprise</span></h2>
+<p>Split a monolith into domain projects owned by different teams. The upstream team publishes <em>public</em>, contracted models. Downstream projects reference them without installing the upstream code.</p>
+<div class="vgrid">
+  <div class="vcol"><span class="badge">upstream project: finance</span>
+<div class="file">models/marts/_marts.yml</div>
+<pre class="code">groups:
+  - name: finance
+    owner: {name: Finance data team, email: fin-data@acme.com}
+models:
+  - name: fct_revenue
+    config:
+      group: finance
+      <span class="h">access: public</span>            <span class="c"># private | protected | public</span>
+      <span class="h">contract: {enforced: true}</span>
+    latest_version: 2
+    versions: [{v: 1}, {v: 2}]
+    columns:
+      - name: revenue_id
+        data_type: int
+        constraints: [{type: not_null}]</pre>
+    <p class="muted" style="font-size:.85rem">Groups, access, contracts and versions all work in dbt Core 1.8.6 and 1.12.</p>
+  </div>
+  <div class="vcol"><span class="badge" style="background:var(--accent);color:#fff">downstream project: marketing</span>
+<div class="file">dependencies.yml</div>
+<pre class="code">projects:
+  - name: finance</pre>
+<div class="file">models/roi.sql</div>
+<pre class="code">select c.campaign_id, sum(r.revenue) as revenue
+from {{ ref(<span class="s">'campaigns'</span>) }} c
+join {{ <span class="h">ref(<span class="s">'finance'</span>, <span class="s">'fct_revenue'</span>, v=2)</span> }} r using (order_id)
+group by 1</pre>
+    <p>The two-argument <code>ref</code> is resolved by the platform from finance's latest production run. Catalog draws the lineage across both projects.
+    <strong>With Core only</strong>, you'd install <code>finance</code> as a package (git dependency), which means you compile and run its code too, or you'd declare its tables as <code>sources</code>.</p>
+  </div>
+</div>
+
+<h2 id="sl">7 · Semantic Layer: define metrics once, query them anywhere</h2>
+<p>Metrics live in YAML next to the models (MetricFlow). The platform exposes them through APIs (JDBC, GraphQL) and integrations (Google Sheets, Tableau, Power BI, Hex…),
+so "revenue" means the same thing in every tool. With Core, you can define and validate them and query locally with <code>mf query</code>, but there is no shared API.</p>
+<div class="vgrid">
+  <div class="vcol only-v18"><span class="tag v18">1.8.6: legacy spec</span>
+<pre class="code">semantic_models:
+  - name: orders
+    model: ref(<span class="s">'fct_orders'</span>)
+    defaults: {agg_time_dimension: ordered_at}
+    entities:
+      - {name: order, type: primary, expr: order_id}
+      - {name: customer, type: foreign, expr: customer_id}
+    dimensions:
+      - name: ordered_at
+        type: time
+        type_params: {time_granularity: day}
+      - {name: status, type: categorical}
+    measures:
+      - {name: revenue, agg: sum, expr: amount}
+metrics:
+  - name: revenue
+    label: Revenue
+    type: simple
+    type_params: {measure: revenue}</pre>
+  </div>
+  <div class="vcol only-v112"><span class="tag v112">1.12: latest spec</span>
+<pre class="code">models:
+  - name: fct_orders
+    <span class="h">semantic_model: {enabled: true}</span>
+    agg_time_dimension: ordered_at
+    columns:
+      - name: order_id
+        entity: {type: primary, name: order}
+      - name: customer_id
+        entity: {type: foreign, name: customer}
+      - name: ordered_at
+        granularity: day
+        dimension: {type: time}
+      - name: status
+        dimension: {type: categorical}
+    metrics:
+      - name: revenue
+        type: simple
+        agg: sum
+        expr: amount</pre>
+    <p class="muted" style="font-size:.85rem">Migrate with <code>dbt-autofix deprecations --semantic-layer</code>. The latest spec doesn't support cross-project refs yet.</p>
+  </div>
+</div>
+<pre class="code"><span class="c"># the same question from anywhere (platform CLI / IDE / API):</span>
+dbt sl query --metrics revenue --group-by metric_time__month,customer__country
+<span class="c"># → the platform generates the SQL (joins through entities) and runs it on your warehouse</span></pre>
+
+<h2 id="more">8 · Catalog, IDE, Copilot and the rest</h2>
+<div class="cards">
+  <div class="card"><h3>🗺️ Catalog</h3><p>Lineage across all projects, down to <strong>column level</strong>. Shows model health (last run, tests, freshness), run times and usage.
+    <br><span class="muted">Core: <code>dbt docs generate &amp;&amp; dbt docs serve</code>, a static site with model-level lineage that you host.</span></p></div>
+  <div class="card"><h3>💻 Studio IDE &amp; Canvas</h3><p>Browser IDE with git, autocomplete, compiled SQL preview, DAG and automatic deferral, so analysts need no local Python setup.
+    Canvas builds models visually (drag-and-drop) and produces real SQL.<br><span class="muted">Core: your editor + a venv + profiles.yml per person.</span></p></div>
+  <div class="card"><h3>🤖 Copilot</h3><p>Generates documentation, data tests, semantic models and SQL from natural language, inside the IDE and Canvas.
+    <br><span class="muted">Example: "add tests for fct_orders" adds unique/not_null on the key and relationships on the FKs.</span></p></div>
+  <div class="card"><h3>⏰ Scheduler &amp; orchestration</h3><p>Jobs per environment with cron, <strong>job chaining</strong> (run when another job completes), API/webhook triggers, Slack/email notifications, and run history with model timing.
+    <br><span class="muted">Core: Airflow/Dagster/cron + your own alerting.</span></p></div>
+  <div class="card"><h3>📊 Auto-exposures</h3><p>Tableau / Power BI dashboards appear in the lineage automatically, and the job can refresh their extracts right after the models they use are rebuilt.
+    <br><span class="muted">Core: hand-written <code>exposures:</code> YAML that drifts.</span></p></div>
+  <div class="card"><h3>🔌 Discovery API &amp; Insights</h3><p>GraphQL API over the metadata (models, runs, tests, lineage) for your own tooling. Insights is a query and exploration tool built on the project's context.
+    <br><span class="muted">Core: parse <code>manifest.json</code> / <code>run_results.json</code> yourself.</span></p></div>
+  <div class="card"><h3>🔐 Security &amp; admin</h3><p>SSO, role-based access, audit logs, managed credentials per environment, SOC 2 hosting, IP restrictions.
+    <br><span class="muted">Core: whatever your runner and secrets manager provide.</span></p></div>
+  <div class="card"><h3>⚡ dbt v2 / Fusion</h3><p>The default track for new platform projects is dbt v2, a new Rust engine with SQL understanding (static analysis, faster parsing, native lint).
+    It also exists outside the platform (local CLI, VS Code extension). Core 1.12 lets you try its parser with <code>--use-v2-parser</code>.</p></div>
+</div>
+
+<h2 id="choose">9 · Core or platform?</h2>
+<div class="tbl-wrap card">
+<table class="prose">
+  <tr><th>Your situation</th><th>Leaning</th><th>Why</th></tr>
+  <tr><td>Small team, engineers comfortable with Python/CI, an orchestrator already in place</td><td><b>Core</b></td><td>You already own the glue, and Core is free. Add <code>--defer</code>, <code>source_status</code> and audit_helper.</td></tr>
+  <tr><td>Analysts writing models, no local setup wanted</td><td><b>Platform</b></td><td>Studio IDE / Canvas, automatic deferral, managed credentials.</td></tr>
+  <tr><td>Several domain teams, one huge project slowing down</td><td><b>Platform</b> (Enterprise)</td><td>Mesh cross-project refs plus Catalog lineage across projects.</td></tr>
+  <tr><td>Metrics must be consistent across BI tools</td><td><b>Platform</b></td><td>The Semantic Layer API. Core only gives you the definitions.</td></tr>
+  <tr><td>Warehouse bill driven by hourly full DAG runs</td><td><b>Platform</b> (Enterprise)</td><td>dbt State skips unchanged models. With Core, approximate it with <code>source_status:fresher+</code>.</td></tr>
+  <tr><td>Upgrades keep slipping (like staying on 1.8.6 while 1.12 is out)</td><td><b>Platform</b></td><td>Release tracks remove the upgrade project.</td></tr>
+  <tr><td>Strict data residency / air-gapped</td><td><b>Core</b> (or single-tenant)</td><td>Everything stays on your infrastructure.</td></tr>
+</table>
+</div>
+<p class="muted" style="font-size:.85rem">Feature names and plan tiers change often. This page reflects the dbt docs as of October 2026. Check getdbt.com/pricing before deciding.</p>

@@ -75,6 +75,15 @@ THEMATICS = [
                    "and source_status:fresher+ to build only what got new data.",
         "scripts": ["freshness.js"],
     },
+    {
+        "slug": "dbt-cloud",
+        "nav": "dbt Cloud",
+        "title": "dbt Cloud (dbt platform)",
+        "icon": "☁️",
+        "summary": "What the platform adds on top of Core: release tracks, CI with PR schemas, compare changes, "
+                   "dbt State, Mesh cross-project ref, Semantic Layer, Catalog, IDE and Copilot.",
+        "scripts": ["dbtcloud.js"],
+    },
 ]
 
 
