@@ -1,0 +1,348 @@
+<section class="hero">
+<span class="eyebrow">🚀 GitLab CI/CD</span>
+<h1>Every push runs a <span class="grad">pipeline</span></h1>
+<p class="lead">Put a <code>.gitlab-ci.yml</code> file at the root of the repo and GitLab turns each push, merge request, tag or schedule into a <strong>pipeline</strong>:
+<strong>jobs</strong> grouped in <strong>stages</strong>, executed by <strong>runners</strong>. CI (lint, build, test) proves a change is safe; CD (deploy) ships it to an environment.</p>
+<div class="toc">
+  <a href="#how">1 · How it works</a>
+  <a href="#anatomy">2 · Anatomy of .gitlab-ci.yml</a>
+  <a href="#sim">3 · Pipeline simulator</a>
+  <a href="#rules">4 · rules &amp; pipeline types</a>
+  <a href="#concepts">5 · Artifacts, cache, variables, runners</a>
+  <a href="#envs">6 · Environments &amp; deployments</a>
+  <a href="#reuse">7 · Reuse: include, extends, components</a>
+  <a href="#dbt">8 · Example: dbt slim CI</a>
+  <a href="#best">9 · Best practices &amp; debugging</a>
+</div>
+</section>
+
+<h2 id="how">1 · How it works</h2>
+<div class="diagram">
+<svg viewBox="0 0 900 250" role="img" aria-label="push, pipeline creation, runners executing jobs, results back to the merge request">
+  <rect class="d-box" x="10" y="90" width="120" height="70" rx="12"/>
+  <text class="d-txt" x="70" y="118" text-anchor="middle" font-weight="700">💻 git push</text>
+  <text class="d-mut" x="70" y="138" text-anchor="middle">or MR, tag,</text><text class="d-mut" x="70" y="152" text-anchor="middle">schedule, API</text>
+  <rect x="180" y="40" width="250" height="170" rx="14" fill="color-mix(in srgb, #6b4fbb 9%, var(--card))" stroke="#6b4fbb" stroke-opacity=".5"/>
+  <text class="d-txt" x="196" y="64" font-weight="800">🦊 GitLab</text>
+  <text class="d-mut" x="196" y="84">1. reads .gitlab-ci.yml at that commit</text>
+  <text class="d-mut" x="196" y="102">2. evaluates workflow + rules</text>
+  <text class="d-mut" x="196" y="120">3. creates the pipeline &amp; its jobs</text>
+  <text class="d-mut" x="196" y="138">4. queues jobs (pending)</text>
+  <g font-size="10"><rect x="196" y="152" width="60" height="22" rx="6" fill="#12946a"/><text x="226" y="167" fill="#fff" text-anchor="middle" font-weight="700">lint</text>
+    <rect x="262" y="152" width="60" height="22" rx="6" fill="#2f7fd8"/><text x="292" y="167" fill="#fff" text-anchor="middle" font-weight="700">build</text>
+    <rect x="328" y="152" width="60" height="22" rx="6" fill="var(--soft)" stroke="var(--line)"/><text x="358" y="167" fill="var(--muted)" text-anchor="middle" font-weight="700">test</text></g>
+  <text class="d-mut" x="196" y="196">5. stores logs, artifacts, statuses</text>
+  <rect x="490" y="30" width="200" height="190" rx="14" fill="color-mix(in srgb, #f05033 7%, var(--card))" stroke="#f05033" stroke-opacity=".45"/>
+  <text class="d-txt" x="506" y="54" font-weight="800">⚙️ Runners</text>
+  <text class="d-mut" x="506" y="72">poll GitLab for jobs (pull model)</text>
+  <rect class="d-box" x="506" y="86" width="168" height="38" rx="9"/><text class="d-txt" x="516" y="110">🐳 docker executor</text>
+  <rect class="d-box" x="506" y="132" width="168" height="38" rx="9"/><text class="d-txt" x="516" y="156">☸ kubernetes executor</text>
+  <text class="d-mut" x="506" y="190">clone repo → run script</text><text class="d-mut" x="506" y="206">in a fresh container</text>
+  <rect class="d-box" x="750" y="70" width="140" height="110" rx="12"/>
+  <text class="d-txt" x="820" y="96" text-anchor="middle" font-weight="700">✅ Results</text>
+  <text class="d-mut" x="820" y="118" text-anchor="middle">MR pipeline widget</text>
+  <text class="d-mut" x="820" y="136" text-anchor="middle">test reports, coverage</text>
+  <text class="d-mut" x="820" y="154" text-anchor="middle">environments, deploys</text>
+  <g fill="none" stroke-width="1.8" stroke="var(--muted)" opacity=".7">
+    <path id="p1" d="M130 125 H180"/><path id="p2" d="M430 95 C460 95 460 105 506 105"/><path id="p3" d="M506 150 C460 150 460 175 430 175"/><path id="p4" d="M690 125 C720 125 720 125 750 125"/>
+  </g>
+  <text class="d-mut" x="468" y="88" text-anchor="middle">job</text><text class="d-mut" x="468" y="190" text-anchor="middle">log + status</text>
+  <circle r="5" class="flow-dot"><animateMotion dur="2.4s" repeatCount="indefinite"><mpath href="#p1"/></animateMotion></circle>
+  <circle r="5" class="flow-dot"><animateMotion dur="2.4s" begin=".6s" repeatCount="indefinite"><mpath href="#p2"/></animateMotion></circle>
+  <circle r="5" class="flow-dot" style="fill:#12946a"><animateMotion dur="2.4s" begin="1.2s" repeatCount="indefinite"><mpath href="#p3"/></animateMotion></circle>
+  <circle r="5" class="flow-dot" style="fill:#12946a"><animateMotion dur="2.4s" begin="1.8s" repeatCount="indefinite"><mpath href="#p4"/></animateMotion></circle>
+</svg>
+</div>
+<div class="cards">
+  <div class="card"><h3>Pipeline</h3><p>One run, for one commit and one trigger. Has a status (running, passed, failed, blocked, canceled) shown on the commit and the MR.</p></div>
+  <div class="card"><h3>Stage</h3><p>An ordered group of jobs. By default, all jobs of a stage must succeed before the next stage starts. Jobs inside a stage run in parallel.</p></div>
+  <div class="card"><h3>Job</h3><p>A <code>script</code> run in a clean environment (usually a Docker image) by a runner. Exit code 0 = success. Each job is independent: it re-clones the repo.</p></div>
+  <div class="card"><h3>Runner</h3><p>An agent (<code>gitlab-runner</code>) that picks jobs up. GitLab.com offers hosted runners; companies often add their own (group or project runners) selected with <code>tags</code>.</p></div>
+</div>
+
+<h2 id="anatomy">2 · Anatomy of .gitlab-ci.yml</h2>
+<p>Click any highlighted keyword to see what it does.</p>
+<div class="split">
+<div>
+<div class="file">.gitlab-ci.yml</div>
+<pre class="code" id="yaml"><span class="ann" data-a="workflow">workflow</span>:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH &amp;&amp; $CI_OPEN_MERGE_REQUESTS
+      when: never
+    - if: $CI_COMMIT_BRANCH || $CI_COMMIT_TAG
+
+<span class="ann" data-a="stages">stages</span>: [lint, build, test, deploy]
+
+<span class="ann" data-a="default">default</span>:
+  <span class="ann" data-a="image">image</span>: python:3.12-slim
+  <span class="ann" data-a="interruptible">interruptible</span>: true
+
+<span class="ann" data-a="variables">variables</span>:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+
+<span class="ann" data-a="job">lint:sql</span>:
+  stage: lint
+  script:
+    - pip install sqlfluff
+    - sqlfluff lint models/
+  <span class="ann" data-a="allow_failure">allow_failure</span>: true
+
+<span class="ann" data-a="job">build:image</span>:
+  stage: build
+  image: docker:27
+  services: [docker:27-dind]
+  script:
+    - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA .
+    - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
+
+<span class="ann" data-a="job">test:unit</span>:
+  stage: test
+  <span class="ann" data-a="needs">needs</span>: [build:image]
+  <span class="ann" data-a="cache">cache</span>:
+    key:
+      files: [requirements.txt]
+    paths: [.cache/pip]
+  script:
+    - pip install -r requirements.txt
+    - pytest --junitxml=report.xml
+  <span class="ann" data-a="artifacts">artifacts</span>:
+    when: always
+    reports:
+      junit: report.xml
+
+<span class="ann" data-a="job">deploy:prod</span>:
+  stage: deploy
+  script: ./deploy.sh production
+  <span class="ann" data-a="environment">environment</span>:
+    name: production
+    url: https://shop.acme.com
+  <span class="ann" data-a="rules">rules</span>:
+    - if: $CI_COMMIT_TAG
+      <span class="ann" data-a="manual">when: manual</span>
+  <span class="ann" data-a="resource_group">resource_group</span>: production
+  <span class="ann" data-a="tags">tags</span>: [deploy-runner]</pre>
+</div>
+<div class="sticky"><div class="ann-box" id="ann-box"><h4>Click a keyword</h4><p>Every top-level key that isn't a reserved keyword (<code>stages</code>, <code>workflow</code>, <code>default</code>, <code>variables</code>, <code>include</code>…) is a <strong>job</strong>.</p></div>
+<div class="callout tip"><b>Validate before you push</b><p>In GitLab: <em>Build → Pipeline editor</em> validates the file, shows the merged configuration (after <code>include</code>) and draws the pipeline. Or run <code>glab ci lint</code>.</p></div></div>
+</div>
+
+<h2 id="sim">3 · Pipeline simulator</h2>
+<p>Same project, different triggers: <code>rules</code> decide which jobs exist in each pipeline. Then press <b>Run</b> and watch stages and jobs execute.</p>
+<div class="sim" id="cisim">
+  <div class="controls" style="margin-bottom:8px"><span class="ctl-label">Trigger</span><div id="ci-event"></div></div>
+  <div class="controls" style="margin-bottom:10px">
+    <span class="ctl-label">Options</span>
+    <label class="toggle" id="ci-t-fail"><input type="checkbox">test:unit fails</label>
+    <label class="toggle" id="ci-t-lint"><input type="checkbox">lint:sql fails (allow_failure)</label>
+    <label class="toggle" id="ci-t-needs"><input type="checkbox">use needs (DAG)</label>
+    <button class="btn primary" id="ci-run">▶ Run pipeline</button>
+  </div>
+  <div class="pane-title"><span id="ci-title"></span><span class="pipe-status" id="ci-status">created</span></div>
+  <div class="pipe" id="ci-pipe"></div>
+  <div class="meter"><div class="meter-bar" id="ci-bar" style="width:0"></div></div>
+  <div class="narration" id="ci-narr"></div>
+  <div class="legend">
+    <span><i style="background:#12946a"></i>passed</span><span><i style="background:#d93a26"></i>failed</span><span><i style="background:#e0a800"></i>failed, allowed</span>
+    <span><i style="background:#2f7fd8"></i>running</span><span><i style="border:2px solid var(--ink)"></i>manual</span><span><i style="border:1px dashed var(--muted)"></i>not in this pipeline (rules)</span>
+  </div>
+</div>
+<div class="callout tip"><b>Things to try</b>
+  <p>• Switch between <em>Branch push</em> and <em>MR</em>: thanks to <code>workflow:rules</code>, an MR branch gets one MR pipeline, not two duplicate pipelines.</p>
+  <p>• Turn on <em>use needs</em>: <code>test:unit</code> starts as soon as <code>build:image</code> finishes, without waiting for the slow <code>build:docs</code>. Compare the total time.</p>
+  <p>• Pick <em>Tag v1.4.0</em>, run it: the pipeline is <em>blocked</em> on the manual production deploy until someone presses ▶.</p>
+</div>
+
+<h2 id="rules">4 · rules &amp; pipeline types</h2>
+<div class="split">
+<div>
+<div class="file">rules: first match wins</div>
+<pre class="code"><span class="k">test:dbt</span>:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never                         <span class="c"># 1. not in nightly runs</span>
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes: [models/**/*, macros/**/*]  <span class="c"># 2. MR touching dbt code</span>
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+                                          <span class="c"># 3. always on main</span>
+    <span class="c"># no match → job not added to the pipeline</span></pre>
+</div>
+<div>
+<p>Each job's <code>rules</code> are evaluated top to bottom when the pipeline is created; the first matching rule decides (<code>when: on_success</code> by default, or <code>manual</code>, <code>delayed</code>, <code>never</code>, <code>always</code>).
+Conditions: <code>if</code> (variable expressions), <code>changes</code> (file paths), <code>exists</code> (file present).</p>
+<p><code>only</code> / <code>except</code> are the older syntax: still supported but not developed anymore, and they can't be mixed with <code>rules</code> in the same job.</p>
+</div>
+</div>
+<div class="tbl-wrap card">
+<table class="prose">
+  <tr><th>Pipeline type</th><th>Triggered by</th><th>Useful variables</th></tr>
+  <tr><td>Branch pipeline</td><td>Push to a branch</td><td><code>$CI_COMMIT_BRANCH</code>, <code>$CI_PIPELINE_SOURCE == "push"</code></td></tr>
+  <tr><td>Merge request pipeline</td><td>MR created / updated (needs <code>rules</code> mentioning MR events)</td><td><code>$CI_MERGE_REQUEST_IID</code>, <code>$CI_MERGE_REQUEST_TARGET_BRANCH_NAME</code>; no <code>$CI_COMMIT_BRANCH</code></td></tr>
+  <tr><td>Merged results pipeline (Premium)</td><td>MR, but tests the result of merging into the target</td><td>Catches "works on my branch, breaks on main"</td></tr>
+  <tr><td>Merge train (Premium)</td><td>Queued MRs, each tested on top of the ones ahead</td><td>Keeps main green with many merges per day</td></tr>
+  <tr><td>Tag pipeline</td><td>Pushing a tag</td><td><code>$CI_COMMIT_TAG</code></td></tr>
+  <tr><td>Scheduled pipeline</td><td><em>Build → Pipeline schedules</em> (cron)</td><td><code>$CI_PIPELINE_SOURCE == "schedule"</code> + schedule variables</td></tr>
+  <tr><td>Parent-child / multi-project</td><td><code>trigger:</code> keyword from another pipeline</td><td>Split monorepos, chain projects</td></tr>
+</table>
+</div>
+
+<h2 id="concepts">5 · Artifacts, cache, variables, runners</h2>
+<div class="tbl-wrap card">
+<table class="prose">
+  <tr><th></th><th><code>artifacts</code></th><th><code>cache</code></th></tr>
+  <tr><td>Purpose</td><td>Pass job <strong>outputs</strong> to later jobs and to humans (download, MR widgets)</td><td>Speed up: reuse <strong>dependencies</strong> between runs (pip, npm, dbt_packages)</td></tr>
+  <tr><td>Reliability</td><td>Guaranteed: stored by GitLab</td><td>Best effort: may be missing, job must work without it</td></tr>
+  <tr><td>Scope</td><td>This pipeline (later stages / <code>needs</code>), kept <code>expire_in</code></td><td>Across pipelines, per <code>key</code> (e.g. hash of a lock file)</td></tr>
+  <tr><td>Examples</td><td><code>dist/</code>, <code>target/manifest.json</code>, JUnit / coverage reports</td><td><code>.cache/pip</code>, <code>node_modules/</code>, <code>dbt_packages/</code></td></tr>
+</table>
+</div>
+<div class="cards">
+  <div class="card"><h3>Predefined variables</h3><p>GitLab injects 100+: <code>CI_COMMIT_SHA</code>, <code>CI_COMMIT_REF_SLUG</code>, <code>CI_PIPELINE_SOURCE</code>, <code>CI_DEFAULT_BRANCH</code>, <code>CI_PROJECT_DIR</code>, <code>CI_REGISTRY_IMAGE</code>, <code>CI_JOB_TOKEN</code>…</p></div>
+  <div class="card"><h3>Your variables</h3><p>In the YAML (non-secret) or in <em>Settings → CI/CD → Variables</em> (secrets). Options: <strong>masked</strong> (hidden in logs), <strong>protected</strong> (only on protected branches/tags), <em>file</em> type (written to a temp file, path in the variable).</p></div>
+  <div class="card"><h3>Precedence</h3><p>Highest wins: manual run / trigger variables → project → group → instance settings → job <code>variables:</code> → global <code>variables:</code> → predefined.</p></div>
+  <div class="card"><h3>Runners &amp; tags</h3><p>A job runs on any runner whose tags include all the job's <code>tags</code>. Use tags to target a runner with network access to your warehouse, or a GPU. Executors: docker, kubernetes, shell, instance…</p></div>
+</div>
+<div class="callout danger"><b>Secrets</b>
+  <p>Never put credentials in <code>.gitlab-ci.yml</code>: it's in the repo. Use masked + protected variables, or better, short-lived credentials via OIDC (<code>id_tokens:</code>) with your cloud provider or Vault. Masked variables are hidden in logs but readable by any script in the job.</p>
+</div>
+
+<h2 id="envs">6 · Environments &amp; deployments</h2>
+<div class="split">
+<div>
+<pre class="code"><span class="k">deploy:review</span>:
+  stage: deploy
+  script: ./deploy.sh review $CI_COMMIT_REF_SLUG
+  environment:
+    name: review/$CI_COMMIT_REF_SLUG     <span class="c"># one per MR branch</span>
+    url: https://$CI_COMMIT_REF_SLUG.review.acme.com
+    on_stop: stop:review
+    auto_stop_in: 3 days
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+
+<span class="k">stop:review</span>:
+  stage: deploy
+  script: ./teardown.sh $CI_COMMIT_REF_SLUG
+  environment: { name: review/$CI_COMMIT_REF_SLUG, action: stop }
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: manual</pre>
+</div>
+<div>
+<p>An <strong>environment</strong> records what was deployed where, and when. <em>Operate → Environments</em> lists them, with the commit currently deployed and a one-click <strong>rollback</strong> (re-run an older deploy job).</p>
+<p><strong>Review apps</strong>: one dynamic environment per MR, stopped automatically when the MR is merged or closed (<code>on_stop</code>).</p>
+<p><strong>Production</strong>: <code>when: manual</code>, a <code>resource_group</code> so two deploys never overlap, and (Premium) <em>protected environments</em> with deployment approvals.</p>
+<p>Continuous delivery = every change <em>can</em> go to prod with one click. Continuous deployment = it goes automatically.</p>
+</div>
+</div>
+
+<h2 id="reuse">7 · Reuse: include, extends, components</h2>
+<div class="split">
+<div>
+<pre class="code"><span class="k">include</span>:
+  - local: ci/dbt.yml                         <span class="c"># file in this repo</span>
+  - project: acme/ci-templates                <span class="c"># file in another project</span>
+    ref: v3.2.0
+    file: /python.yml
+  - template: Jobs/SAST.gitlab-ci.yml         <span class="c"># GitLab-provided</span>
+  - component: $CI_SERVER_FQDN/acme/components/dbt-ci@1.4.0
+    inputs:
+      dbt_version: "1.8.6"
+
+<span class="k">.python</span>:                 <span class="c"># hidden job (starts with a dot)</span>
+  image: python:3.12-slim
+  before_script: [pip install -r requirements.txt]
+
+<span class="k">test:unit</span>:
+  extends: .python          <span class="c"># deep-merge the hidden job</span>
+  script: pytest</pre>
+</div>
+<div>
+<p><strong><code>include</code></strong> splits or shares configuration. Templates from a central project keep 50 repos consistent.</p>
+<p><strong><code>extends</code></strong> (or YAML anchors, or <code>!reference [.python, before_script]</code>) avoids copy-pasting job settings.</p>
+<p><strong>CI/CD components</strong> are versioned, reusable pipeline units with typed <code>inputs</code>, published in the <strong>CI/CD Catalog</strong>. Pin a version (<code>@1.4.0</code>) rather than <code>@main</code>.</p>
+</div>
+</div>
+
+<h2 id="dbt">8 · Example: dbt slim CI</h2>
+<p>A complete pipeline for a dbt Core project (dbt 1.8.6, works the same on 1.12). In an MR, it only builds <strong>modified models and their children</strong> in a throw-away schema, deferring the rest to production.
+On main, it deploys to prod and saves the manifest that the next MR will compare against. (Background on <code>--defer</code> / <code>state:modified</code>: see the <a href="../dbt-mechanics/flags.html">dbt mechanics</a> site.)</p>
+<div class="file">.gitlab-ci.yml</div>
+<pre class="code"><span class="k">workflow</span>:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+
+<span class="k">stages</span>: [lint, ci, deploy]
+
+<span class="k">default</span>:
+  image: python:3.11-slim
+  interruptible: true
+  before_script:
+    - pip install dbt-core==1.8.6 dbt-snowflake~=1.8.0 sqlfluff-templater-dbt awscli
+    - dbt deps
+  cache:
+    key: { files: [packages.yml] }
+    paths: [dbt_packages/]
+
+<span class="k">variables</span>:
+  DBT_PROFILES_DIR: "$CI_PROJECT_DIR/ci"    <span class="c"># ci/profiles.yml reads env_var('SNOWFLAKE_PASSWORD') etc.</span>
+  <span class="h">DBT_CI_SCHEMA: "ci_mr_${CI_MERGE_REQUEST_IID}"</span>
+
+<span class="k">lint:sqlfluff</span>:
+  stage: lint
+  script: sqlfluff lint models/
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes: [models/**/*.sql]
+
+<span class="k">dbt:slim-ci</span>:
+  stage: ci
+  script:
+    - aws s3 cp s3://acme-dbt-state/prod/manifest.json prod-state/manifest.json
+    - <span class="h">dbt build --select state:modified+ --defer --state prod-state --target ci</span>
+  artifacts:
+    when: always
+    paths: [target/run_results.json, target/manifest.json]
+    expire_in: 1 week
+  environment:
+    name: ci/mr-$CI_MERGE_REQUEST_IID
+    on_stop: dbt:drop-ci-schema              <span class="c"># cleaned when the MR closes</span>
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+
+<span class="k">dbt:drop-ci-schema</span>:
+  stage: ci
+  script: dbt run-operation drop_schema --args "{schema: $DBT_CI_SCHEMA}" --target ci   <span class="c"># your own small macro</span>
+  environment: { name: ci/mr-$CI_MERGE_REQUEST_IID, action: stop }
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: manual
+  allow_failure: true
+
+<span class="k">dbt:prod</span>:
+  stage: deploy
+  script:
+    - dbt build --target prod
+    - <span class="h">aws s3 cp target/manifest.json s3://acme-dbt-state/prod/manifest.json</span>
+  environment: { name: production }
+  resource_group: dbt-prod
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH   <span class="c"># every merge to main</span>
+    - if: $CI_PIPELINE_SOURCE == "schedule"          <span class="c"># + nightly run</span></pre>
+<div class="cards">
+  <div class="card"><h3>Why a per-MR schema?</h3><p>Two MRs in flight would otherwise overwrite each other's tables. <code>ci/profiles.yml</code> sets <code>schema: "{{ env_var('DBT_CI_SCHEMA') }}"</code> for the <code>ci</code> target.</p></div>
+  <div class="card"><h3>Where does the prod manifest live?</h3><p>Here in object storage, written by the prod job. Alternatives: the generic package registry, or <code>needs: project:</code> to fetch another pipeline's artifacts (Premium).</p></div>
+  <div class="card"><h3>Make it a required check</h3><p>Turn on "Pipelines must succeed": an MR that breaks a model or a test can't be merged into <code>main</code>.</p></div>
+</div>
+
+<h2 id="best">9 · Best practices &amp; debugging</h2>
+<div class="cards">
+  <div class="card"><h3>Fast feedback first</h3><p>Cheap checks (lint, unit tests) early; slow ones later or in parallel with <code>needs</code>. Aim for an MR pipeline under ~10 minutes.</p></div>
+  <div class="card"><h3>Avoid duplicates &amp; waste</h3><p>Use <code>workflow:rules</code> (branch <em>or</em> MR pipeline), <code>interruptible: true</code> + "auto-cancel redundant pipelines", and <code>rules:changes</code> for path-specific jobs.</p></div>
+  <div class="card"><h3>Reproducible jobs</h3><p>Pin image tags and tool versions (<code>python:3.11-slim</code>, <code>dbt-core==1.8.6</code>). Pin <code>include</code> refs and component versions.</p></div>
+  <div class="card"><h3>Protect deploys</h3><p>Prod jobs: protected variables, protected environment, <code>resource_group</code>, manual or tag-only. Never let an MR from any branch reach prod credentials.</p></div>
+  <div class="card"><h3>Debug a red job</h3><p>Read the log from the bottom. Re-run with variable <code>CI_DEBUG_TRACE: "true"</code> (prints every command, can reveal secrets: use sparingly). <em>Run pipeline</em> lets you pass variables by hand.</p></div>
+  <div class="card"><h3>"Works locally, fails in CI"</h3><p>CI starts from a clean clone: missing files that are in <code>.gitignore</code>, env vars only set on your laptop, a different tool version, or a shallow clone (<code>GIT_DEPTH</code>) without the history a command needs.</p></div>
+</div>

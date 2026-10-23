@@ -1,0 +1,29 @@
+<section class="hero">
+<span class="eyebrow">📋 Command cheat sheet</span>
+<h1>Every everyday command, <span class="grad">one page</span></h1>
+<p class="lead">Grouped by what you're trying to do. Type to filter (try <em>undo</em>, <em>branch</em>, <em>remote</em>, <em>stash</em>…).
+Commands tagged <span class="risk">rewrites</span> change history or discard work: think before using them on shared branches.</p>
+</section>
+<input class="cs-search" id="cs-q" type="search" placeholder="Filter commands… (e.g. undo, log, tag, force)" aria-label="Filter commands" autocomplete="off">
+<p class="muted" id="cs-count" style="font-size:.85rem;margin:8px 2px 0"></p>
+<div id="cs-list"></div>
+
+<h2>Aliases worth adding</h2>
+<div class="file">~/.gitconfig</div>
+<pre class="code"><span class="k">[alias]</span>
+  st   = status -sb
+  lg   = log --oneline --graph --decorate --all
+  last = log -1 HEAD --stat
+  undo = reset --soft HEAD~1            <span class="c"># uncommit, keep changes staged</span>
+  amend = commit --amend --no-edit
+  wip  = !git add -A &amp;&amp; git commit -m wip
+<span class="k">[pull]</span>
+  rebase = true
+<span class="k">[push]</span>
+  autoSetupRemote = true                <span class="c"># first push of a branch sets upstream</span>
+<span class="k">[fetch]</span>
+  prune = true
+<span class="k">[merge]</span>
+  conflictstyle = zdiff3
+<span class="k">[rerere]</span>
+  enabled = true                        <span class="c"># remember how you resolved a conflict</span></pre>

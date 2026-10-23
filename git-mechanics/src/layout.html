@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{title}}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23f05033'/%3E%3Ccircle cx='10' cy='9' r='3' fill='white'/%3E%3Ccircle cx='10' cy='23' r='3' fill='white'/%3E%3Ccircle cx='22' cy='15' r='3' fill='white'/%3E%3Cpath d='M10 12v8M10 17c0-2 4-2 9-2' stroke='white' stroke-width='2' fill='none'/%3E%3C/svg%3E">
+<script>
+  // apply saved theme before paint (no flash)
+  try { const t = localStorage.getItem("git-mechanics-theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+</script>
+<style>
+{{css}}
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<header class="top">
+  <div class="top-inner">
+    <a class="brand" href="index.html" aria-label="git mechanics home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f05033"/><stop offset=".55" stop-color="#fc6d26"/><stop offset="1" stop-color="#6b4fbb"/></linearGradient></defs>
+        <rect width="32" height="32" rx="9" fill="url(#lg)"/><circle cx="10" cy="8" r="3" fill="#fff"/><circle cx="10" cy="24" r="3" fill="#fff"/><circle cx="22" cy="14" r="3" fill="#fff"/>
+        <path d="M10 11v10M10 18c0-3 3-4 9-4" stroke="#fff" stroke-width="2" fill="none"/></svg>
+      git<span>mechanics</span></a>
+    <nav class="nav">
+{{nav}}
+    </nav>
+    <button class="theme-btn" id="theme-btn" title="Toggle light / dark">◐</button>
+  </div>
+</header>
+<main>
+{{content}}
+</main>
+<footer class="foot">
+  Built with <code>python build.py</code>. Commands target git 2.4x+ (<code>git switch</code> / <code>git restore</code> exist since 2.23)
+  and GitLab 17 / 18 (CI/CD components, <code>rules</code>, <code>needs</code>).
+</footer>
+<script>
+{{js}}
+</script>
+</body>
+</html>

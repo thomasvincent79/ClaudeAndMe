@@ -1,0 +1,157 @@
+<section class="hero">
+<span class="eyebrow">🦊 GitLab workflow</span>
+<h1>From issue to main, through a <span class="grad">merge request</span></h1>
+<p class="lead">GitLab hosts your repository and organizes the work around it: issues describe what to do, branches hold the work,
+<strong>merge requests</strong> (MRs) are where code is reviewed, tested by CI and merged. Protected branches and approval rules make sure nothing reaches <code>main</code> any other way.</p>
+<div class="toc">
+  <a href="#map">1 · The building blocks</a>
+  <a href="#mr">2 · Life of a merge request</a>
+  <a href="#methods">3 · Merge methods</a>
+  <a href="#protect">4 · Protection &amp; approvals</a>
+  <a href="#flows">5 · Branching strategies</a>
+  <a href="#tips">6 · Handy features</a>
+</div>
+</section>
+
+<h2 id="map">1 · The building blocks</h2>
+<div class="diagram">
+<svg viewBox="0 0 900 230" role="img" aria-label="GitLab hierarchy: group, subgroup, project and what a project contains">
+  <rect x="10" y="20" width="250" height="190" rx="16" fill="color-mix(in srgb, #6b4fbb 9%, var(--card))" stroke="#6b4fbb" stroke-opacity=".5"/>
+  <text class="d-txt" x="28" y="46" font-weight="800">Group  acme</text>
+  <text class="d-mut" x="28" y="64">members, permissions, shared runners &amp; variables</text>
+  <rect x="28" y="80" width="214" height="114" rx="12" fill="var(--card)" stroke="#6b4fbb" stroke-opacity=".4" stroke-dasharray="4 3"/>
+  <text class="d-txt" x="44" y="104" font-weight="700">Subgroup  acme/data</text>
+  <rect class="d-box" x="44" y="118" width="180" height="30" rx="8"/><text class="d-txt" x="56" y="138">📁 dbt-warehouse</text>
+  <rect class="d-box" x="44" y="154" width="180" height="30" rx="8"/><text class="d-txt" x="56" y="174">📁 airflow-dags</text>
+  <path id="gm" class="d-line" d="M224 133 C290 133 290 120 330 120"/>
+  <circle r="5" class="flow-dot"><animateMotion dur="1.6s" repeatCount="indefinite"><mpath href="#gm"/></animateMotion></circle>
+  <rect x="330" y="20" width="560" height="190" rx="16" fill="color-mix(in srgb, #f05033 6%, var(--card))" stroke="#f05033" stroke-opacity=".4"/>
+  <text class="d-txt" x="350" y="46" font-weight="800">Project  acme/data/dbt-warehouse</text>
+  <g font-size="12">
+    <rect class="d-box" x="350" y="62" width="165" height="40" rx="9"/><text class="d-txt" x="362" y="87">🗂 Repository</text>
+    <rect class="d-box" x="530" y="62" width="165" height="40" rx="9"/><text class="d-txt" x="542" y="87">📌 Issues &amp; boards</text>
+    <rect class="d-box" x="710" y="62" width="165" height="40" rx="9"/><text class="d-txt" x="722" y="87">🔀 Merge requests</text>
+    <rect class="d-box" x="350" y="112" width="165" height="40" rx="9"/><text class="d-txt" x="362" y="137">🚀 CI/CD pipelines</text>
+    <rect class="d-box" x="530" y="112" width="165" height="40" rx="9"/><text class="d-txt" x="542" y="137">🌍 Environments</text>
+    <rect class="d-box" x="710" y="112" width="165" height="40" rx="9"/><text class="d-txt" x="722" y="137">📦 Registries</text>
+    <rect class="d-box" x="350" y="162" width="165" height="40" rx="9"/><text class="d-txt" x="362" y="187">🔐 Settings &amp; rules</text>
+    <rect class="d-box" x="530" y="162" width="165" height="40" rx="9"/><text class="d-txt" x="542" y="187">📖 Wiki / Pages</text>
+    <rect class="d-box" x="710" y="162" width="165" height="40" rx="9"/><text class="d-txt" x="722" y="187">🛡 Security scans</text>
+  </g>
+</svg>
+</div>
+<div class="tbl-wrap card">
+<table class="prose">
+  <tr><th>Role</th><th>Can do</th></tr>
+  <tr><td>Guest / Reporter</td><td>See issues (Reporter: also code, pipelines), comment, create issues</td></tr>
+  <tr><td>Developer</td><td>Push branches, open MRs, run pipelines, push to unprotected branches</td></tr>
+  <tr><td>Maintainer</td><td>Merge to protected branches (by default), manage settings, CI/CD variables, runners</td></tr>
+  <tr><td>Owner</td><td>Everything, including deleting the project / group and managing members</td></tr>
+</table>
+</div>
+
+<h2 id="mr">2 · Life of a merge request</h2>
+<p>Step through a feature going from issue <code>#42</code> to <code>main</code>. The graph shows GitLab's copy of the repository; pick a merge method before the last step.</p>
+<div class="sim" id="mrsim">
+  <div class="ci-steps" id="mr-steps"></div>
+  <div class="sim-head">
+    <div class="controls"><span class="ctl-label">Merge method</span><div id="mr-method"></div><span class="ctl-label">Squash</span><div id="mr-squash"></div></div>
+    <div class="controls"><button class="btn" id="mr-prev">←</button><button class="btn primary" id="mr-play">▶ Play</button><button class="btn" id="mr-next">→</button></div>
+  </div>
+  <div class="sim-cols" style="grid-template-columns:minmax(0,1.1fr) minmax(0,1fr)">
+    <div><div class="pane-title"><span>Merge request</span></div><div id="mr-card"></div></div>
+    <div><div class="pane-title"><span>Repository graph (on GitLab)</span></div><div id="mr-graph"></div>
+      <div class="file" style="margin-top:10px">what you type</div><pre class="code" id="mr-cmd" style="margin-top:0;min-height:5.5em"></pre></div>
+  </div>
+  <div class="narration" id="mr-narr"></div>
+</div>
+
+<h2 id="methods">3 · Merge methods</h2>
+<p>Set per project in <em>Settings → Merge requests</em>. The choice shapes your <code>main</code> history:</p>
+<div class="tbl-wrap card">
+<table class="prose">
+  <tr><th>Method</th><th>What GitLab does</th><th>History</th><th>Requires</th></tr>
+  <tr><td><strong>Merge commit</strong> (default)</td><td>Always creates a merge commit (like <code>git merge --no-ff</code>)</td><td>Branchy, every MR visible as a merge</td><td>Nothing</td></tr>
+  <tr><td><strong>Merge commit with semi-linear history</strong></td><td>Merge commit, but only if the branch is up to date with the target</td><td>Each MR is a "bubble" on a straight line</td><td>Rebase when target moved (button in the MR)</td></tr>
+  <tr><td><strong>Fast-forward merge</strong></td><td>No merge commit: <code>main</code> just moves to the branch tip</td><td>Perfectly linear</td><td>Rebase when target moved</td></tr>
+  <tr><td>+ <strong>Squash commits</strong></td><td>Option (per MR or enforced): all branch commits become one</td><td>One commit per MR</td><td>Good commit message on the MR</td></tr>
+</table>
+</div>
+<div class="callout tip"><b>Common choice for data / dbt teams</b>
+  <p>Fast-forward or semi-linear + squash: one clean commit per MR on <code>main</code>, easy to read in <code>git log</code> and easy to <code>revert</code> if a model change breaks production.</p>
+</div>
+
+<h2 id="protect">4 · Protection &amp; approvals</h2>
+<div class="cards">
+  <div class="card"><h3>Protected branches</h3><p><em>Settings → Repository → Protected branches</em>: who may <strong>push</strong> (usually "No one") and who may <strong>merge</strong> (Maintainers) on <code>main</code>.
+    Force push is disabled. Wildcards work: <code>release/*</code>.</p></div>
+  <div class="card"><h3>Merge checks</h3><p><em>Settings → Merge requests</em>: "Pipelines must succeed", "All threads must be resolved", "Delete source branch" by default, and the merge method above.</p></div>
+  <div class="card"><h3>Approval rules (Premium)</h3><p>N approvals required, from specific groups, plus "prevent approval by author" and "remove approvals when new commits are pushed".</p></div>
+  <div class="card"><h3>Protected tags &amp; variables</h3><p>Protected CI/CD variables (deploy credentials) are only given to pipelines on protected branches / tags, so a random branch can't read them.</p></div>
+</div>
+<div class="split">
+<div>
+<div class="file">.gitlab/CODEOWNERS</div>
+<pre class="code"><span class="c"># owners must approve MRs touching these paths</span>
+<span class="k">[Data platform]</span> @acme/data/platform
+/dbt_project.yml
+/macros/
+
+<span class="k">[Finance models]</span> @alice @bob
+/models/marts/finance/
+
+<span class="k">^[Docs]</span>                     <span class="c"># ^ = optional section</span>
+*.md  @acme/data/writers</pre>
+</div>
+<div>
+<p><strong>Code owners</strong> map paths to people or groups. GitLab adds them as required approvers automatically when an MR touches their files (with "Require approval from code owners" on the protected branch, Premium).</p>
+<p>Combined with "Pipelines must succeed", this gives a clean rule: <em>nothing reaches main without a green pipeline and the right reviewer</em>.</p>
+</div>
+</div>
+
+<h2 id="flows">5 · Branching strategies</h2>
+<div class="tbl-wrap card">
+<table class="prose">
+  <tr><th>Strategy</th><th>Branches</th><th>Release</th><th>Good for</th></tr>
+  <tr><td><strong>Trunk-based / GitHub flow</strong></td><td><code>main</code> + short-lived feature branches</td><td>Deploy <code>main</code> continuously (or tag)</td><td>Most teams, web apps, dbt projects</td></tr>
+  <tr><td><strong>GitLab flow (environment branches)</strong></td><td><code>main</code> → <code>staging</code> → <code>production</code>, merged downstream</td><td>Promote by merging to the next branch</td><td>When deployment needs a gate per environment</td></tr>
+  <tr><td><strong>GitLab flow (release branches)</strong></td><td><code>main</code> + <code>release/1.4</code>, fixes cherry-picked</td><td>Tag on the release branch</td><td>Software shipped in versions, several maintained</td></tr>
+  <tr><td><strong>Gitflow</strong></td><td><code>main</code>, <code>develop</code>, feature/*, release/*, hotfix/*</td><td>Merge release into main + tag</td><td>Rarely needed today: heavy, long-lived branches</td></tr>
+</table>
+</div>
+<p>Modern advice: keep one long-lived branch (<code>main</code>), short MRs, and let <strong>CI/CD environments</strong> (not branches) represent staging and production.
+Deploys to production become a manual, protected job on <code>main</code> or on tags. See <a href="cicd.html">CI/CD</a>.</p>
+
+<h2 id="tips">6 · Handy features</h2>
+<div class="split">
+<div>
+<div class="file">push options: create the MR from the terminal</div>
+<pre class="code"><span class="k">git push</span> -u origin 42-discount-rules \
+  -o merge_request.create \
+  -o merge_request.target=main \
+  -o merge_request.draft \
+  -o merge_request.remove_source_branch \
+  -o merge_request.label=<span class="s">"dbt"</span>
+
+<span class="c"># or with the official CLI</span>
+<span class="k">glab mr create</span> --fill --draft --label dbt
+<span class="k">glab ci status</span>       <span class="c"># pipeline of the current branch</span></pre>
+</div>
+<div>
+<div class="file">quick actions (in an MR / issue comment)</div>
+<pre class="code"><span class="f">/assign</span> @alice
+<span class="f">/assign_reviewer</span> @bob
+<span class="f">/label</span> ~dbt ~"needs review"
+<span class="f">/milestone</span> %"Sprint 42"
+<span class="f">/draft</span>          <span class="c"># toggle draft status</span>
+<span class="f">/approve</span>
+<span class="f">/rebase</span>         <span class="c"># ask GitLab to rebase the branch</span>
+<span class="f">/merge</span>          <span class="c"># merge when the pipeline succeeds</span></pre>
+</div>
+</div>
+<div class="cards">
+  <div class="card"><h3>Closing keywords</h3><p><code>Closes #42</code> in the MR description (or a commit message) closes the issue automatically when merged into the default branch.</p></div>
+  <div class="card"><h3>Suggestions</h3><p>Reviewers can propose an exact code change in a comment; the author applies it with one click as a commit.</p></div>
+  <div class="card"><h3>Auto-merge</h3><p>"Set to auto-merge" merges as soon as the pipeline passes and approvals are in. With merge trains (Premium), MRs are tested in the order they'll land.</p></div>
+  <div class="card"><h3>Web IDE &amp; Duo</h3><p>Edit and commit from the browser (press <code>.</code> in a repo). GitLab Duo can summarize MRs, explain code and suggest fixes for failed jobs.</p></div>
+</div>

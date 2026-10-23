@@ -1,0 +1,112 @@
+<section class="hero">
+<span class="eyebrow">🔄 Remotes</span>
+<h1>Your repo, their repo, and <span class="grad">origin/main</span></h1>
+<p class="lead">Your clone is a complete, independent repository. The GitLab copy is just another repository called <code>origin</code>.
+They only talk when you run <code>fetch</code>, <code>pull</code> or <code>push</code>, and <code>origin/main</code> is your local, possibly outdated, memory of where GitLab's <code>main</code> was.</p>
+<div class="toc">
+  <a href="#model">1 · Remote-tracking branches</a>
+  <a href="#sim">2 · You + a teammate</a>
+  <a href="#fvp">3 · fetch vs pull</a>
+  <a href="#force">4 · Rejected pushes &amp; force</a>
+  <a href="#tags">5 · Tags</a>
+  <a href="#forks">6 · Several remotes</a>
+</div>
+</section>
+
+<h2 id="model">1 · Remote-tracking branches</h2>
+<div class="cards">
+  <div class="card"><h3><code>origin</code></h3><p>A nickname for a URL, created by <code>git clone</code>. <code>git remote -v</code> lists them. You can have several (<code>origin</code>, <code>upstream</code>…).</p></div>
+  <div class="card"><h3><code>origin/main</code></h3><p>A read-only bookmark in <em>your</em> repo: "last time I talked to origin, its main was here". Only <code>fetch</code> / <code>pull</code> / <code>push</code> update it.</p></div>
+  <div class="card"><h3>Upstream</h3><p>Your local <code>main</code> <em>tracks</em> <code>origin/main</code>. That's what lets <code>git status</code> say "ahead 2, behind 1", and plain <code>git pull</code> / <code>git push</code> know where to go. Set with <code>git push -u origin feature</code>.</p></div>
+  <div class="card"><h3>Nothing is live</h3><p>If a teammate pushed five minutes ago, <code>git status</code> still says "up to date" until you <code>git fetch</code>. It compares with the bookmark, not with GitLab.</p></div>
+</div>
+
+<h2 id="sim">2 · You + a teammate</h2>
+<p>Both repos start with <code>C1 ← C2</code>. Your commits are <code>A1, A2…</code>, your teammate's are <code>B1, B2…</code> (they push straight to GitLab here).</p>
+<div class="sim" id="rmsim">
+  <div class="sim-head">
+    <div class="controls"><span class="ctl-label">Scenarios</span><div class="presets" id="rm-presets"></div></div>
+    <div class="controls"><button class="btn" id="rm-reset">↺ Reset</button></div>
+  </div>
+  <div class="sim-cols" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr)">
+    <div><div class="pane-title"><span>💻 Your laptop</span><span class="badge" id="rm-ab"></span></div><div id="rm-local"></div></div>
+    <div><div class="pane-title"><span>🦊 GitLab (origin)</span></div><div id="rm-remote"></div></div>
+  </div>
+  <div class="cmd-btns" id="rm-btns"></div>
+  <div class="narration" id="rm-narr">Click <b>👥 teammate pushes</b>, then try <b>git push</b>.</div>
+  <div class="file" style="margin-top:14px">terminal</div>
+  <div class="term" id="rm-term"></div>
+</div>
+<div class="callout tip"><b>Things to try</b>
+  <p>• Commit, let your teammate push, then <code>git push</code>: rejected. Then compare <code>git pull</code> (merge commit) with <code>git pull --rebase</code> (linear).</p>
+  <p>• In the same situation, try <code>git push --force</code>: your teammate's commit vanishes from GitLab. Then try <code>--force-with-lease</code> instead.</p>
+</div>
+
+<h2 id="fvp">3 · fetch vs pull</h2>
+<div class="tbl-wrap card">
+<table class="prose">
+  <tr><th>Command</th><th>Downloads commits</th><th>Moves <code>origin/main</code></th><th>Changes your branch &amp; files</th></tr>
+  <tr><td><code>git fetch</code></td><td class="yes">yes</td><td class="yes">yes</td><td class="no">no: always safe, inspect first with <code>git log main..origin/main</code></td></tr>
+  <tr><td><code>git pull</code></td><td class="yes">yes</td><td class="yes">yes</td><td>yes: <code>fetch</code> + <code>merge origin/main</code> (fast-forward or merge commit)</td></tr>
+  <tr><td><code>git pull --rebase</code></td><td class="yes">yes</td><td class="yes">yes</td><td>yes: <code>fetch</code> + <code>rebase origin/main</code> (your local commits replayed on top)</td></tr>
+  <tr><td><code>git pull --ff-only</code></td><td class="yes">yes</td><td class="yes">yes</td><td>only if it's a fast-forward, otherwise stops and lets you decide</td></tr>
+</table>
+</div>
+<p>Since git 2.27, a plain <code>git pull</code> on diverged branches asks you to choose. Set it once:
+<code>git config --global pull.rebase true</code> (linear local history) or <code>pull.ff only</code> (never surprise-merge).</p>
+
+<h2 id="force">4 · Rejected pushes &amp; force</h2>
+<div class="split">
+<div>
+<div class="file">terminal</div>
+<pre class="code"><span class="k">$ git push</span>
+To gitlab.com:team/shop.git
+ ! [rejected]        main -&gt; main (fetch first)
+error: failed to push some refs to 'gitlab.com:team/shop.git'
+hint: Updates were rejected because the remote contains work that you do not
+hint: have locally. Integrate the remote changes (e.g. 'git pull ...')
+hint: before pushing again.</pre>
+</div>
+<div>
+<p>A push is only accepted if it is a <strong>fast-forward</strong> on the remote: the remote tip must be an ancestor of what you send. Otherwise someone's commits would be dropped.</p>
+<p><strong>Fix:</strong> <code>git pull --rebase</code> (or <code>git pull</code>), resolve conflicts if any, then <code>git push</code>.</p>
+<p><strong>Rewrote your own branch</strong> (rebase, amend, squash)? Use <code>git push --force-with-lease</code>: it overwrites only if the remote is still where your <code>origin/…</code> bookmark says, so you can't wipe a teammate's push you haven't seen.
+Plain <code>--force</code> overwrites unconditionally.</p>
+<p>On GitLab, <code>main</code> is protected: force pushes are refused there regardless.</p>
+</div>
+</div>
+
+<h2 id="tags">5 · Tags</h2>
+<div class="split">
+<div>
+<pre class="code"><span class="k">git tag</span> -a v1.4.0 -m <span class="s">"Release 1.4.0"</span>   <span class="c"># annotated tag on HEAD</span>
+<span class="k">git push</span> origin v1.4.0                  <span class="c"># tags are NOT pushed by default</span>
+<span class="k">git push</span> --follow-tags                   <span class="c"># push commits + their annotated tags</span>
+<span class="k">git tag</span> -l <span class="s">"v1.*"</span>                         <span class="c"># list</span>
+<span class="k">git switch</span> --detach v1.3.2               <span class="c"># look at an old release</span></pre>
+</div>
+<div>
+<p>A tag is a pointer that <strong>never moves</strong>, used to mark releases. Annotated tags (<code>-a</code>) also store author, date and message.</p>
+<p>On GitLab, pushing a tag can trigger a <em>tag pipeline</em> (<code>$CI_COMMIT_TAG</code> is set) that builds and deploys the release, and you can create a <em>Release</em> page from it. See <a href="cicd.html">CI/CD</a>.</p>
+</div>
+</div>
+
+<h2 id="forks">6 · Several remotes</h2>
+<div class="split">
+<div>
+<pre class="code"><span class="c"># contributing to a project you can't push to: fork it on GitLab first</span>
+<span class="k">git clone</span> git@gitlab.com:me/dbt-utils.git          <span class="c"># your fork = origin</span>
+<span class="k">git remote add</span> upstream git@gitlab.com:org/dbt-utils.git
+<span class="k">git fetch</span> upstream
+<span class="k">git rebase</span> upstream/main          <span class="c"># stay current with the original</span>
+<span class="k">git push</span> origin feature          <span class="c"># then open an MR fork → upstream</span>
+
+<span class="k">git remote</span> -v                    <span class="c"># list remotes and URLs</span>
+<span class="k">git branch</span> -vv                   <span class="c"># each branch, its upstream, ahead/behind</span>
+<span class="k">git fetch</span> --all --prune          <span class="c"># update all, drop deleted remote branches</span></pre>
+</div>
+<div>
+<p>Remote names are only local nicknames. The convention: <code>origin</code> is where you push, <code>upstream</code> is the original project you forked from.</p>
+<p>Inside a company, you usually don't fork: everybody pushes branches to the same GitLab project and protected branches keep <code>main</code> safe.</p>
+</div>
+</div>

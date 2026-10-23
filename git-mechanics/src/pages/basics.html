@@ -1,0 +1,208 @@
+<section class="hero">
+<span class="eyebrow">📦 How git works</span>
+<h1>Four places your code <span class="grad">lives</span></h1>
+<p class="lead">Almost every git command moves changes between four areas: the <strong>working directory</strong> (the files you edit),
+the <strong>staging area</strong> (what goes into the next commit), the <strong>local repository</strong> (the history in <code>.git/</code>)
+and the <strong>remote</strong> (the shared copy on GitLab). Once you see these four boxes, <code>git status</code> stops being cryptic.</p>
+<div class="toc">
+  <a href="#sim">1 · The four areas, live</a>
+  <a href="#commit">2 · What is a commit?</a>
+  <a href="#setup">3 · Setting up</a>
+  <a href="#inspect">4 · Looking around</a>
+  <a href="#ignore">5 · .gitignore</a>
+  <a href="#best">6 · Good commits</a>
+</div>
+</section>
+
+<h2 id="sim">1 · The four areas, live</h2>
+<p>You just ran <code>git clone</code>: the project has one commit, identical everywhere. Edit files, stage them, commit, push, and watch each change travel from left to right.</p>
+<div class="sim" id="basim">
+  <div class="cmd-btns" id="ba-edit"></div>
+  <div class="cmd-btns" id="ba-git"></div>
+  <div class="zones" id="ba-zones"></div>
+  <div class="narration" id="ba-narr">Click <b>✎ edit app.py</b> to start.</div>
+  <div class="file" style="margin-top:14px">terminal</div>
+  <div class="term" id="ba-term"></div>
+  <div class="legend">
+    <span><i style="background:var(--del)"></i>untracked: git has never seen this file</span>
+    <span><i style="background:var(--upd)"></i>modified: differs from the staging area</span>
+    <span><i style="background:var(--new)"></i>staged: will go into the next commit</span>
+  </div>
+</div>
+<div class="callout tip"><b>Things to try</b>
+  <p>• Edit <code>app.py</code>, <code>git add</code> it, then edit it <em>again</em>: the file is both staged (v2) and modified (v3). Only v2 goes into the commit.</p>
+  <p>• Create <code>test.py</code> and run <code>git commit</code> without adding it: untracked files are never committed automatically.</p>
+  <p>• Make two commits before pushing: the remote only sees them when you push, and receives both at once.</p>
+</div>
+
+<h3>Which command moves what</h3>
+<div class="diagram">
+<svg viewBox="0 0 900 250" role="img" aria-label="Commands between the four areas">
+  <g font-weight="700">
+    <rect class="d-box" x="10" y="20" width="170" height="210" rx="14"/><text class="d-txt" x="95" y="46" text-anchor="middle">Working directory</text>
+    <rect class="d-box" x="250" y="20" width="170" height="210" rx="14"/><text class="d-txt" x="335" y="46" text-anchor="middle">Staging area (index)</text>
+    <rect class="d-box" x="490" y="20" width="170" height="210" rx="14"/><text class="d-txt" x="575" y="46" text-anchor="middle">Local repository</text>
+    <rect x="730" y="20" width="160" height="210" rx="14" fill="color-mix(in srgb, #6b4fbb 10%, var(--card))" stroke="#6b4fbb" stroke-dasharray="5 3"/><text class="d-txt" x="810" y="46" text-anchor="middle">Remote (origin)</text>
+  </g>
+  <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--accent)"/></marker>
+        <marker id="al" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#6b4fbb"/></marker></defs>
+  <g stroke-width="2" fill="none">
+    <path id="b1" d="M180 80 H250" stroke="var(--accent)" marker-end="url(#ar)"/>
+    <path id="b2" d="M420 80 H490" stroke="var(--accent)" marker-end="url(#ar)"/>
+    <path id="b3" d="M660 80 H730" stroke="var(--accent)" marker-end="url(#ar)"/>
+    <path d="M730 130 H180" stroke="#6b4fbb" marker-end="url(#al)"/>
+    <path d="M730 175 H660" stroke="#6b4fbb" marker-end="url(#al)"/>
+    <path d="M250 200 H180" stroke="#6b4fbb" marker-end="url(#al)" stroke-dasharray="4 3"/>
+    <path d="M490 215 H420" stroke="#6b4fbb" marker-end="url(#al)" stroke-dasharray="4 3"/>
+  </g>
+  <g class="obj" font-size="11">
+    <text x="215" y="72" text-anchor="middle" fill="var(--accent)">git add</text>
+    <text x="455" y="72" text-anchor="middle" fill="var(--accent)">git commit</text>
+    <text x="695" y="72" text-anchor="middle" fill="var(--accent)">git push</text>
+    <text x="455" y="124" text-anchor="middle" fill="#6b4fbb">git pull  (= fetch + merge into your files)</text>
+    <text x="695" y="168" text-anchor="middle" fill="#6b4fbb">git fetch</text>
+    <text x="215" y="194" text-anchor="middle" fill="#6b4fbb">git restore</text>
+    <text x="455" y="209" text-anchor="middle" fill="#6b4fbb">restore --staged</text>
+  </g>
+  <circle r="5" class="flow-dot"><animateMotion dur="1.4s" repeatCount="indefinite"><mpath href="#b1"/></animateMotion></circle>
+  <circle r="5" class="flow-dot"><animateMotion dur="1.4s" begin=".45s" repeatCount="indefinite"><mpath href="#b2"/></animateMotion></circle>
+  <circle r="5" class="flow-dot"><animateMotion dur="1.4s" begin=".9s" repeatCount="indefinite"><mpath href="#b3"/></animateMotion></circle>
+</svg>
+</div>
+<p><strong>Why a staging area?</strong> It lets you commit <em>part</em> of your work: fix a bug and refactor in the same session, then stage and commit them separately,
+even individual hunks with <code>git add -p</code>. Commits stay small and focused, which makes review, <code>revert</code> and <code>bisect</code> much easier.</p>
+
+<h2 id="commit">2 · What is a commit?</h2>
+<p>A commit is a <strong>full snapshot</strong> of the project (not a diff), plus metadata. git stores everything as objects named by the SHA-1 hash
+of their content (SHA-256 repos exist but are rare), in <code>.git/objects/</code>:</p>
+<div class="diagram">
+<svg viewBox="0 0 900 270" role="img" aria-label="commit, tree and blob objects">
+  <g>
+    <rect x="20" y="30" width="200" height="120" rx="12" fill="color-mix(in srgb, #f05033 12%, var(--card))" stroke="#f05033"/>
+    <text class="d-txt" x="36" y="54" font-weight="800">commit  e4f1a9c</text>
+    <text class="d-mut obj" x="36" y="76">tree    9b2c…</text>
+    <text class="d-mut obj" x="36" y="94">parent  a1d03f7</text>
+    <text class="d-mut obj" x="36" y="112">author  Thomas, 2026-10-23</text>
+    <text class="d-mut obj" x="36" y="130">"Add discount rule"</text>
+    <rect x="20" y="180" width="200" height="70" rx="12" fill="color-mix(in srgb, #f05033 6%, var(--card))" stroke="#f05033" stroke-dasharray="4 3"/>
+    <text class="d-txt" x="36" y="206" font-weight="700">commit  a1d03f7</text>
+    <text class="d-mut obj" x="36" y="226">its own tree, its own parent…</text>
+    <rect x="320" y="60" width="180" height="110" rx="12" fill="color-mix(in srgb, #2f7fd8 12%, var(--card))" stroke="#2f7fd8"/>
+    <text class="d-txt" x="336" y="84" font-weight="800">tree  9b2c…  (/)</text>
+    <text class="d-mut obj" x="336" y="106">blob 5e1f README.md</text>
+    <text class="d-mut obj" x="336" y="124">blob c7a0 app.py</text>
+    <text class="d-mut obj" x="336" y="142">tree 0d44 tests/</text>
+    <rect x="600" y="20" width="280" height="56" rx="12" fill="color-mix(in srgb, #12946a 12%, var(--card))" stroke="#12946a"/>
+    <text class="d-txt" x="616" y="44" font-weight="800">blob 5e1f</text><text class="d-mut obj" x="616" y="62"># My project…  (file content, no name)</text>
+    <rect x="600" y="92" width="280" height="56" rx="12" fill="color-mix(in srgb, #12946a 12%, var(--card))" stroke="#12946a"/>
+    <text class="d-txt" x="616" y="116" font-weight="800">blob c7a0</text><text class="d-mut obj" x="616" y="134">def price(order): …</text>
+    <rect x="600" y="164" width="280" height="56" rx="12" fill="color-mix(in srgb, #2f7fd8 8%, var(--card))" stroke="#2f7fd8" stroke-dasharray="4 3"/>
+    <text class="d-txt" x="616" y="188" font-weight="800">tree 0d44  (tests/)</text><text class="d-mut obj" x="616" y="206">blob 81bb test_price.py</text>
+  </g>
+  <g fill="none" stroke-width="1.8" stroke="var(--muted)">
+    <path id="o1" d="M220 76 C270 76 270 100 320 100"/><path d="M120 150 V180"/>
+    <path id="o2" d="M500 102 C550 102 550 48 600 48"/><path id="o3" d="M500 120 C550 120 550 120 600 120"/><path id="o4" d="M500 138 C550 138 550 192 600 192"/>
+  </g>
+  <text class="d-mut" x="130" y="170">parent</text>
+  <circle r="4" class="flow-dot"><animateMotion dur="1.8s" repeatCount="indefinite"><mpath href="#o1"/></animateMotion></circle>
+  <circle r="4" class="flow-dot"><animateMotion dur="1.8s" begin=".6s" repeatCount="indefinite"><mpath href="#o2"/></animateMotion></circle>
+  <circle r="4" class="flow-dot"><animateMotion dur="1.8s" begin=".9s" repeatCount="indefinite"><mpath href="#o3"/></animateMotion></circle>
+  <circle r="4" class="flow-dot"><animateMotion dur="1.8s" begin="1.2s" repeatCount="indefinite"><mpath href="#o4"/></animateMotion></circle>
+</svg>
+</div>
+<div class="cards">
+  <div class="card"><h3>Content-addressed</h3><p>The id of an object <em>is</em> the hash of its content. Change one byte in a file → new blob → new tree → new commit id.
+    That's why history can't be altered silently, and why rebase or amend always produce <em>new</em> SHAs.</p></div>
+  <div class="card"><h3>Deduplicated</h3><p>A file unchanged between 1,000 commits is stored once: every tree points to the same blob.
+    Snapshots are cheap; <code>git gc</code> also packs similar blobs as deltas.</p></div>
+  <div class="card"><h3>A chain of parents</h3><p>Each commit points to its parent(s). History is a <strong>graph</strong> (a DAG) walked backwards from the tip.
+    A merge commit has two parents; the first commit has none.</p></div>
+  <div class="card"><h3>Branches are pointers</h3><p><code>.git/refs/heads/main</code> is a file containing one SHA. <code>HEAD</code> is a file saying which branch you're on.
+    See the <a href="branches.html">Branches</a> page.</p></div>
+</div>
+<pre class="code"><span class="c"># peek under the hood (read-only, safe)</span>
+<span class="k">git cat-file</span> -p HEAD            <span class="c"># the commit object: tree, parent, author, message</span>
+<span class="k">git cat-file</span> -p HEAD^{tree}     <span class="c"># the root tree: one line per file / folder</span>
+<span class="k">git rev-parse</span> HEAD main~2       <span class="c"># turn names into SHAs</span>
+<span class="k">cat</span> .git/HEAD                    <span class="c"># ref: refs/heads/main</span></pre>
+
+<h2 id="setup">3 · Setting up</h2>
+<div class="split">
+<div>
+<div class="file">once per machine</div>
+<pre class="code"><span class="k">git config</span> --global user.name  <span class="s">"Thomas Vincent"</span>
+<span class="k">git config</span> --global user.email <span class="s">"thomas@example.com"</span>
+<span class="k">git config</span> --global init.defaultBranch main
+<span class="k">git config</span> --global pull.rebase true      <span class="c"># optional: pull = fetch + rebase</span>
+<span class="k">git config</span> --global core.autocrlf true    <span class="c"># Windows: CRLF ↔ LF</span>
+<span class="k">git config</span> --list --show-origin           <span class="c"># where each setting comes from</span></pre>
+</div>
+<div>
+<div class="file">once per project</div>
+<pre class="code"><span class="c"># start from scratch…</span>
+<span class="k">git init</span> my-project &amp;&amp; cd my-project
+<span class="k">git remote add</span> origin git@gitlab.com:team/my-project.git
+<span class="k">git push</span> -u origin main     <span class="c"># -u: remember origin/main as upstream</span>
+
+<span class="c"># …or copy an existing one (history included)</span>
+<span class="k">git clone</span> git@gitlab.com:team/my-project.git
+<span class="k">git clone</span> --depth 1 &lt;url&gt;    <span class="c"># shallow: latest snapshot only (CI does this)</span></pre>
+</div>
+</div>
+<div class="callout"><b>SSH or HTTPS?</b>
+  <p>With <strong>SSH</strong>, create a key once (<code>ssh-keygen -t ed25519</code>), paste the <code>.pub</code> file into GitLab → <em>Preferences → SSH Keys</em>, and never type a password again.
+  With <strong>HTTPS</strong>, GitLab asks for a <em>personal access token</em> (not your password); Git Credential Manager stores it for you on Windows.</p>
+</div>
+
+<h2 id="inspect">4 · Looking around</h2>
+<div class="tbl-wrap card">
+<table class="prose">
+  <tr><th>Command</th><th>What it answers</th></tr>
+  <tr><td><code>git status</code> / <code>git status -s</code></td><td>Which files are untracked, modified, staged? Which branch, ahead/behind the remote?</td></tr>
+  <tr><td><code>git diff</code></td><td>Working directory vs staging area: what you changed but did <em>not</em> stage yet</td></tr>
+  <tr><td><code>git diff --staged</code></td><td>Staging area vs last commit: exactly what <code>git commit</code> would record</td></tr>
+  <tr><td><code>git diff main...feature</code></td><td>What the feature branch changed since it left main (what a merge request shows)</td></tr>
+  <tr><td><code>git log --oneline --graph --all</code></td><td>The commit graph, one line per commit, all branches</td></tr>
+  <tr><td><code>git log -p -- app.py</code></td><td>Every change ever made to one file, with diffs</td></tr>
+  <tr><td><code>git log -S "discount"</code></td><td>Commits that added or removed this string (the "pickaxe")</td></tr>
+  <tr><td><code>git show e4f1a9c</code></td><td>One commit: message + diff</td></tr>
+  <tr><td><code>git blame app.py</code></td><td>Who last changed each line, and in which commit</td></tr>
+  <tr><td><code>git bisect start / good / bad</code></td><td>Binary search through history to find the commit that introduced a bug</td></tr>
+</table>
+</div>
+
+<h2 id="ignore">5 · .gitignore</h2>
+<div class="split">
+<div>
+<div class="file">.gitignore</div>
+<pre class="code"><span class="c"># build outputs and caches</span>
+target/
+dbt_packages/
+logs/
+__pycache__/
+*.pyc
+
+<span class="c"># secrets: never commit these</span>
+.env
+profiles.yml
+
+<span class="c"># ...except this one</span>
+!.env.example</pre>
+</div>
+<div>
+<p>Patterns listed here are invisible to <code>git status</code> and <code>git add .</code>. Commit the <code>.gitignore</code> itself so the whole team shares it.</p>
+<p><strong>It only affects untracked files.</strong> If a file is already committed, adding it to <code>.gitignore</code> does nothing: remove it from the index first with
+<code>git rm --cached profiles.yml</code>, then commit.</p>
+<p>Leaked a secret? Removing it in a new commit is not enough: it's still in history. <strong>Rotate the secret first</strong>, then clean history if needed
+(<code>git filter-repo</code>). GitLab's secret detection can catch this in CI.</p>
+</div>
+</div>
+
+<h2 id="best">6 · Good commits</h2>
+<div class="cards">
+  <div class="card"><h3>One idea per commit</h3><p>A bug fix and a refactor are two commits. Use <code>git add -p</code> to split a messy working directory.</p></div>
+  <div class="card"><h3>Messages that explain why</h3><p>Short subject in the imperative (<em>"Fix VAT rounding on refunds"</em>, ≤ 72 chars), blank line, then the why.
+    Many teams use Conventional Commits: <code>feat:</code>, <code>fix:</code>, <code>chore:</code>…</p></div>
+  <div class="card"><h3>Commit often, push when coherent</h3><p>Local commits are free and private. Tidy them (squash, reword) <em>before</em> pushing. After pushing, they're shared history.</p></div>
+  <div class="card"><h3>Never commit secrets or build outputs</h3><p><code>.env</code>, <code>profiles.yml</code>, <code>target/</code>, <code>node_modules/</code> go in <code>.gitignore</code>.</p></div>
+</div>

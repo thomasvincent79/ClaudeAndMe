@@ -1,0 +1,92 @@
+<section class="hero">
+<span class="eyebrow">⏪ Undoing things</span>
+<h1>Almost nothing is <span class="grad">really lost</span></h1>
+<p class="lead">git has a different "undo" for each area: <code>restore</code> for files, <code>reset</code> to move a branch back, <code>revert</code> to undo safely on shared history,
+<code>stash</code> to put work aside, and the <code>reflog</code> to get back from (almost) any mistake. The only thing git can't give back is work you never staged or committed.</p>
+<div class="toc">
+  <a href="#sim">1 · Undo simulator</a>
+  <a href="#reset">2 · reset --soft / --mixed / --hard</a>
+  <a href="#which">3 · Which undo do I need?</a>
+  <a href="#reflog">4 · The reflog safety net</a>
+  <a href="#stash">5 · Stash</a>
+</div>
+</section>
+
+<h2 id="sim">1 · Undo simulator</h2>
+<p>One file, <code>app.py</code>, with three commits. Each colored badge is a version of the file. Watch which areas each command changes.</p>
+<div class="sim" id="unsim">
+  <div class="cmd-btns" id="un-btns1"></div>
+  <div class="cmd-btns" id="un-btns2"></div>
+  <div class="zones" id="un-zones"></div>
+  <div class="narration" id="un-narr">Your working directory has an unstaged edit (v4). Try <b>git reset --soft HEAD~1</b>, then <b>--mixed</b>, then <b>--hard</b>.</div>
+  <div class="file" style="margin-top:14px">terminal</div>
+  <div class="term" id="un-term"></div>
+</div>
+
+<h2 id="reset">2 · reset --soft / --mixed / --hard</h2>
+<p><code>git reset &lt;commit&gt;</code> always moves the <strong>current branch</strong> (and HEAD) to <code>&lt;commit&gt;</code>. The mode decides how far the reset goes into the other two areas:</p>
+<div class="tbl-wrap card">
+<table class="prose">
+  <tr><th>Mode</th><th>Branch / HEAD</th><th>Staging area</th><th>Working directory</th><th>Typical use</th></tr>
+  <tr><td><code>--soft</code></td><td class="yes">moved</td><td class="no">kept</td><td class="no">kept</td><td>"Uncommit": redo the last commit(s) differently, or squash them into one</td></tr>
+  <tr><td><code>--mixed</code> (default)</td><td class="yes">moved</td><td class="yes">reset to the commit</td><td class="no">kept</td><td>Uncommit and unstage, keep edits on disk to re-split them</td></tr>
+  <tr><td><code>--hard</code></td><td class="yes">moved</td><td class="yes">reset to the commit</td><td class="yes">overwritten ⚠</td><td>Throw everything away and match a commit exactly (e.g. <code>reset --hard origin/main</code>)</td></tr>
+</table>
+</div>
+<div class="callout danger"><b>reset --hard deletes uncommitted work</b>
+  <p>Committed work can be found again in the reflog. Changes that were only in your working directory, never added or committed, are gone for good. Run <code>git stash</code> first if unsure.</p>
+</div>
+
+<h2 id="which">3 · Which undo do I need?</h2>
+<div class="tbl-wrap card">
+<table class="prose">
+  <tr><th>Situation</th><th>Command</th><th>Rewrites history?</th></tr>
+  <tr><td>Discard my edits to a file (not staged)</td><td><code>git restore app.py</code></td><td class="no">no (but edits are lost)</td></tr>
+  <tr><td>Unstage a file, keep the edits</td><td><code>git restore --staged app.py</code></td><td class="no">no</td></tr>
+  <tr><td>Get a file back as it was 3 commits ago</td><td><code>git restore --source=HEAD~3 app.py</code></td><td class="no">no</td></tr>
+  <tr><td>Fix the last commit's message or add a forgotten file (not pushed)</td><td><code>git add forgotten.py &amp;&amp; git commit --amend</code></td><td>yes (last commit)</td></tr>
+  <tr><td>Undo the last commit(s), keep the changes (not pushed)</td><td><code>git reset --soft HEAD~1</code> (or <code>--mixed</code>)</td><td>yes</td></tr>
+  <tr><td>Undo a commit that is <strong>already pushed / on main</strong></td><td><code>git revert &lt;sha&gt;</code> (merge commit: <code>-m 1</code>)</td><td class="yes">no: safe</td></tr>
+  <tr><td>Make my branch identical to the remote</td><td><code>git fetch &amp;&amp; git reset --hard origin/main</code></td><td>yes (local)</td></tr>
+  <tr><td>Remove untracked files and folders</td><td><code>git clean -n</code> (preview), then <code>git clean -fd</code></td><td>⚠ deletes files</td></tr>
+  <tr><td>I reset / rebased and lost commits</td><td><code>git reflog</code> then <code>git reset --hard HEAD@{2}</code></td><td>restores</td></tr>
+  <tr><td>Abort a merge or rebase in progress</td><td><code>git merge --abort</code> / <code>git rebase --abort</code></td><td>restores</td></tr>
+</table>
+</div>
+<p class="muted">Older docs use <code>git checkout -- file</code> for what <code>git restore</code> does. It still works, but <code>restore</code> / <code>switch</code> (git 2.23+) split checkout's two jobs and are harder to misuse.</p>
+
+<h2 id="reflog">4 · The reflog safety net</h2>
+<div class="split">
+<div>
+<div class="file">git reflog</div>
+<pre class="code">e4f1a9c HEAD@{0}: reset: moving to HEAD~2
+77c2e0a HEAD@{1}: commit: Add tests
+4b9e211 HEAD@{2}: commit: Fix VAT rounding
+a1d03f7 HEAD@{3}: checkout: moving from feature to main
+
+<span class="c"># oops, I wanted those two commits back:</span>
+<span class="k">git reset</span> --hard HEAD@{1}
+<span class="c"># or keep them on a new branch:</span>
+<span class="k">git branch</span> rescue 77c2e0a</pre>
+</div>
+<div>
+<p>Every time HEAD moves (commit, reset, rebase, switch, merge, pull), git appends a line to <code>.git/logs/HEAD</code>. Commits that no branch points to anymore are still there.</p>
+<p>They're kept around ~30 days for unreachable entries (90 for reachable ones) before <code>git gc</code> may prune them. The reflog is <strong>local only</strong>: it's not pushed, and a fresh clone has none.</p>
+</div>
+</div>
+
+<h2 id="stash">5 · Stash</h2>
+<div class="split">
+<div>
+<pre class="code"><span class="k">git stash</span> push -m <span class="s">"wip discount"</span>  <span class="c"># save staged + unstaged, clean the tree</span>
+<span class="k">git stash</span> -u                       <span class="c"># include untracked files too</span>
+<span class="k">git stash</span> list                     <span class="c"># stash@{0}: On main: wip discount</span>
+<span class="k">git stash</span> pop                      <span class="c"># re-apply the latest and drop it</span>
+<span class="k">git stash</span> apply stash@{1}          <span class="c"># re-apply, keep it in the list</span>
+<span class="k">git stash</span> branch fix-later         <span class="c"># new branch from the stash</span></pre>
+</div>
+<div>
+<p>A stash is a pocket for unfinished work, for example when you must switch branches to fix something urgent.</p>
+<p>It's best for short interruptions. For anything longer, a real <code>wip</code> commit on a branch is easier to find, and gets pushed as a backup.</p>
+</div>
+</div>

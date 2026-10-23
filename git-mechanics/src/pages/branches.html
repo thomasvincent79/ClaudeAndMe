@@ -1,0 +1,138 @@
+<section class="hero">
+<span class="eyebrow">🌿 Branches, merge &amp; rebase</span>
+<h1>A branch is just a <span class="grad">pointer</span></h1>
+<p class="lead">A branch is a tiny file holding one commit id. Creating one is instant, and committing simply moves it forward.
+<code>HEAD</code> says which branch you're on. Merging and rebasing are two ways to bring work back together. Type commands in the sandbox and watch the graph.</p>
+<div class="toc">
+  <a href="#ptr">1 · Pointers &amp; HEAD</a>
+  <a href="#sandbox">2 · Sandbox</a>
+  <a href="#mvr">3 · Merge vs rebase</a>
+  <a href="#conflicts">4 · Conflicts</a>
+  <a href="#interactive">5 · Interactive rebase</a>
+  <a href="#best">6 · Good practices</a>
+</div>
+</section>
+
+<h2 id="ptr">1 · Pointers &amp; HEAD</h2>
+<div class="cards">
+  <div class="card"><h3>Branch = movable label</h3><p><code>git switch -c feature</code> writes the current commit id into <code>.git/refs/heads/feature</code>. Nothing is copied.
+    When you commit on <code>feature</code>, only that label moves.</p></div>
+  <div class="card"><h3>HEAD = "you are here"</h3><p><code>.git/HEAD</code> usually contains <code>ref: refs/heads/main</code>. If it contains a raw SHA instead (after <code>git switch --detach</code> or checking out a tag),
+    you're in <strong>detached HEAD</strong>: new commits belong to no branch.</p></div>
+  <div class="card"><h3>Switching rewrites your files</h3><p><code>git switch feature</code> moves HEAD and updates the working directory to that branch's snapshot.
+    git refuses if uncommitted changes would be overwritten: commit or <code>git stash</code> first.</p></div>
+  <div class="card"><h3>Relative names</h3><p><code>HEAD~1</code> = parent, <code>HEAD~3</code> = great-grandparent, <code>M1^2</code> = second parent of a merge,
+    <code>main@{yesterday}</code> = where main was yesterday (reflog).</p></div>
+</div>
+
+<h2 id="sandbox">2 · Sandbox</h2>
+<p>Type any command below (or click one). Supported: <code>commit</code>, <code>commit --amend</code>, <code>branch</code>, <code>branch -d</code>, <code>switch</code> / <code>checkout</code> (<code>-c</code> / <code>-b</code>), <code>merge</code> (<code>--no-ff</code>),
+<code>rebase</code>, <code>cherry-pick</code>, <code>reset</code>, <code>revert</code>, <code>log</code>, <code>reflog</code>. Hover a commit for its full id and parents.</p>
+<div class="sim" id="brsim">
+  <div class="sim-head">
+    <div class="controls"><span class="ctl-label">Scenarios</span><div class="presets" id="br-presets"></div></div>
+    <div class="controls"><button class="btn" id="br-reset">↺ Reset</button></div>
+  </div>
+  <div id="br-graph"></div>
+  <div class="cmd-btns" id="br-btns"></div>
+  <div class="term-in"><span>$</span><input id="br-in" spellcheck="false" autocomplete="off" placeholder="git switch -c feature" aria-label="git command"><button id="br-run">Run ⏎</button></div>
+  <div class="narration" id="br-narr">Start with <b>git switch -c feature</b>, make two commits, switch back to main, commit, then merge.</div>
+  <div class="file" style="margin-top:14px">terminal</div>
+  <div class="term" id="br-term"></div>
+  <div class="legend">
+    <span><i style="background:var(--ink)"></i>HEAD</span>
+    <span><i style="background:#e8492b"></i>branch label (color = lane)</span>
+    <span><i style="border:1px dashed var(--muted)"></i>dashed node: merge commit</span>
+    <span><i style="background:var(--muted);opacity:.3"></i>faded: no longer on any branch (still in reflog)</span>
+  </div>
+</div>
+<div class="callout tip"><b>Things to try</b>
+  <p>• Run the <em>3-way merge</em> scenario, then <code>git reset --hard HEAD~1</code>: the merge commit fades, main is back where it was.</p>
+  <p>• Run <em>Rebase</em> and compare SHAs: <code>C3'</code> has the same message as <code>C3</code> but a different id. That's why you must not rebase what others already pulled.</p>
+  <p>• <code>git switch C1</code> (detached HEAD) then <code>git commit</code>, then <code>git switch main</code>: your commit is orphaned. Rescue it with <code>git branch rescue &lt;sha&gt;</code>.</p>
+</div>
+
+<h2 id="mvr">3 · Merge vs rebase</h2>
+<div class="tbl-wrap card">
+<table class="prose">
+  <tr><th></th><th><code>git merge feature</code></th><th><code>git rebase main</code> (on feature)</th></tr>
+  <tr><td>What happens</td><td>Fast-forward if possible, otherwise a merge commit with two parents</td><td>Your commits are replayed one by one on top of main, as new commits</td></tr>
+  <tr><td>History</td><td>True history, branchy; shows when work was integrated</td><td>Linear, easy to read and bisect</td></tr>
+  <tr><td>Rewrites commits?</td><td class="yes">No: safe on shared branches</td><td class="no">Yes: new SHAs, needs <code>push --force-with-lease</code> if already pushed</td></tr>
+  <tr><td>Conflicts</td><td>Resolved once, in the merge commit</td><td>Possibly once per replayed commit</td></tr>
+  <tr><td>Typical use</td><td>Integrating a finished feature into main (GitLab MR "merge")</td><td>Updating <em>your own</em> feature branch with the latest main before review</td></tr>
+</table>
+</div>
+<div class="callout"><b>The golden rule of rebasing</b>
+  <p>Only rebase commits that exist only on your machine or on a branch only you use. Rebasing a shared branch forces everyone else to untangle duplicated commits.</p>
+</div>
+<div class="split">
+<div>
+<div class="file">update my feature branch with main, two ways</div>
+<pre class="code"><span class="c"># A · merge main into feature (no rewrite)</span>
+<span class="k">git switch</span> feature
+<span class="k">git merge</span> main
+
+<span class="c"># B · rebase feature onto main (linear)</span>
+<span class="k">git switch</span> feature
+<span class="k">git fetch</span> origin
+<span class="k">git rebase</span> origin/main
+<span class="k">git push</span> --force-with-lease</pre>
+</div>
+<div>
+<div class="file">squash merge (what GitLab can do for you)</div>
+<pre class="code"><span class="k">git switch</span> main
+<span class="k">git merge</span> --squash feature   <span class="c"># stage all changes, no commit</span>
+<span class="k">git commit</span> -m <span class="s">"feat: discount rules (#42)"</span>
+<span class="c"># → one single commit on main, branch commits not kept</span></pre>
+</div>
+</div>
+
+<h2 id="conflicts">4 · Conflicts</h2>
+<p>A conflict happens when both sides changed the <em>same lines</em> of the same file (or one side deleted a file the other modified). git stops and marks the file:</p>
+<div class="split">
+<div>
+<div class="file">app.py, during a conflict</div>
+<pre class="code">def price(order):
+<span class="h">&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD</span>
+    return order.total * 0.95      <span class="c"># your side (main)</span>
+<span class="h">=======</span>
+    return order.total - order.discount   <span class="c"># their side (feature)</span>
+<span class="h">&gt;&gt;&gt;&gt;&gt;&gt;&gt; feature</span></pre>
+</div>
+<div>
+<ol>
+  <li><code>git status</code> lists files "both modified".</li>
+  <li>Edit each file: keep one side, the other, or a mix. Delete the markers.</li>
+  <li><code>git add app.py</code> to mark it resolved.</li>
+  <li><code>git commit</code> (merge) or <code>git rebase --continue</code> (rebase).</li>
+  <li>Changed your mind? <code>git merge --abort</code> / <code>git rebase --abort</code> puts everything back.</li>
+</ol>
+<p class="muted">Tip: <code>git config --global merge.conflictstyle zdiff3</code> also shows the common ancestor's version between the markers, which makes intent much clearer.</p>
+</div>
+</div>
+
+<h2 id="interactive">5 · Interactive rebase: tidy before you push</h2>
+<div class="split">
+<div>
+<div class="file">git rebase -i HEAD~4  (the editor opens)</div>
+<pre class="code"><span class="k">pick</span>   a1d03f7 Add discount model
+<span class="k">squash</span> 4b9e211 fix typo           <span class="c"># melt into the previous commit</span>
+<span class="k">reword</span> 77c2e0a add tests          <span class="c"># keep, but edit the message</span>
+<span class="k">drop</span>   e4f1a9c debug prints       <span class="c"># remove entirely</span>
+<span class="c"># reorder lines to reorder commits</span></pre>
+</div>
+<div>
+<p>Rewrites the last N commits of <em>your</em> branch. Useful verbs: <code>pick</code>, <code>reword</code>, <code>edit</code> (stop to amend), <code>squash</code> / <code>fixup</code> (merge into previous), <code>drop</code>.</p>
+<p>Workflow trick: commit fixes with <code>git commit --fixup a1d03f7</code>, then <code>git rebase -i --autosquash main</code> places and squashes them automatically.</p>
+<p>Same golden rule as above: only on commits not yet shared, or on your own MR branch (then <code>push --force-with-lease</code>).</p>
+</div>
+</div>
+
+<h2 id="best">6 · Good practices</h2>
+<div class="cards">
+  <div class="card"><h3>Short-lived branches</h3><p>A branch that lives for days, not weeks, has small diffs and few conflicts. Merge main into it (or rebase) often.</p></div>
+  <div class="card"><h3>Readable names</h3><p><code>feature/42-discount-rules</code>, <code>fix/vat-rounding</code>, <code>chore/upgrade-dbt</code>. GitLab can create the branch from an issue and link them.</p></div>
+  <div class="card"><h3>Never commit directly to main</h3><p>Protect it on GitLab (see <a href="gitlab.html">GitLab workflow</a>): changes arrive only through reviewed merge requests with green pipelines.</p></div>
+  <div class="card"><h3>Clean up</h3><p><code>git branch -d feature</code> after merge, <code>git fetch --prune</code> to drop remote-tracking branches deleted on GitLab.</p></div>
+</div>

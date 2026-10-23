@@ -1,0 +1,76 @@
+<section class="hero big">
+<svg class="hero-art" viewBox="0 0 300 220" aria-hidden="true">
+  <defs><linearGradient id="hg" x1="0" x2="1"><stop offset="0" stop-color="#f05033"/><stop offset="1" stop-color="#6b4fbb"/></linearGradient></defs>
+  <g fill="none" stroke-width="3" stroke-linecap="round">
+    <path id="hm" d="M20 150 H280" stroke="#f05033" opacity=".7"/>
+    <path id="hf" d="M80 150 C110 150 110 70 140 70 H200 C230 70 230 150 260 150" stroke="#6b4fbb" opacity=".7"/>
+  </g>
+  <g stroke-width="3" fill="var(--card)">
+    <circle cx="20" cy="150" r="10" stroke="#f05033"/><circle cx="80" cy="150" r="10" stroke="#f05033"/><circle cx="170" cy="150" r="10" stroke="#f05033"/>
+    <circle cx="140" cy="70" r="10" stroke="#6b4fbb"/><circle cx="200" cy="70" r="10" stroke="#6b4fbb"/>
+    <circle cx="260" cy="150" r="12" stroke="#f05033" stroke-dasharray="4 2"/>
+  </g>
+  <g font-size="10" font-family="JetBrains Mono, monospace" font-weight="700">
+    <rect x="232" y="108" width="56" height="18" rx="6" fill="#f05033"/><text x="260" y="121" fill="#fff" text-anchor="middle">main</text>
+    <rect x="166" y="34" width="68" height="18" rx="6" fill="#6b4fbb"/><text x="200" y="47" fill="#fff" text-anchor="middle">feature</text>
+  </g>
+  <circle r="5" fill="#fc6d26"><animateMotion dur="3s" repeatCount="indefinite"><mpath href="#hf"/></animateMotion></circle>
+  <circle r="5" fill="#f05033"><animateMotion dur="3s" begin="1.5s" repeatCount="indefinite"><mpath href="#hm"/></animateMotion></circle>
+</svg>
+<span class="eyebrow">Interactive field guide</span>
+<h1>git &amp; GitLab, <span class="grad">visually</span>.</h1>
+<p class="lead">One page per topic, with live sandboxes where you type real git commands and watch the commit graph move,
+a step-by-step merge request, and a GitLab CI/CD pipeline simulator. Everything runs in your browser: nothing touches a real repository.</p>
+<div class="stats">
+  <div class="stat"><b>7</b>topics</div>
+  <div class="stat"><b>8</b>interactive simulators</div>
+  <div class="stat"><b>60+</b>commands explained</div>
+</div>
+</section>
+
+<div class="cards">
+{{cards}}
+</div>
+
+<h2>git vs GitLab in one picture</h2>
+<div class="diagram">
+<svg viewBox="0 0 900 230" role="img" aria-label="git runs on your machine, GitLab hosts the shared repository and runs CI/CD">
+  <rect x="10" y="20" width="400" height="190" rx="16" fill="color-mix(in srgb, #f05033 7%, var(--card))" stroke="#f05033" stroke-opacity=".4"/>
+  <text class="d-txt" x="30" y="48" font-weight="800" font-size="14">git: on your laptop</text>
+  <text class="d-mut" x="30" y="68">a version-control program, works offline</text>
+  <rect class="d-box" x="30" y="88" width="110" height="46" rx="10"/><text class="d-txt" x="85" y="115" text-anchor="middle">working dir</text>
+  <rect class="d-box" x="155" y="88" width="110" height="46" rx="10"/><text class="d-txt" x="210" y="115" text-anchor="middle">staging area</text>
+  <rect class="d-box" x="280" y="88" width="110" height="46" rx="10"/><text class="d-txt" x="335" y="115" text-anchor="middle">local repo (.git)</text>
+  <text class="d-mut" x="30" y="166">commit, branch, merge, rebase, log, diff…</text>
+  <text class="d-mut" x="30" y="186">all instant, all local</text>
+  <rect x="490" y="20" width="400" height="190" rx="16" fill="color-mix(in srgb, #6b4fbb 8%, var(--card))" stroke="#6b4fbb" stroke-opacity=".45"/>
+  <text class="d-txt" x="510" y="48" font-weight="800" font-size="14">GitLab: on a server</text>
+  <text class="d-mut" x="510" y="68">hosts the shared repo + everything around it</text>
+  <rect class="d-box" x="510" y="88" width="110" height="46" rx="10"/><text class="d-txt" x="565" y="115" text-anchor="middle">remote repo</text>
+  <rect class="d-box" x="635" y="88" width="110" height="46" rx="10"/><text class="d-txt" x="690" y="115" text-anchor="middle">merge requests</text>
+  <rect class="d-box" x="760" y="88" width="110" height="46" rx="10"/><text class="d-txt" x="815" y="115" text-anchor="middle">CI/CD runners</text>
+  <text class="d-mut" x="510" y="166">issues, reviews, approvals, protected branches,</text>
+  <text class="d-mut" x="510" y="186">pipelines, registry, environments, Pages…</text>
+  <path id="ip" class="d-line" d="M390 104 C440 104 450 104 510 104"/><path id="if" class="d-line" d="M510 120 C450 120 440 120 390 120"/>
+  <text class="d-mut" x="450" y="96" text-anchor="middle">push</text><text class="d-mut" x="450" y="140" text-anchor="middle">fetch / pull</text>
+  <circle r="5" class="flow-dot"><animateMotion dur="1.6s" repeatCount="indefinite"><mpath href="#ip"/></animateMotion></circle>
+  <circle r="5" class="flow-dot" style="fill:#6b4fbb"><animateMotion dur="1.6s" begin=".8s" repeatCount="indefinite"><mpath href="#if"/></animateMotion></circle>
+</svg>
+</div>
+<p><strong>git</strong> is the tool (Linus Torvalds, 2005): it stores snapshots of your project and lets you branch and merge cheaply.
+<strong>GitLab</strong> (like GitHub or Bitbucket) is a platform built around git: it hosts the central copy everyone pushes to, and adds collaboration
+(merge requests, reviews) and automation (CI/CD). You can use git without GitLab; you cannot use GitLab without git.</p>
+
+<h2>Suggested path</h2>
+<div class="cards">
+  <div class="card"><h3>1 · Local git</h3><p class="muted">Basics → Branches → Undo. Enough to work alone with confidence.</p></div>
+  <div class="card"><h3>2 · Team git</h3><p class="muted">Remotes → GitLab workflow. Pushing, pulling, merge requests and reviews.</p></div>
+  <div class="card"><h3>3 · Automation</h3><p class="muted">CI/CD: every push runs your lint, tests and deploys, including a dbt slim-CI job.</p></div>
+</div>
+
+<div class="callout">
+  <b>How to regenerate the pages</b>
+  <p>Edit the sources in <code>src/pages/*.html</code> and <code>src/js/*.js</code>, then run <code>python build.py</code>
+  (or <code>python build.py --serve</code> to also serve them on <code>localhost:8820</code>).
+  To add a topic, add a fragment and one entry in <code>THEMATICS</code> in <code>build.py</code>.</p>
+</div>
