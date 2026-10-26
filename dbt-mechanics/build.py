@@ -58,6 +58,15 @@ THEMATICS = [
         "scripts": ["flags.js"],
     },
     {
+        "slug": "selectors",
+        "nav": "Selectors",
+        "title": "Selectors & orchestration",
+        "icon": "🎯",
+        "summary": "How -s / --exclude / --selector are evaluated (animated), operators and methods, selectors.yml, "
+                   "and a 3-level job → subjob → tag hierarchy to orchestrate runs.",
+        "scripts": ["selectors.js"],
+    },
+    {
         "slug": "clone",
         "nav": "Clone",
         "title": "dbt clone",

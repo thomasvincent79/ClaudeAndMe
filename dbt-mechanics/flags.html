@@ -357,6 +357,18 @@ table.state-grid tr.src td:not(:first-child) { font-size: 1rem; }
 .meter { height: 10px; background: var(--soft); border-radius: 10px; overflow: hidden; margin-bottom: 8px; border: 1px solid var(--line); }
 .meter-bar { height: 100%; background: var(--grad); transition: width .6s ease; }
 
+/* ================= selectors page ================= */
+.tree { display: grid; gap: 4px; margin-bottom: 12px; }
+.tree-item { display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 9px;
+             padding: 6px 10px; cursor: pointer; font: 600 .8rem "JetBrains Mono", monospace; text-align: left; transition: .15s; }
+.tree-item:hover { border-color: var(--accent); }
+.tree-item.lvl2 { margin-left: 18px; } .tree-item.lvl3 { margin-left: 36px; font-weight: 500; }
+.tree-item.on { background: var(--grad); color: #fff; border-color: transparent; box-shadow: 0 8px 18px -10px var(--accent); }
+.tree-lvl { font: 800 .62rem "Inter", sans-serif; padding: 2px 6px; border-radius: 5px; background: var(--soft); color: var(--muted); }
+.tree-item.on .tree-lvl { background: rgba(255,255,255,.25); color: #fff; }
+.tree-name { flex: 1; }
+.tree-n { font-size: .7rem; opacity: .7; }
+
 </style>
 </head>
 <body>
@@ -374,6 +386,7 @@ table.state-grid tr.src td:not(:first-child) { font-size: 1rem; }
 <a href="incremental.html" class="" title="Incremental strategies">Incremental</a>
 <a href="tests.html" class="" title="Data tests & unit tests">Tests</a>
 <a href="flags.html" class="on" title="CLI flags">Flags</a>
+<a href="selectors.html" class="" title="Selectors & orchestration">Selectors</a>
 <a href="clone.html" class="" title="dbt clone">Clone</a>
 <a href="freshness.html" class="" title="Source freshness">Freshness</a>
 <a href="dbt-cloud.html" class="" title="dbt Cloud (dbt platform)">dbt Cloud</a>

@@ -1,0 +1,261 @@
+<section class="hero">
+<span class="eyebrow">🎯 Node selection</span>
+<h1>Selectors, <span class="grad">step by step</span></h1>
+<p class="lead">Every <code>dbt build / run / test / ls</code> starts by turning your <code>-s</code> / <code>--exclude</code> / <code>--selector</code> into a set of nodes.
+This page animates that evaluation on a small "tickets" project, then shows how to organise selectors on <strong>3 levels</strong>
+(job → subjobs → tags) to orchestrate execution, in <span class="tag v18">1.8.6</span> and <span class="tag v112">1.12</span>.</p>
+<div class="toc">
+  <a href="#pipeline">1 · How a selection is evaluated</a>
+  <a href="#play">2 · Animated playground</a>
+  <a href="#ops">3 · Operators</a>
+  <a href="#methods">4 · Methods</a>
+  <a href="#yaml">5 · selectors.yml</a>
+  <a href="#levels">6 · 3-level orchestration</a>
+  <a href="#run">7 · Running the levels</a>
+</div>
+</section>
+
+<h2 id="pipeline">1 · How a selection is evaluated</h2>
+<div class="diagram">
+<svg viewBox="0 0 900 150" role="img" aria-label="Selection pipeline">
+  <g font-family="Inter, sans-serif">
+    <rect x="5" y="40" width="110" height="64" rx="10" class="d-box"/><text x="60" y="66" text-anchor="middle" class="d-txt" font-weight="700">1 Parse</text><text x="60" y="84" text-anchor="middle" class="d-mut">space ∪, comma ∩</text>
+    <rect x="132" y="40" width="110" height="64" rx="10" class="d-box"/><text x="187" y="66" text-anchor="middle" class="d-txt" font-weight="700">2 Methods</text><text x="187" y="84" text-anchor="middle" class="d-mut">tag:, path:, fqn…</text>
+    <rect x="259" y="40" width="110" height="64" rx="10" class="d-box"/><text x="314" y="66" text-anchor="middle" class="d-txt" font-weight="700">3 Graph ops</text><text x="314" y="84" text-anchor="middle" class="d-mut">+ n+ @</text>
+    <rect x="386" y="40" width="110" height="64" rx="10" class="d-box"/><text x="441" y="66" text-anchor="middle" class="d-txt" font-weight="700">4 Set ops</text><text x="441" y="84" text-anchor="middle" class="d-mut">∩ inside, ∪ across</text>
+    <rect x="513" y="40" width="110" height="64" rx="10" class="d-box" style="stroke:#e0442f"/><text x="568" y="66" text-anchor="middle" class="d-txt" font-weight="700">5 --exclude</text><text x="568" y="84" text-anchor="middle" class="d-mut">difference, last</text>
+    <rect x="640" y="40" width="120" height="64" rx="10" class="d-box"/><text x="700" y="66" text-anchor="middle" class="d-txt" font-weight="700">6 Indirect tests</text><text x="700" y="84" text-anchor="middle" class="d-mut">eager / cautious…</text>
+    <rect x="777" y="40" width="118" height="64" rx="10" fill="var(--new)"/><text x="836" y="66" text-anchor="middle" class="d-txt" font-weight="700">7 Command</text><text x="836" y="84" text-anchor="middle" class="d-mut">run = models only</text>
+  </g>
+  <path id="sp" d="M60 120 L836 120" class="d-line"/>
+  <circle r="6" class="flow-dot"><animateMotion dur="4s" repeatCount="indefinite"><mpath href="#sp"/></animateMotion></circle>
+  <text x="450" y="20" text-anchor="middle" class="d-mut">the result is a set of nodes, executed in DAG order (whatever order you wrote them in)</text>
+</svg>
+</div>
+<div class="callout"><b>Two consequences people miss</b>
+  <p>• Selection decides <em>what</em> runs, never <em>in which order</em>. dbt always executes the selected nodes in DAG order, in parallel waves limited by <code>threads</code>.</p>
+  <p>• Nodes that aren't selected are <em>not</em> built, but their relations are still read by <code>ref()</code>. They must exist in the target (or use <code>--defer</code>).</p>
+</div>
+
+<h2 id="play">2 · Animated playground</h2>
+<p>The project has a <code>tickets</code> domain (staging → intermediate → marts) and a separate <code>billing</code> domain. Models are tagged by cadence
+(<code>#hourly</code>, <code>#daily</code>, <code>#weekly</code>) and <code>#sla</code>. <code>fct_tickets</code> (✎) is modified vs prod. Type an expression or pick one, then <b>Animate</b>.</p>
+<div class="sim" id="selsim">
+  <div class="controls" style="margin-bottom:8px"><span class="ctl-label">Command</span><div id="sel-cmdsel"></div>
+    <span class="ctl-label">indirect</span><div id="sel-indirect"></div></div>
+  <div class="controls" style="margin-bottom:8px">
+    <span class="ctl-label">-s</span><input id="sel-input" class="btn" style="flex:1;min-width:220px;font-family:'JetBrains Mono',monospace" placeholder="(everything)">
+    <span class="ctl-label">--exclude</span><input id="sel-exclude" class="btn" style="width:200px;font-family:'JetBrains Mono',monospace">
+    <button class="btn primary" id="sel-play">▶ Animate</button>
+  </div>
+  <div class="presets" style="margin-bottom:10px">
+    <span class="ctl-label">try</span>
+    <button data-preset="tag:hourly,path:models/tickets/marts">tag:hourly,path:…/marts</button>
+    <button data-preset="tag:sla tag:weekly">tag:sla tag:weekly</button>
+    <button data-preset="+fct_tickets">+fct_tickets</button>
+    <button data-preset="stg_zendesk__users+1">stg_zendesk__users+1</button>
+    <button data-preset="@stg_zendesk__users">@stg_zendesk__users</button>
+    <button data-preset="source:zendesk+">source:zendesk+</button>
+    <button data-preset="path:models/tickets" data-exclude="tag:weekly">path:models/tickets − tag:weekly</button>
+    <button data-preset="fqn:*.marts.*">fqn:*.marts.*</button>
+    <button data-preset="state:modified+">state:modified+</button>
+    <button data-preset="config.materialized:table,tag:tickets">config.materialized:table,tag:tickets</button>
+    <button data-preset="selector:tickets__marts__daily">selector:tickets__marts__daily <span class="tag v112">1.12</span></button>
+  </div>
+  <div class="cmdline" id="sel-cmd"></div>
+  <div class="steps" id="sel-steps"></div>
+  <div class="dag-wrap" id="sel-dag"></div>
+  <div class="narration" id="sel-narr"></div>
+  <div class="legend">
+    <span><i style="border:1.5px dashed #ff9f43;background:color-mix(in srgb,#ff9f43 22%,transparent)"></i>matched by the current step</span>
+    <span><i style="background:color-mix(in srgb,#3a6fd0 30%,transparent);border:1.5px solid #3a6fd0"></i>in the selection so far</span>
+    <span><i style="background:var(--del);border:1.5px solid #e0442f"></i>removed (∩, exclude, command)</span>
+    <span><i style="background:var(--accent);border-radius:50%"></i>execution wave</span>
+  </div>
+</div>
+
+<h2 id="ops">3 · Operators</h2>
+<div class="tbl-wrap card">
+<table class="prose">
+  <tr><th>Syntax</th><th>Means</th><th>On this project</th><th></th></tr>
+  <tr><td><code>model+</code></td><td>model and all its children</td><td>fct_tickets → rpt_backlog_weekly</td><td><button class="btn" data-preset="fct_tickets+">try</button></td></tr>
+  <tr><td><code>+model</code></td><td>model and all its parents</td><td>up to the zendesk/jira sources</td><td><button class="btn" data-preset="+fct_tickets">try</button></td></tr>
+  <tr><td><code>2+model</code> / <code>model+1</code></td><td>limit the depth (n levels)</td><td>only 2 levels up / 1 level down</td><td><button class="btn" data-preset="2+fct_ticket_sla">try</button></td></tr>
+  <tr><td><code>@model</code></td><td>children + all the parents of those children (everything needed to build the children)</td><td>@stg_zendesk__users brings in int_tickets_unioned (a parent of fct_tickets)</td><td><button class="btn" data-preset="@stg_zendesk__users">try</button></td></tr>
+  <tr><td><code>a b</code> (space)</td><td>union</td><td>tag:sla OR tag:weekly</td><td><button class="btn" data-preset="tag:sla tag:weekly">try</button></td></tr>
+  <tr><td><code>a,b</code> (comma)</td><td>intersection</td><td>hourly AND in marts</td><td><button class="btn" data-preset="tag:hourly,path:models/tickets/marts">try</button></td></tr>
+  <tr><td><code>--exclude x</code></td><td>difference, applied last</td><td>tickets except weekly</td><td><button class="btn" data-preset="path:models/tickets" data-exclude="tag:weekly">try</button></td></tr>
+  <tr><td><code>*</code></td><td>wildcard inside a method value</td><td><code>fqn:*.marts.*</code>, <code>tag:sla*</code>, <code>stg_zendesk__*</code></td><td><button class="btn" data-preset="stg_zendesk__*">try</button></td></tr>
+</table>
+</div>
+<div class="callout warn"><b>Precedence trap</b><p><code>tag:hourly,path:models/tickets/marts tag:sla</code> means <code>(hourly ∩ marts) ∪ sla</code>. Commas bind tighter than spaces, and there are no parentheses on the CLI.
+For more complex logic, use <code>selectors.yml</code>.</p></div>
+
+<h2 id="methods">4 · Methods cheat sheet</h2>
+<div class="tbl-wrap card">
+<table class="prose">
+  <tr><th>Method</th><th>Example</th><th>Selects</th><th>Version</th></tr>
+  <tr><td>(none) / <code>fqn:</code></td><td><code>fct_tickets</code>, <code>fqn:my_project.tickets.marts.*</code></td><td>by name / fully-qualified name (folder path in the project)</td><td>both</td></tr>
+  <tr><td><code>tag:</code></td><td><code>tag:hourly</code></td><td>tags from config, <code>+tags</code> in dbt_project.yml (cumulative down the folders)</td><td>both</td></tr>
+  <tr><td><code>path:</code></td><td><code>path:models/tickets/marts</code></td><td>files under a folder (a bare <code>models/tickets</code> works too)</td><td>both</td></tr>
+  <tr><td><code>source:</code></td><td><code>source:zendesk+</code></td><td>sources (then usually <code>+</code> for everything downstream)</td><td>both</td></tr>
+  <tr><td><code>resource_type:</code></td><td><code>resource_type:snapshot</code></td><td>model, seed, snapshot, test, unit_test, source, exposure… <span class="only-v112">(function: 1.11)</span></td><td>both</td></tr>
+  <tr><td><code>config.*:</code></td><td><code>config.materialized:incremental</code></td><td>any config value (schema, materialized, meta…)</td><td>both</td></tr>
+  <tr><td><code>test_type:</code> / <code>test_name:</code></td><td><code>test_type:unit</code></td><td>unit vs data tests; tests by generic name</td><td>both (unit since 1.8)</td></tr>
+  <tr><td><code>state:</code></td><td><code>state:modified+</code> + <code>--state</code></td><td>new / modified vs another manifest</td><td>both</td></tr>
+  <tr><td><code>result:</code> / <code>source_status:</code></td><td><code>result:error+</code>, <code>source_status:fresher+</code></td><td>from previous run results / sources.json in <code>--state</code></td><td>both</td></tr>
+  <tr><td><code>group:</code> <code>access:</code> <code>version:</code></td><td><code>access:public</code></td><td>model governance attributes</td><td>both</td></tr>
+  <tr><td><code>package:</code> <code>file:</code> <code>exposure:</code></td><td><code>package:dbt_utils</code></td><td>by package, file name, exposure (with <code>+</code> to get its parents)</td><td>both</td></tr>
+  <tr><td><code>selector:</code></td><td><code>-s "selector:tickets tag:hourly"</code></td><td>a named selector from selectors.yml, combinable with others</td><td><span class="tag v112">1.12</span></td></tr>
+</table>
+</div>
+
+<h2 id="yaml">5 · selectors.yml</h2>
+<p>A versioned file at the project root that gives names to selections. You can use full logic (union / intersection / exclude, graph options, a per-criterion <code>indirect_selection</code>)
+and <strong>reuse one selector inside another</strong> with <code>method: selector</code>.</p>
+<div class="vgrid">
+  <div class="vcol only-v18"><span class="tag v18">1.8.6</span>
+<div class="file">selectors.yml</div>
+<pre class="code">selectors:
+  - name: tickets_hourly
+    description: "hourly models of the tickets domain"
+    definition:
+      intersection:
+        - method: path
+          value: models/tickets
+        - method: tag
+          value: hourly
+          parents: false          <span class="c"># graph options as keys:</span>
+          children: false         <span class="c"># parents, children, *_depth,</span>
+                                  <span class="c"># childrens_parents (= @)</span>
+  - name: tickets_hourly_no_sla
+    definition:
+      intersection:
+        - method: selector        <span class="c"># reuse!</span>
+          value: tickets_hourly
+        - exclude:
+            - method: tag
+              value: sla</pre>
+<pre class="code">dbt build --selector tickets_hourly
+dbt ls --selector tickets_hourly_no_sla      <span class="c"># check before running</span>
+<span class="c"># ✗ in 1.8 you cannot mix: --selector X -s tag:sla (the -s is ignored)</span></pre>
+  </div>
+  <div class="vcol only-v112"><span class="tag v112">1.12</span>
+    <p>Same file and syntax. New: the <code>selector:</code> <strong>method</strong> works in <code>-s</code> / <code>--exclude</code>, so named selectors compose with anything.</p>
+<pre class="code">dbt build -s <span class="s">"selector:tickets_hourly"</span>
+dbt build -s <span class="s">"selector:tickets_hourly state:modified+"</span>   <span class="c"># union</span>
+dbt build -s <span class="s">"selector:tickets_hourly,state:modified+"</span>   <span class="c"># intersection</span>
+dbt build -s <span class="s">"selector:tickets"</span> --exclude <span class="s">"selector:tickets_hourly"</span>
+<span class="c"># --selector + -s together now raises SelectExcludeIgnoredWithSelectorWarning</span></pre>
+    <p><code>default: true</code> on one selector applies when a command has no selection. Since 1.12 it is <em>replaced</em>, not combined, when you pass <code>-s</code>
+       (use <code>-s "selector:my_default tag:x"</code> to combine them).</p>
+  </div>
+</div>
+
+<h2 id="levels">6 · A 3-level hierarchy: job → subjobs → tags</h2>
+<p>Goal: one main job <b>tickets</b> (L1), split into <b>subjobs</b> per layer (L2: staging, intermediate, marts), each split into <b>children by tag</b> (L3: hourly, daily, weekly).
+Two building blocks: folders + cumulative tags in <code>dbt_project.yml</code>, and one named selector per node of the tree, each level <em>reusing</em> its parent.</p>
+<div class="vgrid">
+  <div class="vcol"><span class="badge">dbt_project.yml (both versions)</span>
+<pre class="code">models:
+  my_project:
+    tickets:
+      +tags: [tickets]            <span class="c"># L1, inherited by everything below</span>
+      staging:
+        +tags: [staging]          <span class="c"># L2 (path works too)</span>
+      intermediate:
+        +tags: [intermediate]
+      marts:
+        +tags: [marts]
+<span class="c"># L3 (cadence) is set per model:</span>
+<span class="c"># {{ config(tags=['hourly']) }}  or in the model's YAML</span></pre></div>
+  <div class="vcol"><span class="badge">generate selectors.yml with Python (keeps the 3 levels in sync)</span>
+<pre class="code">import yaml
+TREE = {"staging": ["hourly", "daily"],
+        "intermediate": ["hourly"],
+        "marts": ["hourly", "daily", "weekly"]}
+sel = [{"name": "tickets",
+        "definition": {"method": "path", "value": "models/tickets"}}]
+for layer, tags in TREE.items():
+    l2 = f"tickets__{layer}"
+    sel.append({"name": l2, "definition": {"intersection": [
+        {"method": "selector", "value": "tickets"},
+        {"method": "path", "value": f"models/tickets/{layer}"}]}})
+    for tag in tags:
+        sel.append({"name": f"{l2}__{tag}", "definition": {"intersection": [
+            {"method": "selector", "value": l2},
+            {"method": "tag", "value": tag}]}})
+yaml.safe_dump({"selectors": sel}, open("selectors.yml", "w"), sort_keys=False)</pre></div>
+</div>
+
+<div class="sim" id="orchsim">
+  <div class="sim-cols" style="grid-template-columns:minmax(0,.7fr) minmax(0,1.3fr)">
+    <div>
+      <div class="pane-title"><span>selector tree · click a level</span></div>
+      <div class="tree" id="orch-tree"></div>
+      <div id="orch-yaml"></div>
+    </div>
+    <div>
+      <div class="pane-title"><span>what this selector builds (+ its tests)</span></div>
+      <div class="dag-wrap" id="orch-dag"></div>
+    </div>
+  </div>
+  <h3 id="run" style="margin-top:22px">7 · Running the levels: 3 strategies</h3>
+  <div class="controls" style="margin-bottom:8px"><span class="ctl-label">Orchestrate</span><div id="orch-mode"></div></div>
+  <div class="controls" style="margin-bottom:12px"><span class="ctl-label">indirect_selection in leaves</span><div id="orch-ind"></div>
+    <button class="btn primary" id="orch-run">▶ Run the job</button></div>
+  <div class="dag-wrap" id="orch-gantt"></div>
+  <div class="narration" id="orch-stats"></div>
+  <div class="legend"><span><i style="background:#3a6fd0"></i>model</span><span><i style="background:#8d8d99"></i>test</span><span><i style="background:var(--soft);border:1px solid var(--line)"></i>dbt startup / parse</span></div>
+</div>
+
+<div class="cards">
+  <div class="card"><h3>A · One invocation for L1</h3>
+    <pre class="code">dbt build --selector tickets</pre>
+    <p>dbt orders everything and fills the threads. It's the fastest, and every test runs once after its parents. The levels then serve <strong>reruns and backfills</strong>
+      (<code>--selector tickets__marts__daily</code>), not the normal run.</p></div>
+  <div class="card"><h3>B · One invocation per subjob (L2)</h3>
+    <pre class="code">staging → intermediate → marts</pre>
+    <p>Good when the orchestrator must show or retry layers separately (SLA per layer, different warehouses). Costs one parse per subjob, and
+      parallelism across layers is lost.</p></div>
+  <div class="card"><h3>C · One invocation per leaf (L3)</h3>
+    <pre class="code">marts/hourly ∥ marts/daily ∥ marts/weekly</pre>
+    <p>Maximum control, but more overhead. <strong>Tests that span leaves</strong> (like <code>rel_fct_tickets_agent</code>) run twice with <code>eager</code>, and can run before the other parent is rebuilt.
+      Use <code>indirect_selection: cautious</code> in the leaves, plus a final cross-leaf test step.</p></div>
+</div>
+
+<div class="vgrid">
+  <div class="vcol"><span class="badge">Airflow: TaskGroups mirror the levels (works with 1.8.6 and 1.12)</span>
+<pre class="code">from airflow.utils.task_group import TaskGroup
+from airflow.operators.bash import BashOperator
+
+TREE = {"staging": ["hourly", "daily"], "intermediate": ["hourly"],
+        "marts": ["hourly", "daily", "weekly"]}
+
+with DAG("tickets", schedule="0 * * * *", catchup=False) as dag:      <span class="c"># L1</span>
+    prev = None
+    for layer, tags in TREE.items():
+        with TaskGroup(layer) as tg:                                    <span class="c"># L2</span>
+            for tag in tags:                                            <span class="c"># L3, in parallel</span>
+                BashOperator(task_id=tag,
+                    bash_command=f"dbt build --selector tickets__{layer}__{tag}")
+        if prev: prev &gt;&gt; tg
+        prev = tg
+    prev &gt;&gt; BashOperator(task_id="cross_leaf_tests",
+                         bash_command="dbt test --selector tickets")</pre></div>
+  <div class="vcol"><span class="badge">dbt Cloud / platform</span>
+    <p>A job has ordered <strong>steps</strong>, so L2 maps naturally to commands in one job:</p>
+<pre class="code">Job "tickets"   (schedule: hourly)
+  1. dbt build --selector tickets__staging
+  2. dbt build --selector tickets__intermediate
+  3. dbt build --selector tickets__marts</pre>
+    <p>For L3, either more steps, or separate jobs chained with <em>Run on completion</em>. On the platform v1 Latest / 1.12 you can write <code>-s "selector:tickets__marts tag:sla"</code>.</p>
+  </div>
+</div>
+
+<div class="callout tip"><b>Recommended design</b>
+  <p>• Let <strong>dbt</strong> handle ordering inside a run (strategy A or B). Use the <strong>orchestrator</strong> for schedules, retries and alerting.</p>
+  <p>• Tags are usually best as the <strong>schedule</strong> dimension: an hourly job <code>intersection: [selector: tickets, tag: hourly]</code> keeps DAG order across layers in one invocation.
+     A daily job then runs <code>tag:daily</code> plus whatever it needs (<code>+tag:daily</code> or <code>@</code>).</p>
+  <p>• Before shipping a selector, check it with <code>dbt ls --selector X --resource-type model</code>. Add a CI check that every model belongs to exactly one L3 leaf, so no model is orphaned or run twice.</p>
+</div>

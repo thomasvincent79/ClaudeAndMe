@@ -357,6 +357,18 @@ table.state-grid tr.src td:not(:first-child) { font-size: 1rem; }
 .meter { height: 10px; background: var(--soft); border-radius: 10px; overflow: hidden; margin-bottom: 8px; border: 1px solid var(--line); }
 .meter-bar { height: 100%; background: var(--grad); transition: width .6s ease; }
 
+/* ================= selectors page ================= */
+.tree { display: grid; gap: 4px; margin-bottom: 12px; }
+.tree-item { display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 9px;
+             padding: 6px 10px; cursor: pointer; font: 600 .8rem "JetBrains Mono", monospace; text-align: left; transition: .15s; }
+.tree-item:hover { border-color: var(--accent); }
+.tree-item.lvl2 { margin-left: 18px; } .tree-item.lvl3 { margin-left: 36px; font-weight: 500; }
+.tree-item.on { background: var(--grad); color: #fff; border-color: transparent; box-shadow: 0 8px 18px -10px var(--accent); }
+.tree-lvl { font: 800 .62rem "Inter", sans-serif; padding: 2px 6px; border-radius: 5px; background: var(--soft); color: var(--muted); }
+.tree-item.on .tree-lvl { background: rgba(255,255,255,.25); color: #fff; }
+.tree-name { flex: 1; }
+.tree-n { font-size: .7rem; opacity: .7; }
+
 </style>
 </head>
 <body>
@@ -374,6 +386,7 @@ table.state-grid tr.src td:not(:first-child) { font-size: 1rem; }
 <a href="incremental.html" class="" title="Incremental strategies">Incremental</a>
 <a href="tests.html" class="" title="Data tests & unit tests">Tests</a>
 <a href="flags.html" class="" title="CLI flags">Flags</a>
+<a href="selectors.html" class="" title="Selectors & orchestration">Selectors</a>
 <a href="clone.html" class="" title="dbt clone">Clone</a>
 <a href="freshness.html" class="" title="Source freshness">Freshness</a>
 <a href="dbt-cloud.html" class="" title="dbt Cloud (dbt platform)">dbt Cloud</a>
@@ -413,8 +426,8 @@ table.state-grid tr.src td:not(:first-child) { font-size: 1rem; }
 Every page covers two dbt Core versions: <span class="tag v18">1.8.6</span> (what you run today) and <span class="tag v112">1.12</span> (current v1).
 Use the switch at the top right to show one version or compare both.</p>
 <div class="stats">
-  <div class="stat"><b>7</b>topics</div>
-  <div class="stat"><b>10</b>interactive simulators</div>
+  <div class="stat"><b>8</b>topics</div>
+  <div class="stat"><b>12</b>interactive simulators</div>
   <div class="stat"><b>2</b>dbt versions side by side</div>
 </div>
 </section>
@@ -442,6 +455,12 @@ Use the switch at the top right to show one version or compare both.</p>
   <div class="theme-icon">🚩</div>
   <h2>CLI flags</h2>
   <p>--full-refresh, --empty, --select, --defer, --sample, --fail-fast… What each one does, when to use it, and where you can set it (CLI, env var, dbt_project.yml, config).</p>
+  <span class="go">Explore →</span>
+</a>
+<a class="card theme-card" href="selectors.html">
+  <div class="theme-icon">🎯</div>
+  <h2>Selectors & orchestration</h2>
+  <p>How -s / --exclude / --selector are evaluated (animated), operators and methods, selectors.yml, and a 3-level job → subjob → tag hierarchy to orchestrate runs.</p>
   <span class="go">Explore →</span>
 </a>
 <a class="card theme-card" href="clone.html">
