@@ -369,6 +369,24 @@ table.state-grid tr.src td:not(:first-child) { font-size: 1rem; }
 .tree-name { flex: 1; }
 .tree-n { font-size: .7rem; opacity: .7; }
 
+/* ================= tests catalog ================= */
+.test-cat { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; margin: 16px 0; }
+.tcard { min-width: 0; background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 18px 20px; box-shadow: var(--shadow); scroll-margin-top: 90px; transition: box-shadow .3s, border-color .3s; }
+.tcard.hl { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent), var(--shadow-lg); }
+.tcard-head { display: flex; gap: 12px; align-items: center; margin-bottom: 6px; }
+.tcard-head h3 { margin: 0; }
+.tcard-head > div { flex: 1; }
+.tnum { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; font: 800 .95rem "Inter", sans-serif; color: #fff; background: var(--grad); flex: none; }
+.tcost { font: 700 .72rem "JetBrains Mono", monospace; color: var(--muted); white-space: nowrap; }
+.twhen { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 10px; margin-top: 10px; font-size: .9rem; }
+.twhen > div { background: var(--soft); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; }
+.twhen > div:first-child { border-left: 4px solid var(--v112); }
+.twhen > div:last-child { border-left: 4px solid #e0442f; }
+.tg-opts { display: grid; gap: 8px; }
+.tg-opt { text-align: left; border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 12px; padding: 10px 14px; cursor: pointer;
+          font: 500 .92rem "Inter", sans-serif; transition: .15s; }
+.tg-opt:hover { border-color: var(--accent); transform: translateX(4px); background: color-mix(in srgb, var(--accent) 7%, var(--card)); }
+
 </style>
 </head>
 <body>
@@ -450,7 +468,7 @@ Use the switch at the top right to show one version or compare both.</p>
 <a class="card theme-card" href="tests.html">
   <div class="theme-icon">✅</div>
   <h2>Data tests & unit tests</h2>
-  <p>Generic, singular and unit tests, severity thresholds, store_failures, and what changed between 1.8 and 1.12.</p>
+  <p>All 8 kinds of checks (built-in, package & custom generic, singular, unit, contracts, freshness, regression), an interactive 'which test?' guide, severity, and 1.8 vs 1.12 syntax.</p>
   <span class="go">Explore →</span>
 </a>
 <a class="card theme-card" href="flags.html">

@@ -1,16 +1,18 @@
 <section class="hero">
 <span class="eyebrow">✅ Testing</span>
 <h1>Data tests &amp; unit tests</h1>
-<p class="lead">dbt has two families of tests. <strong>Data tests</strong> check the data that is actually in the warehouse after a build.
+<p class="lead">dbt has eight kinds of checks, in two main families. <strong>Data tests</strong> check the data that is actually in the warehouse after a build.
 <strong>Unit tests</strong> (new in 1.8) check your SQL logic against small hand-written inputs <em>before</em> building. Both exist in 1.8.6 and 1.12;
 the differences are mostly in the YAML syntax and its validation.</p>
 
 <div class="toc">
   <a href="#kinds">1 · The kinds of tests</a>
-  <a href="#sim">2 · Data test simulator</a>
-  <a href="#unit">3 · Unit tests</a>
-  <a href="#versions">4 · 1.8.6 vs 1.12 syntax</a>
-  <a href="#best">5 · Best practices</a>
+  <a href="#catalog">2 · Every type, with examples</a>
+  <a href="#choose">3 · Which test should I use?</a>
+  <a href="#sim">4 · Data test simulator</a>
+  <a href="#unit">5 · Unit tests</a>
+  <a href="#versions">6 · 1.8.6 vs 1.12 syntax</a>
+  <a href="#best">7 · Best practices</a>
 </div>
 </section>
 
@@ -49,7 +51,224 @@ the differences are mostly in the YAML syntax and its validation.</p>
 </table>
 </div>
 
-<h2 id="sim">2 · Data test simulator</h2>
+<h2 id="catalog">2 · Every type of test, with an example</h2>
+<p>From the cheapest and most common to the most specialised. For each: what it is, an example, when to use it, and when another type is the better choice.</p>
+
+<div class="test-cat">
+  <article class="tcard" id="t-builtin">
+    <div class="tcard-head"><span class="tnum">1</span><div><h3>Built-in generic tests</h3><span class="muted">unique · not_null · accepted_values · relationships</span></div><span class="tcost">cost ●○○</span></div>
+    <p>Four tests shipped with dbt. You attach them in YAML, and dbt generates the "select failing rows" query for each column.</p>
+    <div class="vgrid">
+      <div class="vcol only-v18"><span class="tag v18">1.8.6</span>
+<pre class="code">models:
+  - name: fct_orders
+    columns:
+      - name: order_id
+        data_tests: [unique, not_null]
+      - name: status
+        data_tests:
+          - accepted_values:
+              values: [placed, shipped, returned]
+      - name: customer_id
+        data_tests:
+          - relationships:
+              to: ref('dim_customers')
+              field: customer_id</pre></div>
+      <div class="vcol only-v112"><span class="tag v112">1.12</span>
+<pre class="code">models:
+  - name: fct_orders
+    columns:
+      - name: order_id
+        data_tests: [unique, not_null]
+      - name: status
+        data_tests:
+          - accepted_values:
+              <span class="h">arguments:</span>
+                values: [placed, shipped, returned]
+      - name: customer_id
+        data_tests:
+          - relationships:
+              <span class="h">arguments:</span>
+                to: ref('dim_customers')
+                field: customer_id</pre></div>
+    </div>
+    <div class="twhen"><div><b>✓ Use for</b> the grain (primary key), mandatory columns, enums, and foreign keys. On <em>every</em> model, starting with sources.</div>
+      <div><b>✗ Not for</b> rules involving several columns or tables (→ 2, 3 or 4), or for checking your SQL logic (→ 5).</div></div>
+  </article>
+
+  <article class="tcard" id="t-package">
+    <div class="tcard-head"><span class="tnum">2</span><div><h3>Generic tests from packages</h3><span class="muted">dbt_utils · dbt_expectations · elementary…</span></div><span class="tcost">cost ●○○</span></div>
+    <p>The same mechanism, but written by the community. Install them with <code>packages.yml</code> + <code>dbt deps</code>, then call them by <code>package.test_name</code>.</p>
+<pre class="code">models:
+  - name: fct_order_lines
+    data_tests:                                    <span class="c"># model-level test</span>
+      - dbt_utils.unique_combination_of_columns:
+          <span class="only-v112"><span class="h">arguments:</span>                               <span class="c"># 1.10.5+</span>
+            </span>combination_of_columns: [order_id, line_no]
+      - dbt_utils.recency:
+          <span class="only-v112"><span class="h">arguments:</span>
+            </span>datepart: day
+            field: created_at
+            interval: 1
+    columns:
+      - name: amount
+        data_tests:
+          - dbt_utils.accepted_range:
+              <span class="only-v112"><span class="h">arguments:</span>
+                </span>min_value: 0
+                inclusive: true
+      - name: email
+        data_tests:
+          - dbt_expectations.expect_column_values_to_match_regex:
+              <span class="only-v112"><span class="h">arguments:</span>
+                </span>regex: "^[^@]+@[^@]+$"</pre>
+    <div class="tbl-wrap"><table class="prose" style="font-size:.84rem">
+      <tr><th>Need</th><th>Ready-made test</th></tr>
+      <tr><td>composite primary key</td><td><code>dbt_utils.unique_combination_of_columns</code></td></tr>
+      <tr><td>row-level rule across columns</td><td><code>dbt_utils.expression_is_true</code> (<code>"shipped_at &gt;= ordered_at"</code>)</td></tr>
+      <tr><td>numeric bounds</td><td><code>dbt_utils.accepted_range</code></td></tr>
+      <tr><td>data arrived recently (on a model)</td><td><code>dbt_utils.recency</code></td></tr>
+      <tr><td>same row count as another model</td><td><code>dbt_utils.equal_rowcount</code></td></tr>
+      <tr><td>FK only for some rows</td><td><code>dbt_utils.relationships_where</code></td></tr>
+      <tr><td>regex, distributions, row-count ranges</td><td><code>dbt_expectations.*</code></td></tr>
+    </table></div>
+    <div class="twhen"><div><b>✓ Use</b> as soon as a built-in test isn't enough. Check the packages before writing your own.</div>
+      <div><b>✗ Avoid</b> adding a heavy package for one test (→ 3). Pin the package version.</div></div>
+  </article>
+
+  <article class="tcard" id="t-custom">
+    <div class="tcard-head"><span class="tnum">3</span><div><h3>Custom generic tests</h3><span class="muted">your own <code>{% test %}</code> macro, reusable in YAML</span></div><span class="tcost">cost ●○○</span></div>
+    <p>A parametrised SQL query that returns failing rows. Once written, it's used in YAML exactly like <code>unique</code>.</p>
+    <div class="vgrid">
+      <div class="vcol"><span class="badge">tests/generic/is_positive.sql</span>
+<pre class="code">{% test is_positive(model, column_name, allow_zero=false) %}
+select *
+from {{ model }}
+where {{ column_name }} {{ '&lt;' if allow_zero else '&lt;=' }} 0
+{% endtest %}</pre>
+<pre class="code"><span class="c"># model-level: no column_name argument</span>
+{% test has_rows_today(model, date_col) %}
+select 1 where not exists (
+  select 1 from {{ model }} where {{ date_col }} = current_date)
+{% endtest %}</pre></div>
+      <div class="vcol"><span class="badge">usage</span>
+<pre class="code">columns:
+  - name: amount
+    data_tests:
+      - is_positive
+  - name: discount
+    data_tests:
+      - is_positive:
+          <span class="only-v112"><span class="h">arguments:</span>
+            </span>allow_zero: true
+          config:
+            severity: warn</pre>
+        <p class="muted" style="font-size:.85rem">Put them in <code>tests/generic/</code> (or <code>macros/</code>). <code>model</code> and <code>column_name</code> are filled in by dbt.</p></div>
+    </div>
+    <div class="twhen"><div><b>✓ Use</b> when <em>your</em> rule repeats across columns or models (company-specific formats, "amount positive", "no future dates").</div>
+      <div><b>✗ Overkill</b> for a rule used once (→ 4).</div></div>
+  </article>
+
+  <article class="tcard" id="t-singular">
+    <div class="tcard-head"><span class="tnum">4</span><div><h3>Singular tests</h3><span class="muted">one <code>.sql</code> file in <code>tests/</code> = one test</span></div><span class="tcost">cost ●●○</span></div>
+    <p>Write any query that returns the rows breaking a business rule. Zero rows means pass. It can join several models.</p>
+<div class="file">tests/assert_payments_cover_orders.sql</div>
+<pre class="code">{{ config(severity=<span class="s">'error'</span>, error_if=<span class="s">'&gt;10'</span>, warn_if=<span class="s">'&gt;0'</span>) }}
+<span class="c">-- every shipped order must be fully paid</span>
+select o.order_id, o.amount, coalesce(sum(p.amount), 0) as paid
+from {{ ref(<span class="s">'fct_orders'</span>) }} o
+left join {{ ref(<span class="s">'fct_payments'</span>) }} p using (order_id)
+where o.status = <span class="s">'shipped'</span>
+group by 1, 2
+having coalesce(sum(p.amount), 0) &lt; o.amount</pre>
+    <p class="muted" style="font-size:.85rem"><span class="only-v18">1.8.6: configure it in the file (<code>config()</code>) or in <code>dbt_project.yml</code> under <code>data_tests:</code>.</span>
+    <span class="only-v112">1.12: you can also document it in a YAML file (<code>data_tests: - name: assert_payments_cover_orders, description: …</code>, possible since 1.9).</span></p>
+    <div class="twhen"><div><b>✓ Use for</b> cross-table reconciliations and one-off business rules ("revenue = sum of lines", "no order before its customer exists").</div>
+      <div><b>✗ Avoid</b> copy-pasting the same singular test with another table name (→ 3).</div></div>
+  </article>
+
+  <article class="tcard" id="t-unit">
+    <div class="tcard-head"><span class="tnum">5</span><div><h3>Unit tests <span class="tag v18">1.8+</span></h3><span class="muted">mocked inputs → model SQL → expected output</span></div><span class="tcost">cost ●○○ (tiny data)</span></div>
+    <p>They test <strong>your code</strong>, not the data. They run before the model is built and catch logic bugs on edge cases that may not exist in prod yet.</p>
+<pre class="code">unit_tests:
+  - name: fiscal_quarter_handles_year_boundary
+    model: fct_orders
+    given:
+      - input: ref(<span class="s">'stg_orders'</span>)
+        rows:
+          - {order_id: 1, ordered_at: <span class="s">'2024-12-31'</span>}
+          - {order_id: 2, ordered_at: <span class="s">'2025-01-01'</span>}
+    expect:
+      rows:
+        - {order_id: 1, fiscal_quarter: <span class="s">'FY24-Q4'</span>}
+        - {order_id: 2, fiscal_quarter: <span class="s">'FY25-Q1'</span>}</pre>
+    <div class="twhen"><div><b>✓ Use for</b> regex, <code>case when</code>, date math, window functions, the <code>is_incremental()</code> branch, and before a refactor.</div>
+      <div><b>✗ Not for</b> checking real data quality (→ 1–4). Exclude them from prod runs (<code>--exclude-resource-type unit_test</code>).</div></div>
+  </article>
+
+  <article class="tcard" id="t-contract">
+    <div class="tcard-head"><span class="tnum">6</span><div><h3>Model contracts &amp; constraints</h3><span class="muted">a guarantee on the <em>shape</em>, checked before the build</span></div><span class="tcost">cost ○○○</span></div>
+    <p>Not a test you "run", but a check: if the model's SQL doesn't produce exactly the declared columns and types, the build fails <em>before</em> writing the table.
+    Constraints (<code>not_null</code>, <code>primary_key</code>, <code>check</code>…) go into the DDL. Only some are enforced, depending on the warehouse (Postgres enforces them all, Snowflake only <code>not_null</code>).</p>
+<pre class="code">models:
+  - name: dim_customers
+    config:
+      contract: {enforced: true}
+    columns:
+      - name: customer_id
+        data_type: int
+        constraints: [{type: not_null}, {type: primary_key}]
+      - name: email
+        data_type: varchar</pre>
+    <div class="twhen"><div><b>✓ Use for</b> public models consumed by other teams or BI. It pairs with model versions (see the Versioning page).</div>
+      <div><b>✗ Doesn't replace</b> <code>unique</code>: most warehouses don't enforce <code>primary_key</code>. Keep the data test.</div></div>
+  </article>
+
+  <article class="tcard" id="t-fresh">
+    <div class="tcard-head"><span class="tnum">7</span><div><h3>Source freshness</h3><span class="muted">"did data arrive on time?"</span></div><span class="tcost">cost ●○○</span></div>
+    <p>Checks <code>max(loaded_at)</code> against <code>warn_after</code> / <code>error_after</code>. It runs with <code>dbt source freshness</code>, not <code>dbt test</code>. See the <a href="freshness.html">Freshness page</a> for the simulator.</p>
+    <div class="twhen"><div><b>✓ Use</b> on every source fed by a pipeline with an SLA, as the first step of the job.</div>
+      <div><b>✗ Not</b> on models: use <code>dbt_utils.recency</code> there (→ 2).</div></div>
+  </article>
+
+  <article class="tcard" id="t-regression">
+    <div class="tcard-head"><span class="tnum">8</span><div><h3>Regression / audit tests</h3><span class="muted">"did my change alter results vs prod?"</span></div><span class="tcost">cost ●●●</span></div>
+    <p>Compare the new version of a model with production: row counts, keys, changed values. With Core, use the <code>audit_helper</code> package in an analysis or a CI step.
+    On the platform, <em>compare changes</em> does it automatically (see the <a href="dbt-cloud.html#compare">dbt Cloud page</a>).</p>
+<pre class="code">{{ audit_helper.compare_relations(
+     a_relation=ref(<span class="s">'fct_orders'</span>),                                  <span class="c">-- dev / CI</span>
+     b_relation=api.Relation.create(database=<span class="s">'analytics'</span>, schema=<span class="s">'prod'</span>, identifier=<span class="s">'fct_orders'</span>),
+     primary_key=<span class="s">'order_id'</span>) }}</pre>
+    <div class="twhen"><div><b>✓ Use</b> when refactoring a critical model: the output should be identical, or differ only where you intended.</div>
+      <div><b>✗ Not</b> as a permanent scheduled test: it compares two environments.</div></div>
+  </article>
+</div>
+
+<h2 id="choose">3 · Which test should I use?</h2>
+<p>Answer the questions. The path lights up in the tree, and you get the recommended type with a starter example.</p>
+<div class="sim" id="tguide">
+  <div class="sim-cols" style="grid-template-columns:minmax(0,1fr) minmax(0,1.2fr)">
+    <div>
+      <div id="tg-q"></div>
+      <div id="tg-result"></div>
+    </div>
+    <div><div class="dag-wrap" id="tg-tree"></div></div>
+  </div>
+</div>
+
+<div class="tbl-wrap card">
+<table class="prose">
+  <tr><th></th><th>Built-in</th><th>Package</th><th>Custom generic</th><th>Singular</th><th>Unit</th><th>Contract</th></tr>
+  <tr><td>Checks</td><td>data</td><td>data</td><td>data</td><td>data</td><td><b>code</b></td><td><b>shape</b></td></tr>
+  <tr><td>Reusable</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">–</td><td class="no">–</td><td class="no">–</td></tr>
+  <tr><td>Multi-table</td><td>FK only</td><td>some</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓ (mocks)</td><td class="no">–</td></tr>
+  <tr><td>Runs</td><td colspan="4">after the model is built (<code>dbt test</code> / <code>dbt build</code>)</td><td>before the build</td><td>during the build</td></tr>
+  <tr><td>Stops downstream in <code>dbt build</code></td><td colspan="4">on ERROR (configurable with severity)</td><td>yes, the model isn't built</td><td>yes, the build fails</td></tr>
+  <tr><td>Where it runs</td><td colspan="4">dev, CI, prod</td><td>dev, CI</td><td>everywhere</td></tr>
+</table>
+</div>
+
+<h2 id="sim">4 · Data test simulator</h2>
 <p>An <code>orders</code> model with four planted problems: a null customer, a duplicated id, a typo in a status, and an orphan customer. Pick a test and play with its config.</p>
 <div class="sim" id="testsim">
   <div class="controls" style="margin-bottom:8px"><span class="ctl-label">Test</span><div id="t-test"></div></div>
@@ -80,7 +299,7 @@ the differences are mostly in the YAML syntax and its validation.</p>
   </div>
 </div>
 
-<h2 id="unit">3 · Unit tests</h2>
+<h2 id="unit">5 · Unit tests</h2>
 <div class="diagram">
 <svg viewBox="0 0 900 170" role="img" aria-label="Unit test flow">
   <rect x="10" y="20" width="200" height="130" rx="10" fill="var(--soft)" stroke="var(--line)"/>
@@ -136,7 +355,7 @@ the differences are mostly in the YAML syntax and its validation.</p>
 <code>overrides</code> for <code>vars</code>, <code>env_vars</code> and macros. Run them with <code>dbt test --select "test_type:unit"</code> and exclude them in production with
 <code>dbt build --exclude-resource-type unit_test</code>.</p>
 
-<h2 id="versions">4 · 1.8.6 vs 1.12 syntax</h2>
+<h2 id="versions">6 · 1.8.6 vs 1.12 syntax</h2>
 <div class="vgrid">
   <div class="vcol only-v18"><span class="tag v18">1.8.6</span>
     <ul>
@@ -170,7 +389,7 @@ the differences are mostly in the YAML syntax and its validation.</p>
   </div>
 </div>
 
-<h2 id="best">5 · Best practices</h2>
+<h2 id="best">7 · Best practices</h2>
 <div class="cards">
   <div class="card"><h3 style="margin-top:0">What to test</h3>
     <ul><li>Every model's grain: <code>unique</code> + <code>not_null</code> on the primary key (or <code>dbt_utils.unique_combination_of_columns</code>).</li>

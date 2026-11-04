@@ -44,9 +44,9 @@ THEMATICS = [
         "nav": "Tests",
         "title": "Data tests & unit tests",
         "icon": "✅",
-        "summary": "Generic, singular and unit tests, severity thresholds, store_failures, "
-                   "and what changed between 1.8 and 1.12.",
-        "scripts": ["tests.js"],
+        "summary": "All 8 kinds of checks (built-in, package & custom generic, singular, unit, contracts, freshness, "
+                   "regression), an interactive 'which test?' guide, severity, and 1.8 vs 1.12 syntax.",
+        "scripts": ["tests.js", "tests_guide.js"],
     },
     {
         "slug": "flags",
