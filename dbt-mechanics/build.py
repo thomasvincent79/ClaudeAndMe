@@ -67,6 +67,15 @@ THEMATICS = [
         "scripts": ["selectors.js"],
     },
     {
+        "slug": "python",
+        "nav": "Python",
+        "title": "Python models",
+        "icon": "🐍",
+        "summary": "model(dbt, session), where the code really runs (Snowpark, PySpark, BigFrames), config/vars/incremental, "
+                   "lazy DataFrames vs to_pandas(), and SQL vs Python model vs Python UDF.",
+        "scripts": ["python.js"],
+    },
+    {
         "slug": "versioning",
         "nav": "Versioning",
         "title": "Model versions & versioning",

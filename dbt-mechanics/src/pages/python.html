@@ -1,0 +1,182 @@
+<section class="hero">
+<span class="eyebrow">🐍 Python models</span>
+<h1>When SQL isn't enough: <span class="grad">Python in the DAG</span></h1>
+<p class="lead">A Python model is a <code>.py</code> file in <code>models/</code> with a <code>model(dbt, session)</code> function that returns a DataFrame. dbt treats it like any model:
+refs, DAG, tests, docs. The code <strong>runs on the data platform</strong> (Snowflake, Databricks, BigQuery), never on the machine running dbt.
+Available since 1.3, so the same in <span class="tag v18">1.8.6</span> and <span class="tag v112">1.12</span>, with a few config helpers added since.</p>
+<div class="toc">
+  <a href="#anatomy">1 · Anatomy</a>
+  <a href="#where">2 · Where it runs</a>
+  <a href="#config">3 · Config, vars, incremental</a>
+  <a href="#lazy">4 · Lazy vs to_pandas()</a>
+  <a href="#when">5 · SQL, Python or UDF?</a>
+  <a href="#limits">6 · Limits &amp; debugging</a>
+</div>
+</section>
+
+<h2 id="anatomy">1 · Anatomy of a Python model</h2>
+<div class="vgrid">
+  <div class="vcol"><span class="badge">models/ml/ticket_scores.py (Snowpark)</span>
+<pre class="code"><span class="k">import</span> snowflake.snowpark.functions <span class="k">as</span> F
+
+<span class="k">def</span> <span class="f">model</span>(dbt, session):                     <span class="c"># ① fixed signature</span>
+    dbt.config(                                 <span class="c"># ② literals only</span>
+        materialized=<span class="s">"table"</span>,                  <span class="c">#    table | incremental</span>
+        packages=[<span class="s">"scikit-learn==1.5.*"</span>],
+    )
+    tickets = dbt.ref(<span class="s">"stg_tickets"</span>)            <span class="c"># ③ a DataFrame, edge in the DAG</span>
+    agents  = dbt.source(<span class="s">"zendesk"</span>, <span class="s">"users"</span>)
+
+    df = tickets.join(agents, tickets.AGENT_ID == agents.ID)
+    df = df.with_column(<span class="s">"IS_URGENT"</span>,
+                        F.col(<span class="s">"BODY"</span>).rlike(<span class="s">"(?i)urgent|asap|down"</span>))
+    <span class="k">return</span> df                                   <span class="c"># ④ one DataFrame → the table</span></pre>
+  </div>
+  <div class="vcol"><span class="badge">models/marts/fct_ticket_kpis.sql (downstream SQL)</span>
+<pre class="code">select agent_id,
+       avg(iff(is_urgent, 1, 0)) as urgent_rate
+from {{ ref(<span class="s">'ticket_scores'</span>) }}            <span class="c">-- a Python model, ref'd like any other</span>
+group by 1</pre>
+    <ul>
+      <li><code>dbt.ref()</code> / <code>dbt.source()</code> return the platform's DataFrame (Snowpark, PySpark, BigFrames).</li>
+      <li>You may return a pandas DataFrame too. dbt converts it.</li>
+      <li><code>dbt.this</code> (with <code>.database</code>, <code>.schema</code>, <code>.identifier</code>) and <code>dbt.is_incremental</code> are available.</li>
+      <li>Only <code>table</code> and <code>incremental</code> materializations. No <code>view</code> or <code>ephemeral</code>, and you can't <code>ref</code> an ephemeral model.</li>
+      <li>No Jinja: config that depends on vars, env vars or target goes through YAML (section 3).</li>
+    </ul>
+  </div>
+</div>
+
+<h2 id="where">2 · Where the code runs</h2>
+<div class="sim" id="pyexec">
+  <div class="controls" style="margin-bottom:10px"><span class="ctl-label">Platform</span><div id="pe-plat"></div>
+    <button class="btn primary" id="pe-play">▶ Run it</button></div>
+  <div class="steps" id="pe-steps"></div>
+  <div class="dag-wrap" id="pe-svg"></div>
+  <div class="narration" id="pe-narr"></div>
+  <div class="sim-cols" style="margin-top:12px;grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr)">
+    <div id="pe-code"></div><div id="pe-cfg"></div>
+  </div>
+</div>
+<div class="tbl-wrap card">
+<table class="prose">
+  <tr><th>Adapter</th><th>Python models</th><th>Runs as</th><th>Packages</th></tr>
+  <tr><td>Snowflake</td><td class="yes">✓</td><td>stored procedure on your warehouse (Snowpark)</td><td>Snowflake Anaconda channel (<code>packages</code>), stage files (<code>imports</code>)</td></tr>
+  <tr><td>Databricks</td><td class="yes">✓</td><td>notebook run on an all-purpose / job / serverless cluster</td><td>PyPI via <code>packages</code> or cluster libraries</td></tr>
+  <tr><td>BigQuery</td><td class="yes">✓</td><td>BigQuery DataFrames (<code>bigframes</code>) or Dataproc (serverless / cluster)</td><td><code>packages</code></td></tr>
+  <tr><td>DuckDB (community)</td><td class="yes">✓</td><td>locally, in-process. Handy for learning.</td><td>your venv</td></tr>
+  <tr><td>Postgres / Redshift</td><td class="no">–</td><td>not supported. Use SQL, or a Python UDF where the warehouse allows it.</td><td></td></tr>
+</table>
+</div>
+
+<h2 id="config">3 · Config, vars and incremental Python models</h2>
+<div class="vgrid">
+  <div class="vcol only-v18"><span class="tag v18">1.8.6</span>
+<div class="file">models/ml/_ml.yml</div>
+<pre class="code">models:
+  - name: ticket_scores
+    config:
+      materialized: incremental
+      unique_key: ticket_id
+      <span class="c"># Jinja is allowed HERE, not in the .py file:</span>
+      target_name: <span class="s">"{{ target.name }}"</span>
+      lookback_days: <span class="s">"{{ var('lookback_days', 3) }}"</span>
+      meta:
+        model_version: <span class="s">"2024-11"</span></pre>
+<pre class="code"><span class="k">def</span> <span class="f">model</span>(dbt, session):
+    days = int(dbt.config.get(<span class="s">"lookback_days"</span>))
+    mv = dbt.config.get(<span class="s">"meta"</span>, {}).get(<span class="s">"model_version"</span>)
+    df = dbt.ref(<span class="s">"stg_tickets"</span>)
+    <span class="k">if</span> dbt.is_incremental:
+        df = df.filter(df.UPDATED_AT &gt;= F.dateadd(<span class="s">"day"</span>, F.lit(-days),
+                                                  F.current_timestamp()))
+    <span class="k">if</span> dbt.config.get(<span class="s">"target_name"</span>) == <span class="s">"dev"</span>:
+        df = df.limit(<span class="s">1000</span>)
+    <span class="k">return</span> df.with_column(<span class="s">"MODEL_VERSION"</span>, F.lit(mv))</pre>
+    <p class="muted" style="font-size:.85rem">1.8 also lets f-strings use <code>dbt.config.get()</code> values (before 1.8 they rendered <code>None</code>).</p>
+  </div>
+  <div class="vcol only-v112"><span class="tag v112">1.12</span>
+    <p>Same pattern. Two differences:</p>
+    <ul>
+      <li>Custom keys belong under <code>meta</code> (top-level custom config keys warn since 1.10). Read them with <code>dbt.config.meta_get("key")</code>.</li>
+      <li>Microbatch (1.9+) is a SQL incremental strategy. For Python incremental models, keep the <code>dbt.is_incremental</code> filter.</li>
+    </ul>
+<pre class="code">models:
+  - name: ticket_scores
+    config:
+      materialized: incremental
+      unique_key: ticket_id
+      meta:
+        target_name: <span class="s">"{{ target.name }}"</span>
+        lookback_days: <span class="s">"{{ var('lookback_days', 3) }}"</span>
+        model_version: <span class="s">"2024-11"</span></pre>
+<pre class="code">days = int(dbt.config.<span class="h">meta_get</span>(<span class="s">"lookback_days"</span>))
+<span class="k">if</span> dbt.config.<span class="h">meta_get</span>(<span class="s">"target_name"</span>) == <span class="s">"dev"</span>:
+    df = df.limit(<span class="s">1000</span>)</pre>
+  </div>
+</div>
+<div class="callout warn"><b>Incremental = your filter + the adapter's strategy</b><p><code>dbt.is_incremental</code> is true exactly as in SQL. You filter the new rows yourself, and dbt then merges them
+(<code>unique_key</code>) with the strategies the adapter supports for Python (for example <code>merge</code> on BigQuery via Dataproc).</p></div>
+
+<h2 id="lazy">4 · Lazy DataFrames vs <code>to_pandas()</code></h2>
+<p>Snowpark, PySpark and BigFrames DataFrames are <strong>lazy</strong>: each operation becomes SQL or Spark plans executed by the engine, in parallel.
+<code>.to_pandas()</code> copies the rows into the memory of <em>one</em> Python process. Score 10M support tickets with an ML model three ways:</p>
+<div class="sim" id="pylazy">
+  <div class="controls" style="margin-bottom:10px"><span class="ctl-label">Strategy</span><div id="lz-when"></div></div>
+  <div class="dag-wrap" id="lz-svg"></div>
+  <div class="sim-cols" style="margin-top:12px;grid-template-columns:minmax(0,1.3fr) minmax(0,.7fr)">
+    <div id="lz-code"></div><div class="narration" id="lz-out" style="margin-top:0"></div>
+  </div>
+</div>
+
+<h2 id="when">5 · SQL, Python model, or Python UDF?</h2>
+<div class="tbl-wrap card">
+<table class="prose">
+  <tr><th>Need</th><th>Best tool</th><th>Why</th></tr>
+  <tr><td>Joins, filters, aggregations, window functions</td><td><b>SQL model</b></td><td>Faster, cheaper, readable by everyone, unit-testable.</td></tr>
+  <tr><td>ML scoring / training, forecasting (prophet, sklearn)</td><td><b>Python model</b></td><td>Needs libraries SQL doesn't have.</td></tr>
+  <tr><td>Fuzzy matching, NLP, complex parsing (rapidfuzz, spaCy)</td><td><b>Python model</b> (or UDF)</td><td>Library-heavy logic on rows.</td></tr>
+  <tr><td>Calendars, holidays, statistics (scipy)</td><td><b>Python model</b></td><td>Small enrichments from PyPI packages.</td></tr>
+  <tr><td>One row-level Python function reused by many SQL models</td><td><span class="only-v18">Warehouse UDF created via a macro / hook</span><span class="only-v112"><b>Python UDF</b> in <code>functions/</code> (1.11+, <code>packages</code> in 1.12)</span></td><td>Called from SQL as <code>{{ function('clean_phone') }}(phone)</code>, so the rest stays SQL.</td></tr>
+  <tr><td>Calling an external API per row</td><td>Usually <b>outside dbt</b> (ingestion)</td><td>dbt models should be deterministic and rebuildable.</td></tr>
+</table>
+</div>
+<div class="vgrid">
+  <div class="vcol only-v112"><span class="tag v112">1.12 · Python UDF as a dbt resource</span>
+<div class="file">functions/clean_phone.py + functions/clean_phone.yml</div>
+<pre class="code"><span class="k">def</span> <span class="f">clean_phone</span>(raw: str) -&gt; str:
+    <span class="k">import</span> phonenumbers
+    <span class="k">return</span> phonenumbers.format_number(
+        phonenumbers.parse(raw, <span class="s">"FR"</span>), phonenumbers.PhoneNumberFormat.E164)</pre>
+<pre class="code">functions:
+  - name: clean_phone
+    config:
+      packages: [phonenumbers]      <span class="c"># 1.12</span>
+    arguments: [{name: raw, data_type: string}]
+    returns: {data_type: string}</pre>
+<pre class="code">select {{ function(<span class="s">'clean_phone'</span>) }}(phone) as phone_e164 from {{ ref(<span class="s">'stg_users'</span>) }}</pre>
+  </div>
+  <div class="vcol only-v18"><span class="tag v18">1.8.6</span>
+    <p>No <code>functions/</code> resource type. Create the UDF with a macro run in <code>on-run-start</code>, or once by hand,
+    and call it in SQL. Otherwise put the logic in a Python model.</p>
+  </div>
+</div>
+
+<h2 id="limits">6 · Limits &amp; debugging</h2>
+<div class="cards">
+  <div class="card"><h3>⚠️ Limits</h3><ul>
+    <li>Slower to start (procedure / cluster / session) and often more expensive than SQL.</li>
+    <li><code>dbt.config()</code> takes literals only. Refs must be plain strings so dbt can parse the DAG.</li>
+    <li>Helper functions can't be imported from another model file. Use stage <code>imports</code> (Snowflake), a package, or a UDF.</li>
+    <li>Unit tests (YAML <code>unit_tests:</code>) target SQL models. Test your Python helpers with <code>pytest</code>, and the output with data tests.</li></ul></div>
+  <div class="card"><h3>🔎 Debugging</h3><ul>
+    <li><code>print()</code> output doesn't appear in dbt logs. Look at the platform's query/job history (Snowflake query history, Spark UI, Dataproc logs).</li>
+    <li><code>dbt compile -s ticket_scores</code>, then read the generated code in <code>target/</code>.</li>
+    <li>Iterate fast in a notebook on the same platform, or locally with dbt-duckdb, then paste the code into <code>model()</code>.</li>
+    <li>In dev, return a tiny sample (<code>if target_name == "dev": df = df.limit(1000)</code>).</li></ul></div>
+  <div class="card"><h3>✅ Best practices</h3><ul>
+    <li>Keep Python models <strong>thin</strong>: SQL upstream prepares and filters, Python does the one thing SQL can't, SQL downstream aggregates.</li>
+    <li>Pin <code>packages</code> versions, so the platform environment is reproducible.</li>
+    <li>Stay lazy as long as possible. Call <code>to_pandas()</code> only on filtered, narrow data.</li>
+    <li>Add <code>unique</code>/<code>not_null</code> tests on the output like any model. Contracts work on Python models too.</li></ul></div>
+</div>

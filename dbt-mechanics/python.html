@@ -1,0 +1,850 @@
+<!doctype html>
+<html lang="en" data-ver="both">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Python models</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23ff5f3f'/%3E%3Cpath d='M9 22l7-12 7 12' stroke='white' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<script>
+  // apply saved theme/version before paint (no flash)
+  try {
+    const t = localStorage.getItem("dbt-mechanics-theme"); if (t) document.documentElement.dataset.theme = t;
+    const v = localStorage.getItem("dbt-mechanics-version"); if (v) document.documentElement.dataset.ver = v;
+  } catch (e) {}
+</script>
+<style>
+/* ================= tokens ================= */
+:root {
+  --bg: #f6f5f2; --bg2: #efede7; --card: #ffffff; --ink: #17171a; --muted: #686873; --line: #e4e2db; --soft: #f0eee8;
+  --accent: #ff5f3f; --accent2: #ff9f43; --accent-ink: #fff;
+  --grad: linear-gradient(120deg, #ff5f3f 0%, #ff9f43 45%, #7c5cff 100%);
+  --v18: #3a6fd0; --v18-bg: #e6eefb;
+  --v112: #12946a; --v112-bg: #ddf4ea;
+  --new: #d7f3e2; --new-ink: #136b42;
+  --upd: #fff0c4; --upd-ink: #855600;
+  --del: #fde0dc; --del-ink: #a8281b;
+  --gone: #ececea; --gone-ink: #8d8d8a;
+  --code-bg: #15161c; --code-ink: #e7e7ee; --code-bar: #20222b;
+  --shadow: 0 1px 2px rgba(20,20,30,.05), 0 8px 24px -12px rgba(20,20,30,.18);
+  --shadow-lg: 0 2px 6px rgba(20,20,30,.06), 0 24px 48px -20px rgba(20,20,30,.28);
+  --mesh1: rgba(255,95,63,.16); --mesh2: rgba(124,92,255,.14); --mesh3: rgba(255,159,67,.14);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f0f13; --bg2: #15151b; --card: #18181f; --ink: #ecebf1; --muted: #9c9ba8; --line: #2a2a34; --soft: #22222b;
+    --accent: #ff7a5c; --accent2: #ffb366;
+    --v18: #8cb2f4; --v18-bg: #1a2640;
+    --v112: #5fd6a5; --v112-bg: #13302a;
+    --new: #143524; --new-ink: #8fe0b3;
+    --upd: #3a2e12; --upd-ink: #f3cf7a;
+    --del: #42201c; --del-ink: #ffa597;
+    --gone: #24242b; --gone-ink: #74747e;
+    --code-bg: #0b0b0f; --code-ink: #e7e7ee; --code-bar: #16161d;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+    --shadow-lg: 0 2px 6px rgba(0,0,0,.4), 0 24px 48px -20px rgba(0,0,0,.8);
+    --mesh1: rgba(255,95,63,.18); --mesh2: rgba(124,92,255,.2); --mesh3: rgba(255,159,67,.1);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f0f13; --bg2: #15151b; --card: #18181f; --ink: #ecebf1; --muted: #9c9ba8; --line: #2a2a34; --soft: #22222b;
+  --accent: #ff7a5c; --accent2: #ffb366;
+  --v18: #8cb2f4; --v18-bg: #1a2640;
+  --v112: #5fd6a5; --v112-bg: #13302a;
+  --new: #143524; --new-ink: #8fe0b3;
+  --upd: #3a2e12; --upd-ink: #f3cf7a;
+  --del: #42201c; --del-ink: #ffa597;
+  --gone: #24242b; --gone-ink: #74747e;
+  --code-bg: #0b0b0f; --code-ink: #e7e7ee; --code-bar: #16161d;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+  --shadow-lg: 0 2px 6px rgba(0,0,0,.4), 0 24px 48px -20px rgba(0,0,0,.8);
+  --mesh1: rgba(255,95,63,.18); --mesh2: rgba(124,92,255,.2); --mesh3: rgba(255,159,67,.1);
+  color-scheme: dark;
+}
+
+/* ================= base ================= */
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 80px; }
+body { margin: 0; background: var(--bg); color: var(--ink);
+       font: 15.5px/1.65 "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+       -webkit-font-smoothing: antialiased; }
+body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background: radial-gradient(900px 500px at 8% -10%, var(--mesh1), transparent 60%),
+              radial-gradient(800px 500px at 100% 0%, var(--mesh2), transparent 60%),
+              radial-gradient(700px 600px at 50% 110%, var(--mesh3), transparent 60%); }
+a { color: var(--accent); text-underline-offset: 3px; }
+code { font: .86em/1.4 "JetBrains Mono", ui-monospace, "Cascadia Code", Consolas, monospace; background: var(--soft);
+       padding: 1px 6px; border-radius: 5px; border: 1px solid var(--line); overflow-wrap: anywhere; }
+h1 { font-size: clamp(2rem, 4.5vw, 3.1rem); line-height: 1.08; letter-spacing: -.03em; margin: 6px 0 12px; font-weight: 800; }
+h2 { font-size: 1.55rem; letter-spacing: -.02em; margin: 64px 0 12px; font-weight: 750; position: relative; padding-bottom: 10px; }
+h2::after { content: ""; position: absolute; left: 0; bottom: 0; width: 56px; height: 3px; border-radius: 3px; background: var(--grad); }
+h3 { font-size: 1.08rem; margin: 26px 0 8px; letter-spacing: -.01em; }
+.lead { color: var(--muted); font-size: 1.1rem; margin: 0 0 22px; max-width: 72ch; }
+p, li { max-width: 80ch; }
+::selection { background: color-mix(in srgb, var(--accent) 30%, transparent); }
+
+/* ================= header ================= */
+.progress { position: fixed; top: 0; left: 0; height: 3px; width: 0; background: var(--grad); z-index: 20; }
+.top { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 78%, transparent);
+       backdrop-filter: saturate(1.6) blur(14px); -webkit-backdrop-filter: saturate(1.6) blur(14px); border-bottom: 1px solid var(--line); }
+.top-inner { max-width: 1200px; margin: 0 auto; padding: 10px 16px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 1.05rem; color: var(--ink); text-decoration: none; letter-spacing: -.02em; }
+.brand svg { width: 26px; height: 26px; }
+.brand span { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.nav { display: flex; gap: 2px; flex-wrap: nowrap; flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; white-space: nowrap; }
+.nav::-webkit-scrollbar { display: none; }
+@media (max-width: 1000px) { .nav { order: 3; flex-basis: 100%; } .top-inner { gap: 8px 12px; } }
+.nav a { color: var(--muted); text-decoration: none; padding: 6px 11px; border-radius: 8px; font-size: .9rem; font-weight: 500; transition: .15s; }
+.nav a:hover { background: var(--soft); color: var(--ink); }
+.nav a.on { color: var(--ink); background: var(--card); box-shadow: var(--shadow); }
+.vswitch { display: flex; align-items: center; gap: 2px; background: var(--soft); padding: 3px; border-radius: 10px; border: 1px solid var(--line); }
+.vlabel { font-size: .74rem; color: var(--muted); padding: 0 6px; font-weight: 600; }
+.vswitch button, .theme-btn { border: 0; background: transparent; color: var(--muted); font: 600 .84rem "Inter", system-ui, sans-serif;
+                  padding: 5px 10px; border-radius: 7px; cursor: pointer; transition: .15s; }
+.vswitch button.on { background: var(--card); color: var(--ink); box-shadow: var(--shadow); }
+.vswitch button[data-set-ver="v18"].on { color: var(--v18); }
+.vswitch button[data-set-ver="v112"].on { color: var(--v112); }
+.theme-btn { font-size: 1rem; border: 1px solid var(--line); background: var(--soft); padding: 5px 9px; }
+.theme-btn:hover { color: var(--ink); }
+
+main { max-width: 1200px; margin: 0 auto; padding: 28px 16px 40px; }
+.foot { max-width: 1200px; margin: 40px auto 0; padding: 22px 16px 48px; color: var(--muted); font-size: .85rem; border-top: 1px solid var(--line); }
+
+/* ================= hero ================= */
+.hero { position: relative; overflow: hidden; border-radius: 22px; padding: 38px 34px 30px; margin: 4px 0 10px;
+        background: linear-gradient(160deg, color-mix(in srgb, var(--card) 92%, transparent), color-mix(in srgb, var(--card) 70%, transparent));
+        border: 1px solid var(--line); box-shadow: var(--shadow-lg); }
+.hero::before { content: ""; position: absolute; inset: -2px; z-index: 0; opacity: .55; pointer-events: none;
+  background: radial-gradient(500px 220px at 100% 0%, var(--mesh2), transparent 70%), radial-gradient(400px 200px at 0% 100%, var(--mesh1), transparent 70%); }
+.hero > * { position: relative; z-index: 1; }
+.eyebrow { display: inline-flex; align-items: center; gap: 8px; font: 700 .74rem "Inter", sans-serif; letter-spacing: .12em; text-transform: uppercase;
+           color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); padding: 5px 11px; border-radius: 30px; }
+.hero h1 .grad, .grad { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.hero .lead { color: var(--muted); margin-bottom: 18px; }
+.hero-art { position: absolute; right: 24px; top: 20px; width: 300px; opacity: .9; z-index: 0; }
+@media (max-width: 980px) { .hero-art { display: none; } }
+.hero.big { padding: 56px 40px 44px; }
+.hero.big h1 { font-size: clamp(2.4rem, 6vw, 4rem); max-width: 14ch; }
+.stats { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+.stat { background: var(--soft); border: 1px solid var(--line); border-radius: 12px; padding: 8px 14px; font-size: .85rem; color: var(--muted); }
+.stat b { color: var(--ink); font-size: 1.05rem; margin-right: 4px; }
+
+/* ================= version blocks ================= */
+.tag { display: inline-block; font: 700 .7rem/1 "Inter", system-ui, sans-serif; padding: 4px 8px; border-radius: 6px; letter-spacing: .02em; vertical-align: middle; }
+.tag.v18 { background: var(--v18-bg); color: var(--v18); }
+.tag.v112 { background: var(--v112-bg); color: var(--v112); }
+.vgrid { display: grid; gap: 16px; grid-template-columns: 1fr; margin: 14px 0; }
+html[data-ver="both"] .vgrid { grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); }
+html[data-ver="v18"] .only-v112, html[data-ver="v112"] .only-v18 { display: none !important; }
+.vcol { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px; box-shadow: var(--shadow);
+        position: relative; min-width: 0; overflow: hidden; }
+.vcol::before { content: ""; position: absolute; left: 0; top: 0; right: 0; height: 3px; background: var(--line); }
+.vcol.only-v18::before { background: linear-gradient(90deg, var(--v18), transparent); }
+.vcol.only-v112::before { background: linear-gradient(90deg, var(--v112), transparent); }
+.vcol > .tag:first-child { margin-bottom: 6px; }
+
+/* ================= cards & callouts ================= */
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; box-shadow: var(--shadow); }
+.cards { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(270px, 100%), 1fr)); margin: 16px 0; }
+.card h3:first-child { margin-top: 0; }
+a.theme-card { color: inherit; text-decoration: none; display: block; position: relative; transition: transform .2s, box-shadow .2s; overflow: hidden; }
+a.theme-card::after { content: ""; position: absolute; inset: 0; border-radius: 16px; padding: 1px; background: var(--grad); opacity: 0; transition: opacity .2s;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none; }
+a.theme-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
+a.theme-card:hover::after { opacity: 1; }
+.theme-card h2 { margin: 12px 0 6px; padding: 0; font-size: 1.15rem; }
+.theme-card h2::after { display: none; }
+.theme-card p { margin: 0; color: var(--muted); font-size: .92rem; }
+.theme-card .go { display: inline-block; margin-top: 12px; font-weight: 600; font-size: .88rem; color: var(--accent); }
+.theme-icon { width: 46px; height: 46px; display: grid; place-items: center; font-size: 1.4rem; border-radius: 12px;
+              background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 22%, transparent), color-mix(in srgb, #7c5cff 22%, transparent)); }
+.callout { border: 1px solid var(--line); border-left: 4px solid var(--accent); background: var(--card); padding: 12px 16px; border-radius: 12px; margin: 16px 0; box-shadow: var(--shadow); }
+.callout.tip { border-left-color: var(--v112); }
+.callout.warn { border-left-color: #e0a800; }
+.callout.danger { border-left-color: #e0442f; background: linear-gradient(90deg, color-mix(in srgb, var(--del) 60%, var(--card)), var(--card) 60%); }
+.callout b:first-child { display: block; margin-bottom: 2px; }
+.callout p { margin: 4px 0; }
+.toc { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0 0; }
+.toc a { font-size: .85rem; font-weight: 500; text-decoration: none; padding: 5px 12px; border: 1px solid var(--line);
+         border-radius: 30px; color: var(--ink); background: var(--card); transition: .15s; }
+.toc a:hover { border-color: var(--accent); color: var(--accent); transform: translateY(-1px); }
+
+/* ================= code ================= */
+.file { font: 600 .74rem "JetBrains Mono", ui-monospace, Consolas, monospace; color: #a9abb8; margin: 14px 0 0; background: var(--code-bar);
+        padding: 9px 14px 9px 62px; border-radius: 12px 12px 0 0; position: relative; }
+.file::before { content: ""; position: absolute; left: 14px; top: 50%; width: 10px; height: 10px; border-radius: 50%; transform: translateY(-50%);
+                background: #ff5f57; box-shadow: 15px 0 0 #febc2e, 30px 0 0 #28c840; }
+.file + pre.code { margin-top: 0; border-top-left-radius: 0; border-top-right-radius: 0; }
+pre.code { background: var(--code-bg); color: var(--code-ink); border-radius: 12px; padding: 14px 16px; overflow-x: auto;
+           font: .8rem/1.6 "JetBrains Mono", ui-monospace, "Cascadia Code", Consolas, monospace; margin: 10px 0; box-shadow: var(--shadow); }
+pre.code .c { color: #7d8196; }
+pre.code .k { color: #ff9a7a; }
+pre.code .s { color: #a5e0a0; }
+pre.code .f { color: #8cc4ff; }
+pre.code .h { background: rgba(255,214,102,.16); border-radius: 4px; padding: 0 3px; box-shadow: inset 0 0 0 1px rgba(255,214,102,.25); }
+
+/* ================= tables ================= */
+.tbl-wrap { overflow-x: auto; }
+table.dt { border-collapse: separate; border-spacing: 0; width: 100%; font: .8rem/1.35 "JetBrains Mono", ui-monospace, Consolas, monospace; }
+table.dt th { text-align: left; color: var(--muted); font: 600 .72rem "Inter", sans-serif; text-transform: uppercase; letter-spacing: .04em;
+              padding: 7px 9px; border-bottom: 1px solid var(--line); white-space: nowrap; background: var(--soft); }
+table.dt th:first-child { border-top-left-radius: 8px; } table.dt th:last-child { border-top-right-radius: 8px; }
+table.dt td { padding: 6px 9px; border-bottom: 1px solid var(--line); white-space: nowrap; transition: background .5s, color .5s; }
+table.dt tr.new td { background: var(--new); color: var(--new-ink); }
+table.dt tr.upd td { background: var(--upd); color: var(--upd-ink); }
+table.dt tr.del td { background: var(--del); color: var(--del-ink); }
+table.dt tr.gone td { background: var(--gone); color: var(--gone-ink); text-decoration: line-through; }
+table.dt td.cell-upd { background: var(--upd) !important; color: var(--upd-ink) !important; font-weight: 700; }
+table.dt td.meta { color: var(--muted); }
+table.dt td.null { color: var(--muted); font-style: italic; }
+table.dt tr.flash td { animation: flash 1s cubic-bezier(.2,.8,.2,1); }
+@keyframes flash { 0% { filter: brightness(1.4) saturate(1.4); transform: translateX(-10px); opacity: .2; } 100% { filter: none; transform: none; opacity: 1; } }
+table.prose { border-collapse: collapse; width: 100%; font-size: .9rem; }
+table.prose th, table.prose td { border-bottom: 1px solid var(--line); padding: 10px 12px; text-align: left; vertical-align: top; }
+table.prose tr:last-child td { border-bottom: 0; }
+table.prose th { color: var(--muted); font-weight: 600; font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; }
+table.prose tr:hover td { background: color-mix(in srgb, var(--soft) 60%, transparent); }
+.yes { color: var(--v112); font-weight: 700; }
+.no { color: var(--muted); }
+
+/* ================= simulators ================= */
+.sim { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 20px; margin: 18px 0; box-shadow: var(--shadow-lg); position: relative; }
+.sim::before { content: "INTERACTIVE"; position: absolute; top: -10px; left: 20px; font: 800 .64rem "Inter", sans-serif; letter-spacing: .14em;
+               color: #fff; background: var(--grad); padding: 4px 10px; border-radius: 20px; }
+.sim-head { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.ctl-label { font: 700 .7rem "Inter", sans-serif; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-right: 2px; }
+.seg { display: inline-flex; background: var(--soft); border-radius: 10px; padding: 3px; gap: 2px; flex-wrap: wrap; border: 1px solid var(--line); }
+.seg button { border: 0; background: transparent; color: var(--muted); padding: 5px 11px; border-radius: 7px; cursor: pointer;
+              font: 600 .78rem "JetBrains Mono", ui-monospace, Consolas, monospace; transition: .15s; }
+.seg button:hover:not(:disabled) { color: var(--ink); }
+.seg button.on { background: var(--card); color: var(--ink); box-shadow: var(--shadow); }
+.seg button:disabled { opacity: .35; cursor: not-allowed; }
+.btn { border: 1px solid var(--line); background: var(--card); color: var(--ink); padding: 7px 14px; border-radius: 10px;
+       cursor: pointer; font: 600 .84rem "Inter", system-ui, sans-serif; transition: .15s; }
+.btn:hover:not(:disabled) { border-color: var(--accent); transform: translateY(-1px); }
+.btn.primary { background: var(--grad); border-color: transparent; color: #fff; box-shadow: 0 6px 18px -8px var(--accent); }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+input.btn { cursor: text; }
+.sim-cols { display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr) minmax(0, 1.9fr); }
+@media (max-width: 860px) { .sim-cols { grid-template-columns: minmax(0, 1fr); } }
+.pane-title { font: 700 .7rem "Inter", sans-serif; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 8px;
+              display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.narration { background: var(--soft); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; margin: 14px 0 0; min-height: 3.2em; }
+.narration b { color: var(--accent); }
+.steps { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0 12px; }
+.step { border: 1px solid var(--line); background: var(--card); color: var(--muted); border-radius: 30px; padding: 5px 13px;
+        font: 600 .78rem "Inter", system-ui, sans-serif; cursor: pointer; transition: .2s; }
+.step.done { color: var(--ink); border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); }
+.step.on { background: var(--grad); color: #fff; border-color: transparent; box-shadow: 0 6px 18px -8px var(--accent); }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: .78rem; color: var(--muted); margin-top: 12px; }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 4px; vertical-align: -2px; margin-right: 5px; }
+.verdict { margin-top: 12px; padding: 11px 15px; border-radius: 12px; font-size: .9rem; animation: pop .35s ease; }
+.verdict:empty { display: none; }
+.verdict.ok { background: var(--new); color: var(--new-ink); }
+.verdict.bad { background: var(--del); color: var(--del-ink); }
+.verdict ul { margin: 4px 0 0; padding-left: 18px; }
+@keyframes pop { from { transform: scale(.97); opacity: 0; } to { transform: none; opacity: 1; } }
+.sql-out { margin-top: 12px; }
+svg text { font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; }
+.timeline-svg { width: 100%; height: auto; display: block; margin-top: 6px; }
+.badge { display: inline-block; font: 700 .68rem "Inter", sans-serif; padding: 2px 7px; border-radius: 5px; background: var(--soft); color: var(--muted); }
+
+/* ================= diagrams ================= */
+.diagram { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 18px; margin: 16px 0; overflow-x: auto; box-shadow: var(--shadow); }
+.diagram svg { display: block; width: 100%; height: auto; min-width: 560px; }
+.d-box { fill: var(--soft); stroke: var(--line); }
+.d-txt { fill: var(--ink); font: 12px "Inter", system-ui, sans-serif; }
+.d-mut { fill: var(--muted); font: 11px "Inter", system-ui, sans-serif; }
+.d-line { stroke: var(--muted); stroke-width: 1.5; fill: none; opacity: .7; }
+.flow-dot { fill: var(--accent); filter: drop-shadow(0 0 4px var(--accent)); }
+
+/* ================= reveal on scroll ================= */
+.reveal { opacity: 0; transform: translateY(14px); transition: opacity .6s ease, transform .6s cubic-bezier(.2,.8,.2,1); }
+.reveal.in { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } * { animation: none !important; } }
+
+/* incremental: wider input pane */
+#incsim .sim-cols { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); }
+@media (max-width: 860px) { #incsim .sim-cols { grid-template-columns: minmax(0, 1fr); } }
+
+/* ================= flags page ================= */
+.where-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin: 14px 0; }
+.where { border-radius: 14px; padding: 14px 16px; border: 1px solid var(--line); background: var(--card); box-shadow: var(--shadow); position: relative; }
+.where .rank { position: absolute; top: 12px; right: 14px; font: 800 1.6rem "Inter", sans-serif; opacity: .12; }
+.where h4 { margin: 0 0 4px; font-size: .95rem; }
+.where p { margin: 0; font-size: .86rem; color: var(--muted); }
+.flag-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr)); margin: 16px 0; }
+@media (max-width: 420px) { .flag-grid { grid-template-columns: minmax(0, 1fr); } }
+.flag { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 18px 20px; box-shadow: var(--shadow); min-width: 0; transition: box-shadow .2s, transform .2s; }
+.flag:hover { box-shadow: var(--shadow-lg); }
+.flag-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+.flag-name { font: 700 1.02rem "JetBrains Mono", ui-monospace, Consolas, monospace; color: var(--accent); }
+.flag-alias { font: .8rem "JetBrains Mono", monospace; color: var(--muted); }
+.flag-cmds { display: flex; gap: 4px; flex-wrap: wrap; margin: 4px 0 10px; }
+.flag-cmds span { font: 600 .7rem "JetBrains Mono", monospace; padding: 2px 7px; border-radius: 5px; background: var(--soft); color: var(--muted); border: 1px solid var(--line); }
+.flag dl { margin: 0; display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 6px 12px; font-size: .9rem; }
+.flag dt { font: 700 .68rem "Inter", sans-serif; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); padding-top: 4px; }
+.flag dd { margin: 0; min-width: 0; }
+.flag dd pre.code { margin: 2px 0; font-size: .76rem; padding: 9px 12px; }
+.chips { display: flex; gap: 5px; flex-wrap: wrap; }
+.chip { font: 600 .72rem "Inter", sans-serif; padding: 3px 8px; border-radius: 20px; border: 1px solid var(--line); color: var(--muted); }
+.chip.y { color: var(--v112); border-color: color-mix(in srgb, var(--v112) 40%, var(--line)); background: color-mix(in srgb, var(--v112) 10%, transparent); }
+.chip.n { opacity: .55; text-decoration: line-through; }
+.group-title { display: flex; align-items: center; gap: 10px; }
+.group-title .num { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; font: 800 .85rem "Inter", sans-serif; color: #fff; background: var(--grad); }
+
+/* DAG playground */
+.dag-wrap { background: var(--bg2); border: 1px solid var(--line); border-radius: 14px; padding: 8px; overflow-x: auto; }
+.dag-wrap svg { display: block; width: 100%; min-width: 760px; height: auto; }
+.dag-node rect { transition: fill .35s, stroke .35s, opacity .35s; }
+.dag-node.dim { opacity: .32; }
+.dag-node.pulse rect.body { animation: nodepulse .9s ease; }
+@keyframes nodepulse { 0% { filter: drop-shadow(0 0 0 var(--accent)); } 40% { filter: drop-shadow(0 0 10px var(--accent)); } 100% { filter: none; } }
+.dag-edge { stroke: var(--muted); stroke-width: 1.4; fill: none; opacity: .45; transition: opacity .3s, stroke .3s; }
+.dag-edge.hot { stroke: var(--accent); opacity: .9; stroke-dasharray: 5 4; animation: dash 1s linear infinite; }
+@keyframes dash { to { stroke-dashoffset: -18; } }
+.cmdline { font: 600 .92rem "JetBrains Mono", monospace; background: var(--code-bg); color: var(--code-ink); padding: 14px 16px; border-radius: 12px;
+           margin: 12px 0; overflow-x: auto; white-space: nowrap; box-shadow: var(--shadow); }
+.cmdline .p { color: #28c840; margin-right: 8px; }
+.cmdline .fl { color: #ff9a7a; } .cmdline .v { color: #a5e0a0; }
+.toggle { display: inline-flex; align-items: center; gap: 7px; font: 600 .8rem "JetBrains Mono", monospace; padding: 6px 11px; border-radius: 9px;
+          border: 1px solid var(--line); background: var(--soft); color: var(--muted); cursor: pointer; user-select: none; transition: .15s; }
+.toggle input { accent-color: var(--accent); margin: 0; }
+.toggle.on { color: var(--ink); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--card)); }
+.toggle.disabled { opacity: .4; cursor: not-allowed; }
+.presets { display: flex; gap: 6px; flex-wrap: wrap; }
+.presets button { font: 600 .76rem "JetBrains Mono", monospace; padding: 4px 9px; border-radius: 7px; border: 1px dashed var(--line); background: transparent; color: var(--muted); cursor: pointer; }
+.presets button:hover { color: var(--accent); border-color: var(--accent); }
+.effects { display: grid; gap: 6px; margin-top: 10px; font-size: .88rem; }
+.effects div { padding: 7px 12px; border-radius: 10px; background: var(--soft); border: 1px solid var(--line); }
+.effects b { font-family: "JetBrains Mono", monospace; font-size: .82rem; }
+.recipe { display: grid; grid-template-columns: 38px minmax(0, 1fr); gap: 12px; align-items: start; }
+.recipe .ico { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; font-size: 1.1rem; background: var(--soft); }
+
+/* ================= dbt platform page ================= */
+.muted { color: var(--muted); }
+.ci-steps { --prog: 0%; position: relative; display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; margin-bottom: 14px; }
+.ci-step { border: 1px solid var(--line); background: var(--card); color: var(--muted); border-radius: 12px; padding: 10px 8px; cursor: pointer;
+           display: flex; flex-direction: column; align-items: center; gap: 4px; font: 600 .78rem "Inter", sans-serif; transition: .25s; }
+.ci-step .ci-ico { font-size: 1.3rem; filter: grayscale(1); opacity: .6; transition: .25s; }
+.ci-step.done { color: var(--ink); border-color: color-mix(in srgb, var(--v112) 50%, var(--line)); }
+.ci-step.done .ci-ico, .ci-step.on .ci-ico { filter: none; opacity: 1; }
+.ci-step.on { color: #fff; background: var(--grad); border-color: transparent; transform: translateY(-3px); box-shadow: 0 10px 22px -10px var(--accent); }
+.pr-comment { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--card); }
+.pr-head { background: var(--soft); padding: 9px 12px; font-size: .85rem; border-bottom: 1px solid var(--line); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.pr-avatar { width: 22px; height: 22px; border-radius: 50%; background: var(--grad); color: #fff; font: 800 .55rem "Inter", sans-serif; display: grid; place-items: center; }
+.pr-body { padding: 12px; font-size: .88rem; }
+.pr-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 6px; }
+.pr-stats div { background: var(--soft); border: 1px solid var(--line); border-radius: 9px; padding: 6px 9px; display: flex; flex-direction: column; }
+.pr-stats span { font-size: .68rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 700; }
+.pr-stats b { font: 700 .86rem "JetBrains Mono", monospace; }
+.pr-stats .pos b { color: var(--new-ink); } .pr-stats .neg b { color: var(--del-ink); } .pr-stats .mod b { color: var(--upd-ink); }
+.pr-stats .pos { background: var(--new); } .pr-stats .neg { background: var(--del); } .pr-stats .mod { background: var(--upd); }
+table.state-grid { border-collapse: separate; border-spacing: 3px; font: .78rem "JetBrains Mono", monospace; width: 100%; }
+table.state-grid th { color: var(--muted); font-weight: 600; text-align: center; padding: 4px; }
+table.state-grid th:first-child, table.state-grid td:first-child { text-align: left; white-space: nowrap; padding-right: 10px; }
+table.state-grid td { text-align: center; padding: 6px 4px; border-radius: 6px; transition: background .3s; }
+table.state-grid td.b { background: var(--grad); color: #fff; animation: pop .35s ease; }
+table.state-grid td.s { background: var(--soft); color: var(--muted); }
+table.state-grid td.fut, table.state-grid th.fut { opacity: .25; }
+table.state-grid tr.src td { color: #2fa36b; font-size: .74rem; }
+table.state-grid tr.src td:not(:first-child) { font-size: 1rem; }
+.meter { height: 10px; background: var(--soft); border-radius: 10px; overflow: hidden; margin-bottom: 8px; border: 1px solid var(--line); }
+.meter-bar { height: 100%; background: var(--grad); transition: width .6s ease; }
+
+/* ================= selectors page ================= */
+.tree { display: grid; gap: 4px; margin-bottom: 12px; }
+.tree-item { display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 9px;
+             padding: 6px 10px; cursor: pointer; font: 600 .8rem "JetBrains Mono", monospace; text-align: left; transition: .15s; }
+.tree-item:hover { border-color: var(--accent); }
+.tree-item.lvl2 { margin-left: 18px; } .tree-item.lvl3 { margin-left: 36px; font-weight: 500; }
+.tree-item.on { background: var(--grad); color: #fff; border-color: transparent; box-shadow: 0 8px 18px -10px var(--accent); }
+.tree-lvl { font: 800 .62rem "Inter", sans-serif; padding: 2px 6px; border-radius: 5px; background: var(--soft); color: var(--muted); }
+.tree-item.on .tree-lvl { background: rgba(255,255,255,.25); color: #fff; }
+.tree-name { flex: 1; }
+.tree-n { font-size: .7rem; opacity: .7; }
+
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<header class="top">
+  <div class="top-inner">
+    <a class="brand" href="index.html" aria-label="dbt mechanics home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff5f3f"/><stop offset=".55" stop-color="#ff9f43"/><stop offset="1" stop-color="#7c5cff"/></linearGradient></defs>
+        <rect width="32" height="32" rx="9" fill="url(#lg)"/><circle cx="9" cy="22" r="3" fill="#fff"/><circle cx="16" cy="10" r="3" fill="#fff"/><circle cx="23" cy="22" r="3" fill="#fff"/>
+        <path d="M9 22L16 10L23 22" stroke="#fff" stroke-width="2" fill="none"/></svg>
+      dbt<span>mechanics</span></a>
+    <nav class="nav">
+<a href="index.html" class="">Home</a>
+<a href="snapshots.html" class="" title="Snapshots & hard deletes">Snapshots</a>
+<a href="incremental.html" class="" title="Incremental strategies">Incremental</a>
+<a href="tests.html" class="" title="Data tests & unit tests">Tests</a>
+<a href="flags.html" class="" title="CLI flags">Flags</a>
+<a href="selectors.html" class="" title="Selectors & orchestration">Selectors</a>
+<a href="python.html" class="on" title="Python models">Python</a>
+<a href="versioning.html" class="" title="Model versions & versioning">Versioning</a>
+<a href="clone.html" class="" title="dbt clone">Clone</a>
+<a href="freshness.html" class="" title="Source freshness">Freshness</a>
+<a href="dbt-cloud.html" class="" title="dbt Cloud (dbt platform)">dbt Cloud</a>
+    </nav>
+    <div class="vswitch" role="group" aria-label="dbt version">
+      <span class="vlabel">dbt Core</span>
+      <button data-set-ver="v18">1.8.6</button>
+      <button data-set-ver="v112">1.12</button>
+      <button data-set-ver="both">Compare</button>
+    </div>
+    <button class="theme-btn" id="theme-btn" title="Toggle light / dark">◐</button>
+  </div>
+</header>
+<main>
+<section class="hero">
+<span class="eyebrow">🐍 Python models</span>
+<h1>When SQL isn't enough: <span class="grad">Python in the DAG</span></h1>
+<p class="lead">A Python model is a <code>.py</code> file in <code>models/</code> with a <code>model(dbt, session)</code> function that returns a DataFrame. dbt treats it like any model:
+refs, DAG, tests, docs. The code <strong>runs on the data platform</strong> (Snowflake, Databricks, BigQuery), never on the machine running dbt.
+Available since 1.3, so the same in <span class="tag v18">1.8.6</span> and <span class="tag v112">1.12</span>, with a few config helpers added since.</p>
+<div class="toc">
+  <a href="#anatomy">1 · Anatomy</a>
+  <a href="#where">2 · Where it runs</a>
+  <a href="#config">3 · Config, vars, incremental</a>
+  <a href="#lazy">4 · Lazy vs to_pandas()</a>
+  <a href="#when">5 · SQL, Python or UDF?</a>
+  <a href="#limits">6 · Limits &amp; debugging</a>
+</div>
+</section>
+
+<h2 id="anatomy">1 · Anatomy of a Python model</h2>
+<div class="vgrid">
+  <div class="vcol"><span class="badge">models/ml/ticket_scores.py (Snowpark)</span>
+<pre class="code"><span class="k">import</span> snowflake.snowpark.functions <span class="k">as</span> F
+
+<span class="k">def</span> <span class="f">model</span>(dbt, session):                     <span class="c"># ① fixed signature</span>
+    dbt.config(                                 <span class="c"># ② literals only</span>
+        materialized=<span class="s">"table"</span>,                  <span class="c">#    table | incremental</span>
+        packages=[<span class="s">"scikit-learn==1.5.*"</span>],
+    )
+    tickets = dbt.ref(<span class="s">"stg_tickets"</span>)            <span class="c"># ③ a DataFrame, edge in the DAG</span>
+    agents  = dbt.source(<span class="s">"zendesk"</span>, <span class="s">"users"</span>)
+
+    df = tickets.join(agents, tickets.AGENT_ID == agents.ID)
+    df = df.with_column(<span class="s">"IS_URGENT"</span>,
+                        F.col(<span class="s">"BODY"</span>).rlike(<span class="s">"(?i)urgent|asap|down"</span>))
+    <span class="k">return</span> df                                   <span class="c"># ④ one DataFrame → the table</span></pre>
+  </div>
+  <div class="vcol"><span class="badge">models/marts/fct_ticket_kpis.sql (downstream SQL)</span>
+<pre class="code">select agent_id,
+       avg(iff(is_urgent, 1, 0)) as urgent_rate
+from {{ ref(<span class="s">'ticket_scores'</span>) }}            <span class="c">-- a Python model, ref'd like any other</span>
+group by 1</pre>
+    <ul>
+      <li><code>dbt.ref()</code> / <code>dbt.source()</code> return the platform's DataFrame (Snowpark, PySpark, BigFrames).</li>
+      <li>You may return a pandas DataFrame too. dbt converts it.</li>
+      <li><code>dbt.this</code> (with <code>.database</code>, <code>.schema</code>, <code>.identifier</code>) and <code>dbt.is_incremental</code> are available.</li>
+      <li>Only <code>table</code> and <code>incremental</code> materializations. No <code>view</code> or <code>ephemeral</code>, and you can't <code>ref</code> an ephemeral model.</li>
+      <li>No Jinja: config that depends on vars, env vars or target goes through YAML (section 3).</li>
+    </ul>
+  </div>
+</div>
+
+<h2 id="where">2 · Where the code runs</h2>
+<div class="sim" id="pyexec">
+  <div class="controls" style="margin-bottom:10px"><span class="ctl-label">Platform</span><div id="pe-plat"></div>
+    <button class="btn primary" id="pe-play">▶ Run it</button></div>
+  <div class="steps" id="pe-steps"></div>
+  <div class="dag-wrap" id="pe-svg"></div>
+  <div class="narration" id="pe-narr"></div>
+  <div class="sim-cols" style="margin-top:12px;grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr)">
+    <div id="pe-code"></div><div id="pe-cfg"></div>
+  </div>
+</div>
+<div class="tbl-wrap card">
+<table class="prose">
+  <tr><th>Adapter</th><th>Python models</th><th>Runs as</th><th>Packages</th></tr>
+  <tr><td>Snowflake</td><td class="yes">✓</td><td>stored procedure on your warehouse (Snowpark)</td><td>Snowflake Anaconda channel (<code>packages</code>), stage files (<code>imports</code>)</td></tr>
+  <tr><td>Databricks</td><td class="yes">✓</td><td>notebook run on an all-purpose / job / serverless cluster</td><td>PyPI via <code>packages</code> or cluster libraries</td></tr>
+  <tr><td>BigQuery</td><td class="yes">✓</td><td>BigQuery DataFrames (<code>bigframes</code>) or Dataproc (serverless / cluster)</td><td><code>packages</code></td></tr>
+  <tr><td>DuckDB (community)</td><td class="yes">✓</td><td>locally, in-process. Handy for learning.</td><td>your venv</td></tr>
+  <tr><td>Postgres / Redshift</td><td class="no">–</td><td>not supported. Use SQL, or a Python UDF where the warehouse allows it.</td><td></td></tr>
+</table>
+</div>
+
+<h2 id="config">3 · Config, vars and incremental Python models</h2>
+<div class="vgrid">
+  <div class="vcol only-v18"><span class="tag v18">1.8.6</span>
+<div class="file">models/ml/_ml.yml</div>
+<pre class="code">models:
+  - name: ticket_scores
+    config:
+      materialized: incremental
+      unique_key: ticket_id
+      <span class="c"># Jinja is allowed HERE, not in the .py file:</span>
+      target_name: <span class="s">"{{ target.name }}"</span>
+      lookback_days: <span class="s">"{{ var('lookback_days', 3) }}"</span>
+      meta:
+        model_version: <span class="s">"2024-11"</span></pre>
+<pre class="code"><span class="k">def</span> <span class="f">model</span>(dbt, session):
+    days = int(dbt.config.get(<span class="s">"lookback_days"</span>))
+    mv = dbt.config.get(<span class="s">"meta"</span>, {}).get(<span class="s">"model_version"</span>)
+    df = dbt.ref(<span class="s">"stg_tickets"</span>)
+    <span class="k">if</span> dbt.is_incremental:
+        df = df.filter(df.UPDATED_AT &gt;= F.dateadd(<span class="s">"day"</span>, F.lit(-days),
+                                                  F.current_timestamp()))
+    <span class="k">if</span> dbt.config.get(<span class="s">"target_name"</span>) == <span class="s">"dev"</span>:
+        df = df.limit(<span class="s">1000</span>)
+    <span class="k">return</span> df.with_column(<span class="s">"MODEL_VERSION"</span>, F.lit(mv))</pre>
+    <p class="muted" style="font-size:.85rem">1.8 also lets f-strings use <code>dbt.config.get()</code> values (before 1.8 they rendered <code>None</code>).</p>
+  </div>
+  <div class="vcol only-v112"><span class="tag v112">1.12</span>
+    <p>Same pattern. Two differences:</p>
+    <ul>
+      <li>Custom keys belong under <code>meta</code> (top-level custom config keys warn since 1.10). Read them with <code>dbt.config.meta_get("key")</code>.</li>
+      <li>Microbatch (1.9+) is a SQL incremental strategy. For Python incremental models, keep the <code>dbt.is_incremental</code> filter.</li>
+    </ul>
+<pre class="code">models:
+  - name: ticket_scores
+    config:
+      materialized: incremental
+      unique_key: ticket_id
+      meta:
+        target_name: <span class="s">"{{ target.name }}"</span>
+        lookback_days: <span class="s">"{{ var('lookback_days', 3) }}"</span>
+        model_version: <span class="s">"2024-11"</span></pre>
+<pre class="code">days = int(dbt.config.<span class="h">meta_get</span>(<span class="s">"lookback_days"</span>))
+<span class="k">if</span> dbt.config.<span class="h">meta_get</span>(<span class="s">"target_name"</span>) == <span class="s">"dev"</span>:
+    df = df.limit(<span class="s">1000</span>)</pre>
+  </div>
+</div>
+<div class="callout warn"><b>Incremental = your filter + the adapter's strategy</b><p><code>dbt.is_incremental</code> is true exactly as in SQL. You filter the new rows yourself, and dbt then merges them
+(<code>unique_key</code>) with the strategies the adapter supports for Python (for example <code>merge</code> on BigQuery via Dataproc).</p></div>
+
+<h2 id="lazy">4 · Lazy DataFrames vs <code>to_pandas()</code></h2>
+<p>Snowpark, PySpark and BigFrames DataFrames are <strong>lazy</strong>: each operation becomes SQL or Spark plans executed by the engine, in parallel.
+<code>.to_pandas()</code> copies the rows into the memory of <em>one</em> Python process. Score 10M support tickets with an ML model three ways:</p>
+<div class="sim" id="pylazy">
+  <div class="controls" style="margin-bottom:10px"><span class="ctl-label">Strategy</span><div id="lz-when"></div></div>
+  <div class="dag-wrap" id="lz-svg"></div>
+  <div class="sim-cols" style="margin-top:12px;grid-template-columns:minmax(0,1.3fr) minmax(0,.7fr)">
+    <div id="lz-code"></div><div class="narration" id="lz-out" style="margin-top:0"></div>
+  </div>
+</div>
+
+<h2 id="when">5 · SQL, Python model, or Python UDF?</h2>
+<div class="tbl-wrap card">
+<table class="prose">
+  <tr><th>Need</th><th>Best tool</th><th>Why</th></tr>
+  <tr><td>Joins, filters, aggregations, window functions</td><td><b>SQL model</b></td><td>Faster, cheaper, readable by everyone, unit-testable.</td></tr>
+  <tr><td>ML scoring / training, forecasting (prophet, sklearn)</td><td><b>Python model</b></td><td>Needs libraries SQL doesn't have.</td></tr>
+  <tr><td>Fuzzy matching, NLP, complex parsing (rapidfuzz, spaCy)</td><td><b>Python model</b> (or UDF)</td><td>Library-heavy logic on rows.</td></tr>
+  <tr><td>Calendars, holidays, statistics (scipy)</td><td><b>Python model</b></td><td>Small enrichments from PyPI packages.</td></tr>
+  <tr><td>One row-level Python function reused by many SQL models</td><td><span class="only-v18">Warehouse UDF created via a macro / hook</span><span class="only-v112"><b>Python UDF</b> in <code>functions/</code> (1.11+, <code>packages</code> in 1.12)</span></td><td>Called from SQL as <code>{{ function('clean_phone') }}(phone)</code>, so the rest stays SQL.</td></tr>
+  <tr><td>Calling an external API per row</td><td>Usually <b>outside dbt</b> (ingestion)</td><td>dbt models should be deterministic and rebuildable.</td></tr>
+</table>
+</div>
+<div class="vgrid">
+  <div class="vcol only-v112"><span class="tag v112">1.12 · Python UDF as a dbt resource</span>
+<div class="file">functions/clean_phone.py + functions/clean_phone.yml</div>
+<pre class="code"><span class="k">def</span> <span class="f">clean_phone</span>(raw: str) -&gt; str:
+    <span class="k">import</span> phonenumbers
+    <span class="k">return</span> phonenumbers.format_number(
+        phonenumbers.parse(raw, <span class="s">"FR"</span>), phonenumbers.PhoneNumberFormat.E164)</pre>
+<pre class="code">functions:
+  - name: clean_phone
+    config:
+      packages: [phonenumbers]      <span class="c"># 1.12</span>
+    arguments: [{name: raw, data_type: string}]
+    returns: {data_type: string}</pre>
+<pre class="code">select {{ function(<span class="s">'clean_phone'</span>) }}(phone) as phone_e164 from {{ ref(<span class="s">'stg_users'</span>) }}</pre>
+  </div>
+  <div class="vcol only-v18"><span class="tag v18">1.8.6</span>
+    <p>No <code>functions/</code> resource type. Create the UDF with a macro run in <code>on-run-start</code>, or once by hand,
+    and call it in SQL. Otherwise put the logic in a Python model.</p>
+  </div>
+</div>
+
+<h2 id="limits">6 · Limits &amp; debugging</h2>
+<div class="cards">
+  <div class="card"><h3>⚠️ Limits</h3><ul>
+    <li>Slower to start (procedure / cluster / session) and often more expensive than SQL.</li>
+    <li><code>dbt.config()</code> takes literals only. Refs must be plain strings so dbt can parse the DAG.</li>
+    <li>Helper functions can't be imported from another model file. Use stage <code>imports</code> (Snowflake), a package, or a UDF.</li>
+    <li>Unit tests (YAML <code>unit_tests:</code>) target SQL models. Test your Python helpers with <code>pytest</code>, and the output with data tests.</li></ul></div>
+  <div class="card"><h3>🔎 Debugging</h3><ul>
+    <li><code>print()</code> output doesn't appear in dbt logs. Look at the platform's query/job history (Snowflake query history, Spark UI, Dataproc logs).</li>
+    <li><code>dbt compile -s ticket_scores</code>, then read the generated code in <code>target/</code>.</li>
+    <li>Iterate fast in a notebook on the same platform, or locally with dbt-duckdb, then paste the code into <code>model()</code>.</li>
+    <li>In dev, return a tiny sample (<code>if target_name == "dev": df = df.limit(1000)</code>).</li></ul></div>
+  <div class="card"><h3>✅ Best practices</h3><ul>
+    <li>Keep Python models <strong>thin</strong>: SQL upstream prepares and filters, Python does the one thing SQL can't, SQL downstream aggregates.</li>
+    <li>Pin <code>packages</code> versions, so the platform environment is reproducible.</li>
+    <li>Stay lazy as long as possible. Call <code>to_pandas()</code> only on filtered, narrow data.</li>
+    <li>Add <code>unique</code>/<code>not_null</code> tests on the output like any model. Contracts work on Python models too.</li></ul></div>
+</div>
+
+</main>
+<footer class="foot">
+  Built with <code>python build.py</code>. Version-specific blocks are tagged
+  <span class="tag v18">1.8.6</span> and <span class="tag v112">1.12</span>. Use the switch at the top to show one or compare both.
+</footer>
+<script>
+// ---------- version switch (shared by every page) ----------
+const VER_KEY = "dbt-mechanics-version";
+function getVer() { return document.documentElement.dataset.ver; }
+function setVer(v) {
+  document.documentElement.dataset.ver = v;
+  document.querySelectorAll("[data-set-ver]").forEach(b => b.classList.toggle("on", b.dataset.setVer === v));
+  try { localStorage.setItem(VER_KEY, v); } catch (e) { /* storage unavailable: fine */ }
+  document.dispatchEvent(new CustomEvent("verchange", { detail: v }));
+}
+document.querySelectorAll("[data-set-ver]").forEach(b => b.addEventListener("click", () => setVer(b.dataset.setVer)));
+let savedVer = "both";
+try { savedVer = localStorage.getItem(VER_KEY) || "both"; } catch (e) { /* ignore */ }
+setVer(savedVer);
+
+// ---------- theme toggle ----------
+(function () {
+  const btn = document.getElementById("theme-btn");
+  if (!btn) return;
+  btn.addEventListener("click", () => {
+    const cur = document.documentElement.dataset.theme
+      || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    const next = cur === "dark" ? "light" : "dark";
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem("dbt-mechanics-theme", next); } catch (e) { /* ignore */ }
+  });
+})();
+
+// keep the current page's nav link visible when the nav scrolls sideways
+(function () {
+  const nav = document.querySelector(".nav"), on = nav && nav.querySelector("a.on");
+  if (on) nav.scrollLeft += on.getBoundingClientRect().left - nav.getBoundingClientRect().left - (nav.clientWidth - on.offsetWidth) / 2;
+})();
+
+// ---------- scroll progress + reveal ----------
+(function () {
+  const bar = document.getElementById("progress");
+  const onScroll = () => {
+    const h = document.documentElement.scrollHeight - innerHeight;
+    if (bar) bar.style.width = (h > 0 ? (scrollY / h) * 100 : 0) + "%";
+  };
+  addEventListener("scroll", onScroll, { passive: true }); onScroll();
+  if (!("IntersectionObserver" in window)) return;
+  const io = new IntersectionObserver(entries => entries.forEach(e => {
+    if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); }
+  }), { rootMargin: "0px 0px -40px 0px" });
+  document.querySelectorAll("main h2, main .card, main .diagram, main .callout, main .flag, main .where, main .vcol, main .sim")
+    .forEach(el => { if (!el.closest(".hero")) { el.classList.add("reveal"); io.observe(el); } });
+})();
+
+// ---------- small helpers ----------
+function $(sel, root = document) { return root.querySelector(sel); }
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+
+// Build a segmented control. options: [{value, label, disabled, title}]
+function segmented(container, options, value, onChange) {
+  container.innerHTML = "";
+  container.classList.add("seg");
+  options.forEach(o => {
+    const b = document.createElement("button");
+    b.textContent = o.label; b.dataset.value = o.value;
+    if (o.title) b.title = o.title;
+    b.disabled = !!o.disabled;
+    b.classList.toggle("on", o.value === value);
+    b.addEventListener("click", () => {
+      container.querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b));
+      onChange(o.value);
+    });
+    container.appendChild(b);
+  });
+}
+
+// Render rows as a table. cols: [{key, label, cls?, fmt?}], rows carry an optional _cls and _cellCls {key: cls}
+function renderTable(el, cols, rows, opts = {}) {
+  const head = "<tr>" + cols.map(c => `<th>${esc(c.label)}</th>`).join("") + "</tr>";
+  const body = rows.map(r => {
+    const tds = cols.map(c => {
+      const v = r[c.key];
+      const isNull = v === null || v === undefined;
+      const cls = [c.cls || "", isNull ? "null" : "", (r._cellCls && r._cellCls[c.key]) || ""].join(" ").trim();
+      const shown = isNull ? "null" : (c.fmt ? c.fmt(v, r) : v);
+      return `<td class="${cls}">${esc(shown)}</td>`;
+    }).join("");
+    return `<tr class="${r._cls || ""} ${r._flash ? "flash" : ""}">${tds}</tr>`;
+  }).join("");
+  el.innerHTML = `<div class="tbl-wrap"><table class="dt">${head}${body || `<tr><td colspan="${cols.length}" class="null">${opts.empty || "(empty)"}</td></tr>`}</table></div>`;
+}
+
+// =====================================================================
+// Python models page: (1) where the code runs, per platform (animated)
+// (2) lazy DataFrame vs to_pandas(): how much data lands in Python memory
+// =====================================================================
+(function () {
+  // ------------------------------------------------ 1 · execution path
+  const ex = document.getElementById("pyexec");
+  if (ex) {
+    const $$ = s => ex.querySelector(s);
+    const PLAT = {
+      snowflake: {
+        label: "Snowflake (Snowpark)", runner: "stored procedure", compute: "your warehouse", write: "df.write.save_as_table()",
+        wrap: `<span class="c"># ---- your code (unchanged) ----</span>
+def model(dbt, session): ...
+
+<span class="c"># ---- appended by dbt (simplified) ----</span>
+def ref(*args): return session.table(<span class="s">"ANALYTICS.DBT_ALICE.STG_TICKETS"</span>)
+class dbtObj:  ref = ref; this = <span class="s">"ANALYTICS.DBT_ALICE.TICKET_SCORES"</span>; is_incremental = False
+def main(session):
+    df = model(dbtObj(), session)
+    df.write.mode(<span class="s">"overwrite"</span>).save_as_table(<span class="s">"ANALYTICS.DBT_ALICE.TICKET_SCORES"</span>)
+<span class="c"># → run as an anonymous stored procedure (packages from the Snowflake Anaconda channel)</span>`,
+        cfg: `python_version: "3.11"
+packages: ["scikit-learn==1.5.*"]
+use_anonymous_sproc: true          <span class="c"># default</span>
+imports: ["@my_stage/helpers.py"]   <span class="c"># optional files from a stage</span>
+external_access_integrations: [...] <span class="c"># to call external APIs</span>`,
+      },
+      databricks: {
+        label: "Databricks (PySpark)", runner: "notebook job", compute: "cluster / serverless", write: "df.write.saveAsTable()",
+        wrap: `<span class="c"># ---- your code (unchanged) ----</span>
+def model(dbt, session): ...
+
+<span class="c"># ---- appended by dbt (simplified) ----</span>
+def ref(*args): return spark.table(<span class="s">"main.dbt_alice.stg_tickets"</span>)
+df = model(dbtObj(spark.table), spark)
+df.write.mode(<span class="s">"overwrite"</span>).format(<span class="s">"delta"</span>).saveAsTable(<span class="s">"main.dbt_alice.ticket_scores"</span>)
+<span class="c"># → uploaded as a notebook and run via the chosen submission_method</span>`,
+        cfg: `submission_method: all_purpose_cluster  <span class="c"># or job_cluster, serverless_cluster,</span>
+cluster_id: "0123-456789-abcde"      <span class="c">#    workflow_job (adapter dependent)</span>
+packages: ["rapidfuzz"]
+create_notebook: false`,
+      },
+      bigquery: {
+        label: "BigQuery", runner: "BigFrames / Dataproc", compute: "slots or Dataproc", write: "df.to_gbq()",
+        wrap: `<span class="c"># ---- your code (unchanged) ----</span>
+def model(dbt, session): ...
+
+<span class="c"># ---- appended by dbt (simplified, bigframes) ----</span>
+import bigframes.pandas as bpd
+def ref(*args): return bpd.read_gbq(<span class="s">"proj.dbt_alice.stg_tickets"</span>)
+df = model(dbtObj(), session)
+df.to_gbq(<span class="s">"proj.dbt_alice.ticket_scores"</span>, if_exists=<span class="s">"replace"</span>)`,
+        cfg: `submission_method: bigframes   <span class="c"># or serverless / cluster (Dataproc)</span>
+<span class="c"># Dataproc: gcs_bucket, dataproc_region, (dataproc_cluster_name)</span>
+packages: ["holidays"]`,
+      },
+    };
+    const STEPS = [
+      { t: "Parse", d: "dbt reads <code>ticket_scores.py</code> with Python's AST (it doesn't run it). The <code>dbt.ref()</code> / <code>dbt.source()</code> calls with <b>literal strings</b> give the DAG edges, and <code>dbt.config()</code> literals give the config." },
+      { t: "Compile", d: "dbt appends a small wrapper: <code>ref()</code> resolves to real table names, plus <code>this</code>, <code>is_incremental</code>, the config values, and the write step." },
+      { t: "Submit", d: "dbt sends the code to the platform. Nothing runs on your laptop or orchestrator." },
+      { t: "Execute", d: "The platform runs <code>model(dbt, session)</code>. DataFrame operations are pushed down to the engine until you convert to pandas." },
+      { t: "Materialize", d: "The returned DataFrame is written as a table (or merged, for incremental)." },
+      { t: "Downstream", d: "SQL models use it like any other: <code>{{ ref('ticket_scores') }}</code>. Data tests run on it normally." },
+    ];
+    const st = { plat: "snowflake", step: 0, timer: null };
+    function draw() {
+      const p = PLAT[st.plat], k = st.step;
+      const box = (x, y, w, h, title, sub, on) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="12" fill="${on ? "color-mix(in srgb, var(--accent) 14%, var(--card))" : "var(--soft)"}" stroke="${on ? "var(--accent)" : "var(--line)"}" stroke-width="${on ? 2 : 1}"/>
+        <text x="${x + w / 2}" y="${y + 24}" text-anchor="middle" class="d-txt" font-weight="700">${title}</text>
+        <text x="${x + w / 2}" y="${y + 42}" text-anchor="middle" class="d-mut">${sub}</text>`;
+      const parts = [
+        `<rect x="6" y="6" width="300" height="208" rx="16" fill="none" stroke="var(--muted)" stroke-dasharray="5 4" opacity=".5"/>
+         <text x="18" y="26" class="d-mut" font-weight="700">WHERE dbt RUNS (laptop / CI / orchestrator)</text>
+         <rect x="340" y="6" width="554" height="208" rx="16" fill="none" stroke="var(--accent)" stroke-dasharray="5 4" opacity=".55"/>
+         <text x="352" y="26" class="d-mut" font-weight="700" style="fill:var(--accent)">${p.label.toUpperCase()}</text>`,
+        box(20, 44, 130, 58, "1 Parse", "AST → DAG", k === 0),
+        box(166, 44, 130, 58, "2 Compile", "+ wrapper", k === 1),
+        box(20, 130, 276, 58, "dbt build -s ticket_scores", "the only thing dbt does locally: orchestrate", false),
+        box(360, 44, 160, 58, "3 Submit", p.runner, k === 2),
+        box(540, 44, 160, 58, "4 Execute", p.compute, k === 3),
+        box(720, 44, 160, 58, "5 Materialize", p.write, k === 4),
+        box(540, 130, 340, 58, "6 Downstream SQL + tests", "{{ ref('ticket_scores') }}", k === 5),
+        `<path id="pe" d="M85 102 L85 116 L231 116 L231 102 M296 73 L360 73 L520 73 L540 73 L700 73 L720 73 M800 102 L800 130" fill="none"/>`,
+        `<path class="d-line" d="M150 73 L166 73"/><path class="d-line" d="M296 73 L360 73"/><path class="d-line" d="M520 73 L540 73"/><path class="d-line" d="M700 73 L720 73"/><path class="d-line" d="M800 102 L800 130"/>`,
+      ];
+      const pos = [[85, 73], [231, 73], [440, 73], [620, 73], [800, 73], [710, 159]][k];
+      parts.push(`<circle cx="${pos[0]}" cy="${pos[1] - 36}" r="7" class="flow-dot"><animate attributeName="r" values="5;9;5" dur="1s" repeatCount="indefinite"/></circle>`);
+      $$("#pe-svg").innerHTML = `<svg viewBox="0 0 900 220" style="min-width:720px">${parts.join("")}</svg>`;
+      $$("#pe-steps").innerHTML = STEPS.map((s, i) => `<button class="step ${i === k ? "on" : i < k ? "done" : ""}" data-i="${i}">${i + 1}. ${s.t}</button>`).join("");
+      $$("#pe-steps").querySelectorAll(".step").forEach(b => b.addEventListener("click", () => { stop(); st.step = +b.dataset.i; draw(); }));
+      $$("#pe-narr").innerHTML = `<b>${STEPS[k].t}</b>: ${STEPS[k].d}`;
+      $$("#pe-code").innerHTML = `<div class="file">target/run/…/ticket_scores.py (what the platform receives)</div><pre class="code">${p.wrap}</pre>`;
+      $$("#pe-cfg").innerHTML = `<div class="file">platform-specific config (YAML or dbt.config)</div><pre class="code">${p.cfg}</pre>`;
+    }
+    function stop() { if (st.timer) { clearInterval(st.timer); st.timer = null; $$("#pe-play").textContent = "▶ Run it"; } }
+    $$("#pe-play").addEventListener("click", () => {
+      if (st.timer) { stop(); return; }
+      st.step = 0; draw(); $$("#pe-play").textContent = "■ Stop";
+      st.timer = setInterval(() => { if (st.step >= STEPS.length - 1) { stop(); return; } st.step++; draw(); }, 1600);
+    });
+    segmented($$("#pe-plat"), Object.entries(PLAT).map(([k, v]) => ({ value: k, label: v.label })), st.plat, v => { st.plat = v; draw(); });
+    draw();
+  }
+
+  // ------------------------------------------------ 2 · lazy vs pandas
+  const lz = document.getElementById("pylazy");
+  if (lz) {
+    const $$ = s => lz.querySelector(s);
+    const TOTAL = 10_000_000, RECENT = 600_000, OUT_ROWS = 31 * 12; // 31 days × 12 categories
+    const BYTES = 400, PANDAS_X = 4; // per ticket row (text column); pandas object overhead
+    const MEM = 16e9; // memory available to the Python process
+    const st = { when: "end" };
+    const OPTS = {
+      start: { label: "to_pandas() first", code: `df = dbt.ref(<span class="s">"stg_tickets"</span>).<span class="h">to_pandas()</span>          <span class="c"># ✗ 10M rows pulled</span>
+df = df[df.CREATED_AT &gt;= cutoff]
+df[<span class="s">"SCORE"</span>] = clf.predict_proba(df.BODY)[:, 1]
+out = df.groupby([<span class="s">"DAY"</span>, <span class="s">"CATEGORY"</span>]).SCORE.mean().reset_index()
+return out`, moved: TOTAL },
+      filter: { label: "filter, then to_pandas()", code: `df = dbt.ref(<span class="s">"stg_tickets"</span>)
+df = df.filter(F.col(<span class="s">"CREATED_AT"</span>) &gt;= cutoff)        <span class="c"># pushed down as SQL</span>
+pdf = df.select(<span class="s">"ID"</span>, <span class="s">"DAY"</span>, <span class="s">"CATEGORY"</span>, <span class="s">"BODY"</span>).<span class="h">to_pandas()</span>   <span class="c"># 600k rows</span>
+pdf[<span class="s">"SCORE"</span>] = clf.predict_proba(pdf.BODY)[:, 1]
+return pdf.groupby([<span class="s">"DAY"</span>, <span class="s">"CATEGORY"</span>]).SCORE.mean().reset_index()`, moved: RECENT },
+      end: { label: "stay lazy (vectorized UDF)", code: `score = F.pandas_udf(lambda s: pd.Series(clf.predict_proba(s)[:, 1]),
+                     return_type=FloatType(), input_types=[StringType()])
+df = dbt.ref(<span class="s">"stg_tickets"</span>).filter(F.col(<span class="s">"CREATED_AT"</span>) &gt;= cutoff)
+df = df.with_column(<span class="s">"SCORE"</span>, score(F.col(<span class="s">"BODY"</span>)))   <span class="c"># runs in batches, in parallel</span>
+return df.group_by(<span class="s">"DAY"</span>, <span class="s">"CATEGORY"</span>).agg(F.avg(<span class="s">"SCORE"</span>).alias(<span class="s">"SCORE"</span>))
+<span class="c"># nothing materialized in the procedure's memory: the engine streams batches</span>`, moved: 0 },
+    };
+    function render() {
+      const o = OPTS[st.when];
+      const bytes = o.moved * BYTES * PANDAS_X, pct = Math.min(100, bytes / MEM * 100);
+      const stages = [
+        { n: "stg_tickets", rows: TOTAL, where: "engine" },
+        { n: "filter last 30 days", rows: RECENT, where: st.when === "start" ? "python" : "engine" },
+        { n: "score (ML model)", rows: RECENT, where: st.when === "end" ? "engine (UDF batches)" : "python" },
+        { n: "group by day, category", rows: OUT_ROWS, where: st.when === "end" ? "engine" : "python" },
+      ];
+      const W = 880, parts = [];
+      stages.forEach((s, i) => {
+        const x = 10 + i * 220, py = s.where.startsWith("python");
+        const h = 14 + Math.log10(s.rows) * 9;
+        parts.push(`<rect x="${x}" y="${20}" width="200" height="74" rx="12" fill="${py ? "color-mix(in srgb, #e0a800 18%, var(--card))" : "color-mix(in srgb, #3a6fd0 12%, var(--card))"}" stroke="${py ? "#e0a800" : "#3a6fd0"}"/>
+          <text x="${x + 100}" y="42" text-anchor="middle" class="d-txt" font-weight="700">${s.n}</text>
+          <text x="${x + 100}" y="60" text-anchor="middle" class="d-mut">${s.rows.toLocaleString("en-US")} rows</text>
+          <text x="${x + 100}" y="80" text-anchor="middle" font-size="10" font-weight="700" fill="${py ? "#b07d00" : "#3a6fd0"}">${py ? "🐍 in Python memory" : "⚙ " + s.where}</text>
+          <rect x="${x + 100 - h * 2}" y="104" width="${h * 4}" height="10" rx="5" fill="${py ? "#e0a800" : "#3a6fd0"}" opacity=".7"><animate attributeName="opacity" values=".4;.9;.4" dur="${1 + i * .3}s" repeatCount="indefinite"/></rect>`);
+        if (i < stages.length - 1) parts.push(`<path d="M${x + 200} 57 L${x + 220} 57" stroke="var(--muted)" stroke-width="2" marker-end="url(#ar)"/>`);
+      });
+      $$("#lz-svg").innerHTML = `<svg viewBox="0 0 ${W} 124" style="min-width:720px"><defs><marker id="ar" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8z" fill="var(--muted)"/></marker></defs>${parts.join("")}</svg>`;
+      $$("#lz-code").innerHTML = `<div class="file">models/ml/ticket_scores.py</div><pre class="code">${o.code}</pre>`;
+      const gb = (bytes / 1e9).toFixed(2);
+      $$("#lz-out").innerHTML = `<div class="meter"><div class="meter-bar" style="width:${pct}%;${pct > 80 ? "background:#e0442f" : ""}"></div></div>
+        Rows moved into Python memory: <b>${o.moved.toLocaleString("en-US")}</b> ≈ <b>${gb} GB</b> in pandas (≈400 B/row × 4 for pandas string objects) of ${MEM / 1e9} GB available.
+        <div class="verdict ${pct > 80 ? "bad" : "ok"}" style="margin-top:8px">${pct > 80
+          ? "✗ Likely out of memory (or very slow): pandas holds everything in one process. The engine's parallelism is wasted."
+          : o.moved ? "✓ Works: filter in the engine first, then use pandas for the part that needs a library." : "✓ Best: the engine scales the UDF across its workers, and memory stays flat whatever the volume."}</div>`;
+    }
+    segmented($$("#lz-when"), Object.entries(OPTS).map(([k, v]) => ({ value: k, label: v.label })), st.when, v => { st.when = v; render(); });
+    render();
+  }
+})();
+
+</script>
+</body>
+</html>
