@@ -387,6 +387,7 @@ table.state-grid tr.src td:not(:first-child) { font-size: 1rem; }
 <a href="tests.html" class="" title="Data tests & unit tests">Tests</a>
 <a href="flags.html" class="" title="CLI flags">Flags</a>
 <a href="selectors.html" class="" title="Selectors & orchestration">Selectors</a>
+<a href="versioning.html" class="" title="Model versions & versioning">Versioning</a>
 <a href="clone.html" class="" title="dbt clone">Clone</a>
 <a href="freshness.html" class="" title="Source freshness">Freshness</a>
 <a href="dbt-cloud.html" class="" title="dbt Cloud (dbt platform)">dbt Cloud</a>
@@ -426,8 +427,8 @@ table.state-grid tr.src td:not(:first-child) { font-size: 1rem; }
 Every page covers two dbt Core versions: <span class="tag v18">1.8.6</span> (what you run today) and <span class="tag v112">1.12</span> (current v1).
 Use the switch at the top right to show one version or compare both.</p>
 <div class="stats">
-  <div class="stat"><b>8</b>topics</div>
-  <div class="stat"><b>12</b>interactive simulators</div>
+  <div class="stat"><b>9</b>topics</div>
+  <div class="stat"><b>13</b>interactive simulators</div>
   <div class="stat"><b>2</b>dbt versions side by side</div>
 </div>
 </section>
@@ -461,6 +462,12 @@ Use the switch at the top right to show one version or compare both.</p>
   <div class="theme-icon">🎯</div>
   <h2>Selectors & orchestration</h2>
   <p>How -s / --exclude / --selector are evaluated (animated), operators and methods, selectors.yml, and a 3-level job → subjob → tag hierarchy to orchestrate runs.</p>
+  <span class="go">Explore →</span>
+</a>
+<a class="card theme-card" href="versioning.html">
+  <div class="theme-icon">🏷️</div>
+  <h2>Model versions & versioning</h2>
+  <p>Model versions lifecycle (prerelease → latest → deprecated → removed), ref(v=), base-name strategies incl. latest_version_pointer (1.12), and pinning dbt / packages.</p>
   <span class="go">Explore →</span>
 </a>
 <a class="card theme-card" href="clone.html">

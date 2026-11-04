@@ -67,6 +67,15 @@ THEMATICS = [
         "scripts": ["selectors.js"],
     },
     {
+        "slug": "versioning",
+        "nav": "Versioning",
+        "title": "Model versions & versioning",
+        "icon": "🏷️",
+        "summary": "Model versions lifecycle (prerelease → latest → deprecated → removed), ref(v=), base-name strategies "
+                   "incl. latest_version_pointer (1.12), and pinning dbt / packages.",
+        "scripts": ["versioning.js"],
+    },
+    {
         "slug": "clone",
         "nav": "Clone",
         "title": "dbt clone",

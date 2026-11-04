@@ -1,0 +1,158 @@
+<section class="hero">
+<span class="eyebrow">🏷️ Versioning</span>
+<h1>Change a model <span class="grad">without breaking its consumers</span></h1>
+<p class="lead">"Versioning" in dbt means three things. <strong>Model versions</strong> let you ship a breaking change to a public model while consumers migrate at their own pace.
+<strong>Package and dbt-version pinning</strong> make every run reproducible. <strong>Git</strong> versions the project as a whole.
+Model versions exist since 1.5, so in both <span class="tag v18">1.8.6</span> and <span class="tag v112">1.12</span>; 1.12 adds the <code>latest_version_pointer</code>.</p>
+<div class="toc">
+  <a href="#why">1 · Why version a model</a>
+  <a href="#sim">2 · Lifecycle simulator</a>
+  <a href="#ref">3 · ref() resolution</a>
+  <a href="#yaml">4 · Configuration by version</a>
+  <a href="#project">5 · Versioning the project</a>
+  <a href="#best">6 · Best practices</a>
+</div>
+</section>
+
+<h2 id="why">1 · Why version a model</h2>
+<div class="cards">
+  <div class="card"><h3>Non-breaking change → no version</h3><p>Adding a column, adding rows, fixing a bug in values: consumers keep working. Just ship it.</p></div>
+  <div class="card"><h3>Breaking change → new version</h3><p>Removing or renaming a column, changing a type or nullability, changing the grain. Downstream SQL or dashboards break.
+    Create <code>v2</code> and keep <code>v1</code> alive during a migration window.</p></div>
+  <div class="card"><h3>Contracts make it detectable</h3><p>With <code>contract: {enforced: true}</code>, dbt knows the declared columns and types, so it can flag a breaking change in CI
+    (<code>state:modified</code>) instead of letting it reach consumers.</p></div>
+</div>
+
+<h2 id="sim">2 · Lifecycle simulator</h2>
+<p>Follow <code>dim_customers</code> through a breaking change: drop <code>country_name</code>, rename <code>full_name → customer_name</code>.
+It has three consumers: <code>fct_orders</code> (unpinned ref), <code>mart_legacy</code> (pinned ref), and a BI dashboard that reads the table <em>by name</em>, outside dbt.
+Also choose how the base name <code>analytics.dim_customers</code> keeps working.</p>
+<div class="sim" id="versim">
+  <div class="controls" style="margin-bottom:8px"><span class="ctl-label">base name</span><div id="ver-strat"></div>
+    <button class="btn primary" id="ver-play">▶ Play the lifecycle</button></div>
+  <div class="steps" id="ver-steps"></div>
+  <div class="dag-wrap" id="ver-svg"></div>
+  <div class="narration" id="ver-narr"></div>
+  <div class="effects" id="ver-cons"></div>
+  <div class="sim-cols" style="margin-top:12px;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr)">
+    <div id="ver-yaml"></div>
+    <div id="ver-cmd"></div>
+  </div>
+</div>
+<div class="callout tip"><b>Things to try</b>
+  <p>• Base name = <em>nothing</em>, then step 3: the BI dashboard silently reads a table that nobody rebuilds anymore.</p>
+  <p>• <em>alias on latest</em>, steps 3 → 4: the alias moves from v1 to v2, so <code>dim_customers</code> changes shape at promotion. That's the moment to announce.</p>
+  <p class="only-v112">• <em>latest_version_pointer</em>: every version keeps its own <code>_v&lt;n&gt;</code> table, and dbt maintains a <code>dim_customers</code> view pointing to the latest.</p>
+</div>
+
+<h2 id="ref">3 · How ref() resolves</h2>
+<div class="tbl-wrap card">
+<table class="prose">
+  <tr><th>You write</th><th>With <code>latest_version: 2</code> and versions 1, 2, 3</th><th>Notes</th></tr>
+  <tr><td><code>ref('dim_customers')</code></td><td>→ v2 (latest)</td><td>Follows the maintainer. Logs a notice that a prerelease v3 exists.</td></tr>
+  <tr><td><code>ref('dim_customers', v=1)</code></td><td>→ v1 (old)</td><td>Pinned. Warns once v1 has a <code>deprecation_date</code>. <code>version=1</code> works too.</td></tr>
+  <tr><td><code>ref('dim_customers', v=3)</code></td><td>→ v3 (prerelease)</td><td>Opt in early: <code>v &gt; latest_version</code> means prerelease.</td></tr>
+  <tr><td><code>ref('finance', 'dim_customers', v=2)</code></td><td>→ v2 in another project</td><td>Cross-project (Mesh, dbt platform Enterprise).</td></tr>
+  <tr><td><code>select * from analytics.dim_customers</code></td><td>depends on your base-name strategy</td><td>Outside dbt there is no ref, only a relation name.</td></tr>
+</table>
+</div>
+<div class="callout"><b>Files and relations by default</b>
+  <p>Version <code>v</code> lives in <code>dim_customers_v&lt;v&gt;.sql</code> (or any file via <code>defined_in</code>) and builds the relation <code>dim_customers_v&lt;v&gt;</code>.
+  The latest can also stay in <code>dim_customers.sql</code>. Nothing writes the bare <code>dim_customers</code> relation unless you decide so (alias, pointer, or a post-hook view).</p></div>
+
+<h2 id="yaml">4 · Configuration by version</h2>
+<div class="vgrid">
+  <div class="vcol only-v18"><span class="tag v18">1.8.6</span>
+<div class="file">models/marts/_dim_customers.yml</div>
+<pre class="code">models:
+  - name: dim_customers
+    latest_version: 2
+    config:
+      access: public
+      contract: {enforced: true}
+    columns:                         <span class="c"># shared definition (= v1)</span>
+      - name: customer_id
+        data_type: int
+      - name: full_name
+        data_type: varchar
+      - name: country_name
+        data_type: varchar
+    versions:
+      - v: 2
+        columns:
+          - include: all
+            exclude: [country_name, full_name]
+          - name: customer_name
+            data_type: varchar
+        config:
+          <span class="h">alias: dim_customers</span>       <span class="c"># latest owns the base name</span>
+      - v: 1
+        <span class="h">deprecation_date: 2026-12-31</span></pre>
+    <p>Alternative to the alias: keep <code>_v1</code>/<code>_v2</code> tables and add a post-hook on the latest version,
+    <code>create or replace view {{ this.schema }}.dim_customers as select * from {{ this }}</code>. Remember to move it at promotion.</p>
+  </div>
+  <div class="vcol only-v112"><span class="tag v112">1.12</span>
+<div class="file">models/marts/_dim_customers.yml</div>
+<pre class="code">models:
+  - name: dim_customers
+    latest_version: 2
+    config:
+      access: public
+      contract: {enforced: true}
+      <span class="h">latest_version_pointer:</span>       <span class="c"># 1.12: dbt maintains the view</span>
+        enabled: true
+        <span class="c"># alias: dim_customers_current   (default: the base name)</span>
+    columns: [...]
+    versions:
+      - v: 2
+        columns:
+          - include: all
+            exclude: [country_name, full_name]
+          - name: customer_name
+            data_type: varchar
+      - v: 1
+        deprecation_date: 2026-12-31</pre>
+<pre class="code"><span class="c"># or for every versioned model:</span>
+flags:
+  latest_version_pointer_enabled_by_default: true</pre>
+    <p>Don't combine it with <code>alias: dim_customers</code> on the latest version: dbt raises a name collision (<code>dbt1005</code>). In dbt v2 the pointer is on by default,
+    so remove such aliases before migrating.</p>
+  </div>
+</div>
+<pre class="code"><span class="c"># selection works the same in both versions</span>
+dbt build -s dim_customers                  <span class="c"># all versions</span>
+dbt build -s dim_customers.v2               <span class="c"># one version (dim_customers_v2 also works)</span>
+dbt build -s "dim_customers,version:latest"
+dbt build --exclude "version:old"           <span class="c"># typical default in dev, via a selectors.yml default</span></pre>
+
+<h2 id="project">5 · Versioning the project itself</h2>
+<div class="cards">
+  <div class="card"><h3>Pin dbt</h3>
+<pre class="code"><span class="c"># dbt_project.yml</span>
+require-dbt-version: [<span class="s">"&gt;=1.8.0"</span>, <span class="s">"&lt;1.9.0"</span>]</pre>
+    <p>Fails fast if someone runs the project with another dbt. Pin adapters too (<code>requirements.txt</code>: <code>dbt-snowflake==1.8.4</code>).
+    <span class="only-v112">For 1.12: <code>[">=1.12.0", "&lt;1.13.0"]</code>.</span></p></div>
+  <div class="card"><h3>Pin packages + lock</h3>
+<pre class="code"><span class="c"># packages.yml</span>
+packages:
+  - package: dbt-labs/dbt_utils
+    version: [<span class="s">"&gt;=1.1.0"</span>, <span class="s">"&lt;2.0.0"</span>]
+<span class="c"># dbt deps → writes package-lock.yml (commit it)</span>
+<span class="c"># dbt deps --upgrade → re-resolve within the ranges</span></pre>
+    <p>The lock file (1.7+) makes installs reproducible across laptops and CI.
+    <span class="only-v112">1.12 adds native <code>private:</code> packages over SSH.</span></p></div>
+  <div class="card"><h3>Git = project version</h3>
+    <p>Each prod deploy is a commit (tag releases such as <code>v2026.11.04</code> if you like). The manifest of that commit is the <code>--state</code> for the next CI run.
+    Model versions are for <em>consumers</em>, git history is for <em>you</em>: don't create v2 for every change.</p></div>
+</div>
+
+<h2 id="best">6 · Best practices</h2>
+<ul>
+  <li><strong>Version only public, contracted models</strong> with consumers you don't control (other teams, BI, exports). Internal staging models just change.</li>
+  <li><strong>Keep two live versions at most</strong>: latest and the one being deprecated. Each version is a full extra build in the warehouse.</li>
+  <li><strong>Always set a <code>deprecation_date</code></strong> when you promote a new latest, and announce it. Consumers see warnings on every parse until they migrate.</li>
+  <li><strong>Decide the base-name strategy once</strong> and document it: <span class="only-v18">alias on the latest (1.8.6)</span><span class="only-v112">the pointer view (1.12)</span>. Without one, BI tools end up on a stale table.</li>
+  <li><strong>Prerelease first</strong>: ship v2 with <code>latest_version</code> unchanged, let one consumer pin <code>v=2</code>, then promote.</li>
+  <li><strong>Clean up</strong>: removing a version from YAML doesn't drop its table. Drop it yourself, or with a cleanup macro.</li>
+  <li><strong>CI</strong>: run <code>state:modified+</code> with contracts enforced. A breaking change without a new version is caught before merge.</li>
+</ul>

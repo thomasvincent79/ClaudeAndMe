@@ -1,0 +1,863 @@
+<!doctype html>
+<html lang="en" data-ver="both">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Model versions & versioning</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23ff5f3f'/%3E%3Cpath d='M9 22l7-12 7 12' stroke='white' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<script>
+  // apply saved theme/version before paint (no flash)
+  try {
+    const t = localStorage.getItem("dbt-mechanics-theme"); if (t) document.documentElement.dataset.theme = t;
+    const v = localStorage.getItem("dbt-mechanics-version"); if (v) document.documentElement.dataset.ver = v;
+  } catch (e) {}
+</script>
+<style>
+/* ================= tokens ================= */
+:root {
+  --bg: #f6f5f2; --bg2: #efede7; --card: #ffffff; --ink: #17171a; --muted: #686873; --line: #e4e2db; --soft: #f0eee8;
+  --accent: #ff5f3f; --accent2: #ff9f43; --accent-ink: #fff;
+  --grad: linear-gradient(120deg, #ff5f3f 0%, #ff9f43 45%, #7c5cff 100%);
+  --v18: #3a6fd0; --v18-bg: #e6eefb;
+  --v112: #12946a; --v112-bg: #ddf4ea;
+  --new: #d7f3e2; --new-ink: #136b42;
+  --upd: #fff0c4; --upd-ink: #855600;
+  --del: #fde0dc; --del-ink: #a8281b;
+  --gone: #ececea; --gone-ink: #8d8d8a;
+  --code-bg: #15161c; --code-ink: #e7e7ee; --code-bar: #20222b;
+  --shadow: 0 1px 2px rgba(20,20,30,.05), 0 8px 24px -12px rgba(20,20,30,.18);
+  --shadow-lg: 0 2px 6px rgba(20,20,30,.06), 0 24px 48px -20px rgba(20,20,30,.28);
+  --mesh1: rgba(255,95,63,.16); --mesh2: rgba(124,92,255,.14); --mesh3: rgba(255,159,67,.14);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f0f13; --bg2: #15151b; --card: #18181f; --ink: #ecebf1; --muted: #9c9ba8; --line: #2a2a34; --soft: #22222b;
+    --accent: #ff7a5c; --accent2: #ffb366;
+    --v18: #8cb2f4; --v18-bg: #1a2640;
+    --v112: #5fd6a5; --v112-bg: #13302a;
+    --new: #143524; --new-ink: #8fe0b3;
+    --upd: #3a2e12; --upd-ink: #f3cf7a;
+    --del: #42201c; --del-ink: #ffa597;
+    --gone: #24242b; --gone-ink: #74747e;
+    --code-bg: #0b0b0f; --code-ink: #e7e7ee; --code-bar: #16161d;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+    --shadow-lg: 0 2px 6px rgba(0,0,0,.4), 0 24px 48px -20px rgba(0,0,0,.8);
+    --mesh1: rgba(255,95,63,.18); --mesh2: rgba(124,92,255,.2); --mesh3: rgba(255,159,67,.1);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f0f13; --bg2: #15151b; --card: #18181f; --ink: #ecebf1; --muted: #9c9ba8; --line: #2a2a34; --soft: #22222b;
+  --accent: #ff7a5c; --accent2: #ffb366;
+  --v18: #8cb2f4; --v18-bg: #1a2640;
+  --v112: #5fd6a5; --v112-bg: #13302a;
+  --new: #143524; --new-ink: #8fe0b3;
+  --upd: #3a2e12; --upd-ink: #f3cf7a;
+  --del: #42201c; --del-ink: #ffa597;
+  --gone: #24242b; --gone-ink: #74747e;
+  --code-bg: #0b0b0f; --code-ink: #e7e7ee; --code-bar: #16161d;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+  --shadow-lg: 0 2px 6px rgba(0,0,0,.4), 0 24px 48px -20px rgba(0,0,0,.8);
+  --mesh1: rgba(255,95,63,.18); --mesh2: rgba(124,92,255,.2); --mesh3: rgba(255,159,67,.1);
+  color-scheme: dark;
+}
+
+/* ================= base ================= */
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 80px; }
+body { margin: 0; background: var(--bg); color: var(--ink);
+       font: 15.5px/1.65 "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+       -webkit-font-smoothing: antialiased; }
+body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background: radial-gradient(900px 500px at 8% -10%, var(--mesh1), transparent 60%),
+              radial-gradient(800px 500px at 100% 0%, var(--mesh2), transparent 60%),
+              radial-gradient(700px 600px at 50% 110%, var(--mesh3), transparent 60%); }
+a { color: var(--accent); text-underline-offset: 3px; }
+code { font: .86em/1.4 "JetBrains Mono", ui-monospace, "Cascadia Code", Consolas, monospace; background: var(--soft);
+       padding: 1px 6px; border-radius: 5px; border: 1px solid var(--line); overflow-wrap: anywhere; }
+h1 { font-size: clamp(2rem, 4.5vw, 3.1rem); line-height: 1.08; letter-spacing: -.03em; margin: 6px 0 12px; font-weight: 800; }
+h2 { font-size: 1.55rem; letter-spacing: -.02em; margin: 64px 0 12px; font-weight: 750; position: relative; padding-bottom: 10px; }
+h2::after { content: ""; position: absolute; left: 0; bottom: 0; width: 56px; height: 3px; border-radius: 3px; background: var(--grad); }
+h3 { font-size: 1.08rem; margin: 26px 0 8px; letter-spacing: -.01em; }
+.lead { color: var(--muted); font-size: 1.1rem; margin: 0 0 22px; max-width: 72ch; }
+p, li { max-width: 80ch; }
+::selection { background: color-mix(in srgb, var(--accent) 30%, transparent); }
+
+/* ================= header ================= */
+.progress { position: fixed; top: 0; left: 0; height: 3px; width: 0; background: var(--grad); z-index: 20; }
+.top { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 78%, transparent);
+       backdrop-filter: saturate(1.6) blur(14px); -webkit-backdrop-filter: saturate(1.6) blur(14px); border-bottom: 1px solid var(--line); }
+.top-inner { max-width: 1200px; margin: 0 auto; padding: 10px 16px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 1.05rem; color: var(--ink); text-decoration: none; letter-spacing: -.02em; }
+.brand svg { width: 26px; height: 26px; }
+.brand span { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.nav { display: flex; gap: 2px; flex-wrap: nowrap; flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; white-space: nowrap; }
+.nav::-webkit-scrollbar { display: none; }
+@media (max-width: 1000px) { .nav { order: 3; flex-basis: 100%; } .top-inner { gap: 8px 12px; } }
+.nav a { color: var(--muted); text-decoration: none; padding: 6px 11px; border-radius: 8px; font-size: .9rem; font-weight: 500; transition: .15s; }
+.nav a:hover { background: var(--soft); color: var(--ink); }
+.nav a.on { color: var(--ink); background: var(--card); box-shadow: var(--shadow); }
+.vswitch { display: flex; align-items: center; gap: 2px; background: var(--soft); padding: 3px; border-radius: 10px; border: 1px solid var(--line); }
+.vlabel { font-size: .74rem; color: var(--muted); padding: 0 6px; font-weight: 600; }
+.vswitch button, .theme-btn { border: 0; background: transparent; color: var(--muted); font: 600 .84rem "Inter", system-ui, sans-serif;
+                  padding: 5px 10px; border-radius: 7px; cursor: pointer; transition: .15s; }
+.vswitch button.on { background: var(--card); color: var(--ink); box-shadow: var(--shadow); }
+.vswitch button[data-set-ver="v18"].on { color: var(--v18); }
+.vswitch button[data-set-ver="v112"].on { color: var(--v112); }
+.theme-btn { font-size: 1rem; border: 1px solid var(--line); background: var(--soft); padding: 5px 9px; }
+.theme-btn:hover { color: var(--ink); }
+
+main { max-width: 1200px; margin: 0 auto; padding: 28px 16px 40px; }
+.foot { max-width: 1200px; margin: 40px auto 0; padding: 22px 16px 48px; color: var(--muted); font-size: .85rem; border-top: 1px solid var(--line); }
+
+/* ================= hero ================= */
+.hero { position: relative; overflow: hidden; border-radius: 22px; padding: 38px 34px 30px; margin: 4px 0 10px;
+        background: linear-gradient(160deg, color-mix(in srgb, var(--card) 92%, transparent), color-mix(in srgb, var(--card) 70%, transparent));
+        border: 1px solid var(--line); box-shadow: var(--shadow-lg); }
+.hero::before { content: ""; position: absolute; inset: -2px; z-index: 0; opacity: .55; pointer-events: none;
+  background: radial-gradient(500px 220px at 100% 0%, var(--mesh2), transparent 70%), radial-gradient(400px 200px at 0% 100%, var(--mesh1), transparent 70%); }
+.hero > * { position: relative; z-index: 1; }
+.eyebrow { display: inline-flex; align-items: center; gap: 8px; font: 700 .74rem "Inter", sans-serif; letter-spacing: .12em; text-transform: uppercase;
+           color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); padding: 5px 11px; border-radius: 30px; }
+.hero h1 .grad, .grad { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.hero .lead { color: var(--muted); margin-bottom: 18px; }
+.hero-art { position: absolute; right: 24px; top: 20px; width: 300px; opacity: .9; z-index: 0; }
+@media (max-width: 980px) { .hero-art { display: none; } }
+.hero.big { padding: 56px 40px 44px; }
+.hero.big h1 { font-size: clamp(2.4rem, 6vw, 4rem); max-width: 14ch; }
+.stats { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+.stat { background: var(--soft); border: 1px solid var(--line); border-radius: 12px; padding: 8px 14px; font-size: .85rem; color: var(--muted); }
+.stat b { color: var(--ink); font-size: 1.05rem; margin-right: 4px; }
+
+/* ================= version blocks ================= */
+.tag { display: inline-block; font: 700 .7rem/1 "Inter", system-ui, sans-serif; padding: 4px 8px; border-radius: 6px; letter-spacing: .02em; vertical-align: middle; }
+.tag.v18 { background: var(--v18-bg); color: var(--v18); }
+.tag.v112 { background: var(--v112-bg); color: var(--v112); }
+.vgrid { display: grid; gap: 16px; grid-template-columns: 1fr; margin: 14px 0; }
+html[data-ver="both"] .vgrid { grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); }
+html[data-ver="v18"] .only-v112, html[data-ver="v112"] .only-v18 { display: none !important; }
+.vcol { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px; box-shadow: var(--shadow);
+        position: relative; min-width: 0; overflow: hidden; }
+.vcol::before { content: ""; position: absolute; left: 0; top: 0; right: 0; height: 3px; background: var(--line); }
+.vcol.only-v18::before { background: linear-gradient(90deg, var(--v18), transparent); }
+.vcol.only-v112::before { background: linear-gradient(90deg, var(--v112), transparent); }
+.vcol > .tag:first-child { margin-bottom: 6px; }
+
+/* ================= cards & callouts ================= */
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; box-shadow: var(--shadow); }
+.cards { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(270px, 100%), 1fr)); margin: 16px 0; }
+.card h3:first-child { margin-top: 0; }
+a.theme-card { color: inherit; text-decoration: none; display: block; position: relative; transition: transform .2s, box-shadow .2s; overflow: hidden; }
+a.theme-card::after { content: ""; position: absolute; inset: 0; border-radius: 16px; padding: 1px; background: var(--grad); opacity: 0; transition: opacity .2s;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none; }
+a.theme-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
+a.theme-card:hover::after { opacity: 1; }
+.theme-card h2 { margin: 12px 0 6px; padding: 0; font-size: 1.15rem; }
+.theme-card h2::after { display: none; }
+.theme-card p { margin: 0; color: var(--muted); font-size: .92rem; }
+.theme-card .go { display: inline-block; margin-top: 12px; font-weight: 600; font-size: .88rem; color: var(--accent); }
+.theme-icon { width: 46px; height: 46px; display: grid; place-items: center; font-size: 1.4rem; border-radius: 12px;
+              background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 22%, transparent), color-mix(in srgb, #7c5cff 22%, transparent)); }
+.callout { border: 1px solid var(--line); border-left: 4px solid var(--accent); background: var(--card); padding: 12px 16px; border-radius: 12px; margin: 16px 0; box-shadow: var(--shadow); }
+.callout.tip { border-left-color: var(--v112); }
+.callout.warn { border-left-color: #e0a800; }
+.callout.danger { border-left-color: #e0442f; background: linear-gradient(90deg, color-mix(in srgb, var(--del) 60%, var(--card)), var(--card) 60%); }
+.callout b:first-child { display: block; margin-bottom: 2px; }
+.callout p { margin: 4px 0; }
+.toc { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0 0; }
+.toc a { font-size: .85rem; font-weight: 500; text-decoration: none; padding: 5px 12px; border: 1px solid var(--line);
+         border-radius: 30px; color: var(--ink); background: var(--card); transition: .15s; }
+.toc a:hover { border-color: var(--accent); color: var(--accent); transform: translateY(-1px); }
+
+/* ================= code ================= */
+.file { font: 600 .74rem "JetBrains Mono", ui-monospace, Consolas, monospace; color: #a9abb8; margin: 14px 0 0; background: var(--code-bar);
+        padding: 9px 14px 9px 62px; border-radius: 12px 12px 0 0; position: relative; }
+.file::before { content: ""; position: absolute; left: 14px; top: 50%; width: 10px; height: 10px; border-radius: 50%; transform: translateY(-50%);
+                background: #ff5f57; box-shadow: 15px 0 0 #febc2e, 30px 0 0 #28c840; }
+.file + pre.code { margin-top: 0; border-top-left-radius: 0; border-top-right-radius: 0; }
+pre.code { background: var(--code-bg); color: var(--code-ink); border-radius: 12px; padding: 14px 16px; overflow-x: auto;
+           font: .8rem/1.6 "JetBrains Mono", ui-monospace, "Cascadia Code", Consolas, monospace; margin: 10px 0; box-shadow: var(--shadow); }
+pre.code .c { color: #7d8196; }
+pre.code .k { color: #ff9a7a; }
+pre.code .s { color: #a5e0a0; }
+pre.code .f { color: #8cc4ff; }
+pre.code .h { background: rgba(255,214,102,.16); border-radius: 4px; padding: 0 3px; box-shadow: inset 0 0 0 1px rgba(255,214,102,.25); }
+
+/* ================= tables ================= */
+.tbl-wrap { overflow-x: auto; }
+table.dt { border-collapse: separate; border-spacing: 0; width: 100%; font: .8rem/1.35 "JetBrains Mono", ui-monospace, Consolas, monospace; }
+table.dt th { text-align: left; color: var(--muted); font: 600 .72rem "Inter", sans-serif; text-transform: uppercase; letter-spacing: .04em;
+              padding: 7px 9px; border-bottom: 1px solid var(--line); white-space: nowrap; background: var(--soft); }
+table.dt th:first-child { border-top-left-radius: 8px; } table.dt th:last-child { border-top-right-radius: 8px; }
+table.dt td { padding: 6px 9px; border-bottom: 1px solid var(--line); white-space: nowrap; transition: background .5s, color .5s; }
+table.dt tr.new td { background: var(--new); color: var(--new-ink); }
+table.dt tr.upd td { background: var(--upd); color: var(--upd-ink); }
+table.dt tr.del td { background: var(--del); color: var(--del-ink); }
+table.dt tr.gone td { background: var(--gone); color: var(--gone-ink); text-decoration: line-through; }
+table.dt td.cell-upd { background: var(--upd) !important; color: var(--upd-ink) !important; font-weight: 700; }
+table.dt td.meta { color: var(--muted); }
+table.dt td.null { color: var(--muted); font-style: italic; }
+table.dt tr.flash td { animation: flash 1s cubic-bezier(.2,.8,.2,1); }
+@keyframes flash { 0% { filter: brightness(1.4) saturate(1.4); transform: translateX(-10px); opacity: .2; } 100% { filter: none; transform: none; opacity: 1; } }
+table.prose { border-collapse: collapse; width: 100%; font-size: .9rem; }
+table.prose th, table.prose td { border-bottom: 1px solid var(--line); padding: 10px 12px; text-align: left; vertical-align: top; }
+table.prose tr:last-child td { border-bottom: 0; }
+table.prose th { color: var(--muted); font-weight: 600; font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; }
+table.prose tr:hover td { background: color-mix(in srgb, var(--soft) 60%, transparent); }
+.yes { color: var(--v112); font-weight: 700; }
+.no { color: var(--muted); }
+
+/* ================= simulators ================= */
+.sim { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 20px; margin: 18px 0; box-shadow: var(--shadow-lg); position: relative; }
+.sim::before { content: "INTERACTIVE"; position: absolute; top: -10px; left: 20px; font: 800 .64rem "Inter", sans-serif; letter-spacing: .14em;
+               color: #fff; background: var(--grad); padding: 4px 10px; border-radius: 20px; }
+.sim-head { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.ctl-label { font: 700 .7rem "Inter", sans-serif; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-right: 2px; }
+.seg { display: inline-flex; background: var(--soft); border-radius: 10px; padding: 3px; gap: 2px; flex-wrap: wrap; border: 1px solid var(--line); }
+.seg button { border: 0; background: transparent; color: var(--muted); padding: 5px 11px; border-radius: 7px; cursor: pointer;
+              font: 600 .78rem "JetBrains Mono", ui-monospace, Consolas, monospace; transition: .15s; }
+.seg button:hover:not(:disabled) { color: var(--ink); }
+.seg button.on { background: var(--card); color: var(--ink); box-shadow: var(--shadow); }
+.seg button:disabled { opacity: .35; cursor: not-allowed; }
+.btn { border: 1px solid var(--line); background: var(--card); color: var(--ink); padding: 7px 14px; border-radius: 10px;
+       cursor: pointer; font: 600 .84rem "Inter", system-ui, sans-serif; transition: .15s; }
+.btn:hover:not(:disabled) { border-color: var(--accent); transform: translateY(-1px); }
+.btn.primary { background: var(--grad); border-color: transparent; color: #fff; box-shadow: 0 6px 18px -8px var(--accent); }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+input.btn { cursor: text; }
+.sim-cols { display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr) minmax(0, 1.9fr); }
+@media (max-width: 860px) { .sim-cols { grid-template-columns: minmax(0, 1fr); } }
+.pane-title { font: 700 .7rem "Inter", sans-serif; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 8px;
+              display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.narration { background: var(--soft); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; margin: 14px 0 0; min-height: 3.2em; }
+.narration b { color: var(--accent); }
+.steps { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0 12px; }
+.step { border: 1px solid var(--line); background: var(--card); color: var(--muted); border-radius: 30px; padding: 5px 13px;
+        font: 600 .78rem "Inter", system-ui, sans-serif; cursor: pointer; transition: .2s; }
+.step.done { color: var(--ink); border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); }
+.step.on { background: var(--grad); color: #fff; border-color: transparent; box-shadow: 0 6px 18px -8px var(--accent); }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: .78rem; color: var(--muted); margin-top: 12px; }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 4px; vertical-align: -2px; margin-right: 5px; }
+.verdict { margin-top: 12px; padding: 11px 15px; border-radius: 12px; font-size: .9rem; animation: pop .35s ease; }
+.verdict:empty { display: none; }
+.verdict.ok { background: var(--new); color: var(--new-ink); }
+.verdict.bad { background: var(--del); color: var(--del-ink); }
+.verdict ul { margin: 4px 0 0; padding-left: 18px; }
+@keyframes pop { from { transform: scale(.97); opacity: 0; } to { transform: none; opacity: 1; } }
+.sql-out { margin-top: 12px; }
+svg text { font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; }
+.timeline-svg { width: 100%; height: auto; display: block; margin-top: 6px; }
+.badge { display: inline-block; font: 700 .68rem "Inter", sans-serif; padding: 2px 7px; border-radius: 5px; background: var(--soft); color: var(--muted); }
+
+/* ================= diagrams ================= */
+.diagram { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 18px; margin: 16px 0; overflow-x: auto; box-shadow: var(--shadow); }
+.diagram svg { display: block; width: 100%; height: auto; min-width: 560px; }
+.d-box { fill: var(--soft); stroke: var(--line); }
+.d-txt { fill: var(--ink); font: 12px "Inter", system-ui, sans-serif; }
+.d-mut { fill: var(--muted); font: 11px "Inter", system-ui, sans-serif; }
+.d-line { stroke: var(--muted); stroke-width: 1.5; fill: none; opacity: .7; }
+.flow-dot { fill: var(--accent); filter: drop-shadow(0 0 4px var(--accent)); }
+
+/* ================= reveal on scroll ================= */
+.reveal { opacity: 0; transform: translateY(14px); transition: opacity .6s ease, transform .6s cubic-bezier(.2,.8,.2,1); }
+.reveal.in { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } * { animation: none !important; } }
+
+/* incremental: wider input pane */
+#incsim .sim-cols { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); }
+@media (max-width: 860px) { #incsim .sim-cols { grid-template-columns: minmax(0, 1fr); } }
+
+/* ================= flags page ================= */
+.where-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin: 14px 0; }
+.where { border-radius: 14px; padding: 14px 16px; border: 1px solid var(--line); background: var(--card); box-shadow: var(--shadow); position: relative; }
+.where .rank { position: absolute; top: 12px; right: 14px; font: 800 1.6rem "Inter", sans-serif; opacity: .12; }
+.where h4 { margin: 0 0 4px; font-size: .95rem; }
+.where p { margin: 0; font-size: .86rem; color: var(--muted); }
+.flag-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr)); margin: 16px 0; }
+@media (max-width: 420px) { .flag-grid { grid-template-columns: minmax(0, 1fr); } }
+.flag { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 18px 20px; box-shadow: var(--shadow); min-width: 0; transition: box-shadow .2s, transform .2s; }
+.flag:hover { box-shadow: var(--shadow-lg); }
+.flag-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+.flag-name { font: 700 1.02rem "JetBrains Mono", ui-monospace, Consolas, monospace; color: var(--accent); }
+.flag-alias { font: .8rem "JetBrains Mono", monospace; color: var(--muted); }
+.flag-cmds { display: flex; gap: 4px; flex-wrap: wrap; margin: 4px 0 10px; }
+.flag-cmds span { font: 600 .7rem "JetBrains Mono", monospace; padding: 2px 7px; border-radius: 5px; background: var(--soft); color: var(--muted); border: 1px solid var(--line); }
+.flag dl { margin: 0; display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 6px 12px; font-size: .9rem; }
+.flag dt { font: 700 .68rem "Inter", sans-serif; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); padding-top: 4px; }
+.flag dd { margin: 0; min-width: 0; }
+.flag dd pre.code { margin: 2px 0; font-size: .76rem; padding: 9px 12px; }
+.chips { display: flex; gap: 5px; flex-wrap: wrap; }
+.chip { font: 600 .72rem "Inter", sans-serif; padding: 3px 8px; border-radius: 20px; border: 1px solid var(--line); color: var(--muted); }
+.chip.y { color: var(--v112); border-color: color-mix(in srgb, var(--v112) 40%, var(--line)); background: color-mix(in srgb, var(--v112) 10%, transparent); }
+.chip.n { opacity: .55; text-decoration: line-through; }
+.group-title { display: flex; align-items: center; gap: 10px; }
+.group-title .num { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; font: 800 .85rem "Inter", sans-serif; color: #fff; background: var(--grad); }
+
+/* DAG playground */
+.dag-wrap { background: var(--bg2); border: 1px solid var(--line); border-radius: 14px; padding: 8px; overflow-x: auto; }
+.dag-wrap svg { display: block; width: 100%; min-width: 760px; height: auto; }
+.dag-node rect { transition: fill .35s, stroke .35s, opacity .35s; }
+.dag-node.dim { opacity: .32; }
+.dag-node.pulse rect.body { animation: nodepulse .9s ease; }
+@keyframes nodepulse { 0% { filter: drop-shadow(0 0 0 var(--accent)); } 40% { filter: drop-shadow(0 0 10px var(--accent)); } 100% { filter: none; } }
+.dag-edge { stroke: var(--muted); stroke-width: 1.4; fill: none; opacity: .45; transition: opacity .3s, stroke .3s; }
+.dag-edge.hot { stroke: var(--accent); opacity: .9; stroke-dasharray: 5 4; animation: dash 1s linear infinite; }
+@keyframes dash { to { stroke-dashoffset: -18; } }
+.cmdline { font: 600 .92rem "JetBrains Mono", monospace; background: var(--code-bg); color: var(--code-ink); padding: 14px 16px; border-radius: 12px;
+           margin: 12px 0; overflow-x: auto; white-space: nowrap; box-shadow: var(--shadow); }
+.cmdline .p { color: #28c840; margin-right: 8px; }
+.cmdline .fl { color: #ff9a7a; } .cmdline .v { color: #a5e0a0; }
+.toggle { display: inline-flex; align-items: center; gap: 7px; font: 600 .8rem "JetBrains Mono", monospace; padding: 6px 11px; border-radius: 9px;
+          border: 1px solid var(--line); background: var(--soft); color: var(--muted); cursor: pointer; user-select: none; transition: .15s; }
+.toggle input { accent-color: var(--accent); margin: 0; }
+.toggle.on { color: var(--ink); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--card)); }
+.toggle.disabled { opacity: .4; cursor: not-allowed; }
+.presets { display: flex; gap: 6px; flex-wrap: wrap; }
+.presets button { font: 600 .76rem "JetBrains Mono", monospace; padding: 4px 9px; border-radius: 7px; border: 1px dashed var(--line); background: transparent; color: var(--muted); cursor: pointer; }
+.presets button:hover { color: var(--accent); border-color: var(--accent); }
+.effects { display: grid; gap: 6px; margin-top: 10px; font-size: .88rem; }
+.effects div { padding: 7px 12px; border-radius: 10px; background: var(--soft); border: 1px solid var(--line); }
+.effects b { font-family: "JetBrains Mono", monospace; font-size: .82rem; }
+.recipe { display: grid; grid-template-columns: 38px minmax(0, 1fr); gap: 12px; align-items: start; }
+.recipe .ico { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; font-size: 1.1rem; background: var(--soft); }
+
+/* ================= dbt platform page ================= */
+.muted { color: var(--muted); }
+.ci-steps { --prog: 0%; position: relative; display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; margin-bottom: 14px; }
+.ci-step { border: 1px solid var(--line); background: var(--card); color: var(--muted); border-radius: 12px; padding: 10px 8px; cursor: pointer;
+           display: flex; flex-direction: column; align-items: center; gap: 4px; font: 600 .78rem "Inter", sans-serif; transition: .25s; }
+.ci-step .ci-ico { font-size: 1.3rem; filter: grayscale(1); opacity: .6; transition: .25s; }
+.ci-step.done { color: var(--ink); border-color: color-mix(in srgb, var(--v112) 50%, var(--line)); }
+.ci-step.done .ci-ico, .ci-step.on .ci-ico { filter: none; opacity: 1; }
+.ci-step.on { color: #fff; background: var(--grad); border-color: transparent; transform: translateY(-3px); box-shadow: 0 10px 22px -10px var(--accent); }
+.pr-comment { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--card); }
+.pr-head { background: var(--soft); padding: 9px 12px; font-size: .85rem; border-bottom: 1px solid var(--line); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.pr-avatar { width: 22px; height: 22px; border-radius: 50%; background: var(--grad); color: #fff; font: 800 .55rem "Inter", sans-serif; display: grid; place-items: center; }
+.pr-body { padding: 12px; font-size: .88rem; }
+.pr-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 6px; }
+.pr-stats div { background: var(--soft); border: 1px solid var(--line); border-radius: 9px; padding: 6px 9px; display: flex; flex-direction: column; }
+.pr-stats span { font-size: .68rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 700; }
+.pr-stats b { font: 700 .86rem "JetBrains Mono", monospace; }
+.pr-stats .pos b { color: var(--new-ink); } .pr-stats .neg b { color: var(--del-ink); } .pr-stats .mod b { color: var(--upd-ink); }
+.pr-stats .pos { background: var(--new); } .pr-stats .neg { background: var(--del); } .pr-stats .mod { background: var(--upd); }
+table.state-grid { border-collapse: separate; border-spacing: 3px; font: .78rem "JetBrains Mono", monospace; width: 100%; }
+table.state-grid th { color: var(--muted); font-weight: 600; text-align: center; padding: 4px; }
+table.state-grid th:first-child, table.state-grid td:first-child { text-align: left; white-space: nowrap; padding-right: 10px; }
+table.state-grid td { text-align: center; padding: 6px 4px; border-radius: 6px; transition: background .3s; }
+table.state-grid td.b { background: var(--grad); color: #fff; animation: pop .35s ease; }
+table.state-grid td.s { background: var(--soft); color: var(--muted); }
+table.state-grid td.fut, table.state-grid th.fut { opacity: .25; }
+table.state-grid tr.src td { color: #2fa36b; font-size: .74rem; }
+table.state-grid tr.src td:not(:first-child) { font-size: 1rem; }
+.meter { height: 10px; background: var(--soft); border-radius: 10px; overflow: hidden; margin-bottom: 8px; border: 1px solid var(--line); }
+.meter-bar { height: 100%; background: var(--grad); transition: width .6s ease; }
+
+/* ================= selectors page ================= */
+.tree { display: grid; gap: 4px; margin-bottom: 12px; }
+.tree-item { display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 9px;
+             padding: 6px 10px; cursor: pointer; font: 600 .8rem "JetBrains Mono", monospace; text-align: left; transition: .15s; }
+.tree-item:hover { border-color: var(--accent); }
+.tree-item.lvl2 { margin-left: 18px; } .tree-item.lvl3 { margin-left: 36px; font-weight: 500; }
+.tree-item.on { background: var(--grad); color: #fff; border-color: transparent; box-shadow: 0 8px 18px -10px var(--accent); }
+.tree-lvl { font: 800 .62rem "Inter", sans-serif; padding: 2px 6px; border-radius: 5px; background: var(--soft); color: var(--muted); }
+.tree-item.on .tree-lvl { background: rgba(255,255,255,.25); color: #fff; }
+.tree-name { flex: 1; }
+.tree-n { font-size: .7rem; opacity: .7; }
+
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<header class="top">
+  <div class="top-inner">
+    <a class="brand" href="index.html" aria-label="dbt mechanics home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff5f3f"/><stop offset=".55" stop-color="#ff9f43"/><stop offset="1" stop-color="#7c5cff"/></linearGradient></defs>
+        <rect width="32" height="32" rx="9" fill="url(#lg)"/><circle cx="9" cy="22" r="3" fill="#fff"/><circle cx="16" cy="10" r="3" fill="#fff"/><circle cx="23" cy="22" r="3" fill="#fff"/>
+        <path d="M9 22L16 10L23 22" stroke="#fff" stroke-width="2" fill="none"/></svg>
+      dbt<span>mechanics</span></a>
+    <nav class="nav">
+<a href="index.html" class="">Home</a>
+<a href="snapshots.html" class="" title="Snapshots & hard deletes">Snapshots</a>
+<a href="incremental.html" class="" title="Incremental strategies">Incremental</a>
+<a href="tests.html" class="" title="Data tests & unit tests">Tests</a>
+<a href="flags.html" class="" title="CLI flags">Flags</a>
+<a href="selectors.html" class="" title="Selectors & orchestration">Selectors</a>
+<a href="versioning.html" class="on" title="Model versions & versioning">Versioning</a>
+<a href="clone.html" class="" title="dbt clone">Clone</a>
+<a href="freshness.html" class="" title="Source freshness">Freshness</a>
+<a href="dbt-cloud.html" class="" title="dbt Cloud (dbt platform)">dbt Cloud</a>
+    </nav>
+    <div class="vswitch" role="group" aria-label="dbt version">
+      <span class="vlabel">dbt Core</span>
+      <button data-set-ver="v18">1.8.6</button>
+      <button data-set-ver="v112">1.12</button>
+      <button data-set-ver="both">Compare</button>
+    </div>
+    <button class="theme-btn" id="theme-btn" title="Toggle light / dark">◐</button>
+  </div>
+</header>
+<main>
+<section class="hero">
+<span class="eyebrow">🏷️ Versioning</span>
+<h1>Change a model <span class="grad">without breaking its consumers</span></h1>
+<p class="lead">"Versioning" in dbt means three things. <strong>Model versions</strong> let you ship a breaking change to a public model while consumers migrate at their own pace.
+<strong>Package and dbt-version pinning</strong> make every run reproducible. <strong>Git</strong> versions the project as a whole.
+Model versions exist since 1.5, so in both <span class="tag v18">1.8.6</span> and <span class="tag v112">1.12</span>; 1.12 adds the <code>latest_version_pointer</code>.</p>
+<div class="toc">
+  <a href="#why">1 · Why version a model</a>
+  <a href="#sim">2 · Lifecycle simulator</a>
+  <a href="#ref">3 · ref() resolution</a>
+  <a href="#yaml">4 · Configuration by version</a>
+  <a href="#project">5 · Versioning the project</a>
+  <a href="#best">6 · Best practices</a>
+</div>
+</section>
+
+<h2 id="why">1 · Why version a model</h2>
+<div class="cards">
+  <div class="card"><h3>Non-breaking change → no version</h3><p>Adding a column, adding rows, fixing a bug in values: consumers keep working. Just ship it.</p></div>
+  <div class="card"><h3>Breaking change → new version</h3><p>Removing or renaming a column, changing a type or nullability, changing the grain. Downstream SQL or dashboards break.
+    Create <code>v2</code> and keep <code>v1</code> alive during a migration window.</p></div>
+  <div class="card"><h3>Contracts make it detectable</h3><p>With <code>contract: {enforced: true}</code>, dbt knows the declared columns and types, so it can flag a breaking change in CI
+    (<code>state:modified</code>) instead of letting it reach consumers.</p></div>
+</div>
+
+<h2 id="sim">2 · Lifecycle simulator</h2>
+<p>Follow <code>dim_customers</code> through a breaking change: drop <code>country_name</code>, rename <code>full_name → customer_name</code>.
+It has three consumers: <code>fct_orders</code> (unpinned ref), <code>mart_legacy</code> (pinned ref), and a BI dashboard that reads the table <em>by name</em>, outside dbt.
+Also choose how the base name <code>analytics.dim_customers</code> keeps working.</p>
+<div class="sim" id="versim">
+  <div class="controls" style="margin-bottom:8px"><span class="ctl-label">base name</span><div id="ver-strat"></div>
+    <button class="btn primary" id="ver-play">▶ Play the lifecycle</button></div>
+  <div class="steps" id="ver-steps"></div>
+  <div class="dag-wrap" id="ver-svg"></div>
+  <div class="narration" id="ver-narr"></div>
+  <div class="effects" id="ver-cons"></div>
+  <div class="sim-cols" style="margin-top:12px;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr)">
+    <div id="ver-yaml"></div>
+    <div id="ver-cmd"></div>
+  </div>
+</div>
+<div class="callout tip"><b>Things to try</b>
+  <p>• Base name = <em>nothing</em>, then step 3: the BI dashboard silently reads a table that nobody rebuilds anymore.</p>
+  <p>• <em>alias on latest</em>, steps 3 → 4: the alias moves from v1 to v2, so <code>dim_customers</code> changes shape at promotion. That's the moment to announce.</p>
+  <p class="only-v112">• <em>latest_version_pointer</em>: every version keeps its own <code>_v&lt;n&gt;</code> table, and dbt maintains a <code>dim_customers</code> view pointing to the latest.</p>
+</div>
+
+<h2 id="ref">3 · How ref() resolves</h2>
+<div class="tbl-wrap card">
+<table class="prose">
+  <tr><th>You write</th><th>With <code>latest_version: 2</code> and versions 1, 2, 3</th><th>Notes</th></tr>
+  <tr><td><code>ref('dim_customers')</code></td><td>→ v2 (latest)</td><td>Follows the maintainer. Logs a notice that a prerelease v3 exists.</td></tr>
+  <tr><td><code>ref('dim_customers', v=1)</code></td><td>→ v1 (old)</td><td>Pinned. Warns once v1 has a <code>deprecation_date</code>. <code>version=1</code> works too.</td></tr>
+  <tr><td><code>ref('dim_customers', v=3)</code></td><td>→ v3 (prerelease)</td><td>Opt in early: <code>v &gt; latest_version</code> means prerelease.</td></tr>
+  <tr><td><code>ref('finance', 'dim_customers', v=2)</code></td><td>→ v2 in another project</td><td>Cross-project (Mesh, dbt platform Enterprise).</td></tr>
+  <tr><td><code>select * from analytics.dim_customers</code></td><td>depends on your base-name strategy</td><td>Outside dbt there is no ref, only a relation name.</td></tr>
+</table>
+</div>
+<div class="callout"><b>Files and relations by default</b>
+  <p>Version <code>v</code> lives in <code>dim_customers_v&lt;v&gt;.sql</code> (or any file via <code>defined_in</code>) and builds the relation <code>dim_customers_v&lt;v&gt;</code>.
+  The latest can also stay in <code>dim_customers.sql</code>. Nothing writes the bare <code>dim_customers</code> relation unless you decide so (alias, pointer, or a post-hook view).</p></div>
+
+<h2 id="yaml">4 · Configuration by version</h2>
+<div class="vgrid">
+  <div class="vcol only-v18"><span class="tag v18">1.8.6</span>
+<div class="file">models/marts/_dim_customers.yml</div>
+<pre class="code">models:
+  - name: dim_customers
+    latest_version: 2
+    config:
+      access: public
+      contract: {enforced: true}
+    columns:                         <span class="c"># shared definition (= v1)</span>
+      - name: customer_id
+        data_type: int
+      - name: full_name
+        data_type: varchar
+      - name: country_name
+        data_type: varchar
+    versions:
+      - v: 2
+        columns:
+          - include: all
+            exclude: [country_name, full_name]
+          - name: customer_name
+            data_type: varchar
+        config:
+          <span class="h">alias: dim_customers</span>       <span class="c"># latest owns the base name</span>
+      - v: 1
+        <span class="h">deprecation_date: 2026-12-31</span></pre>
+    <p>Alternative to the alias: keep <code>_v1</code>/<code>_v2</code> tables and add a post-hook on the latest version,
+    <code>create or replace view {{ this.schema }}.dim_customers as select * from {{ this }}</code>. Remember to move it at promotion.</p>
+  </div>
+  <div class="vcol only-v112"><span class="tag v112">1.12</span>
+<div class="file">models/marts/_dim_customers.yml</div>
+<pre class="code">models:
+  - name: dim_customers
+    latest_version: 2
+    config:
+      access: public
+      contract: {enforced: true}
+      <span class="h">latest_version_pointer:</span>       <span class="c"># 1.12: dbt maintains the view</span>
+        enabled: true
+        <span class="c"># alias: dim_customers_current   (default: the base name)</span>
+    columns: [...]
+    versions:
+      - v: 2
+        columns:
+          - include: all
+            exclude: [country_name, full_name]
+          - name: customer_name
+            data_type: varchar
+      - v: 1
+        deprecation_date: 2026-12-31</pre>
+<pre class="code"><span class="c"># or for every versioned model:</span>
+flags:
+  latest_version_pointer_enabled_by_default: true</pre>
+    <p>Don't combine it with <code>alias: dim_customers</code> on the latest version: dbt raises a name collision (<code>dbt1005</code>). In dbt v2 the pointer is on by default,
+    so remove such aliases before migrating.</p>
+  </div>
+</div>
+<pre class="code"><span class="c"># selection works the same in both versions</span>
+dbt build -s dim_customers                  <span class="c"># all versions</span>
+dbt build -s dim_customers.v2               <span class="c"># one version (dim_customers_v2 also works)</span>
+dbt build -s "dim_customers,version:latest"
+dbt build --exclude "version:old"           <span class="c"># typical default in dev, via a selectors.yml default</span></pre>
+
+<h2 id="project">5 · Versioning the project itself</h2>
+<div class="cards">
+  <div class="card"><h3>Pin dbt</h3>
+<pre class="code"><span class="c"># dbt_project.yml</span>
+require-dbt-version: [<span class="s">"&gt;=1.8.0"</span>, <span class="s">"&lt;1.9.0"</span>]</pre>
+    <p>Fails fast if someone runs the project with another dbt. Pin adapters too (<code>requirements.txt</code>: <code>dbt-snowflake==1.8.4</code>).
+    <span class="only-v112">For 1.12: <code>[">=1.12.0", "&lt;1.13.0"]</code>.</span></p></div>
+  <div class="card"><h3>Pin packages + lock</h3>
+<pre class="code"><span class="c"># packages.yml</span>
+packages:
+  - package: dbt-labs/dbt_utils
+    version: [<span class="s">"&gt;=1.1.0"</span>, <span class="s">"&lt;2.0.0"</span>]
+<span class="c"># dbt deps → writes package-lock.yml (commit it)</span>
+<span class="c"># dbt deps --upgrade → re-resolve within the ranges</span></pre>
+    <p>The lock file (1.7+) makes installs reproducible across laptops and CI.
+    <span class="only-v112">1.12 adds native <code>private:</code> packages over SSH.</span></p></div>
+  <div class="card"><h3>Git = project version</h3>
+    <p>Each prod deploy is a commit (tag releases such as <code>v2026.11.04</code> if you like). The manifest of that commit is the <code>--state</code> for the next CI run.
+    Model versions are for <em>consumers</em>, git history is for <em>you</em>: don't create v2 for every change.</p></div>
+</div>
+
+<h2 id="best">6 · Best practices</h2>
+<ul>
+  <li><strong>Version only public, contracted models</strong> with consumers you don't control (other teams, BI, exports). Internal staging models just change.</li>
+  <li><strong>Keep two live versions at most</strong>: latest and the one being deprecated. Each version is a full extra build in the warehouse.</li>
+  <li><strong>Always set a <code>deprecation_date</code></strong> when you promote a new latest, and announce it. Consumers see warnings on every parse until they migrate.</li>
+  <li><strong>Decide the base-name strategy once</strong> and document it: <span class="only-v18">alias on the latest (1.8.6)</span><span class="only-v112">the pointer view (1.12)</span>. Without one, BI tools end up on a stale table.</li>
+  <li><strong>Prerelease first</strong>: ship v2 with <code>latest_version</code> unchanged, let one consumer pin <code>v=2</code>, then promote.</li>
+  <li><strong>Clean up</strong>: removing a version from YAML doesn't drop its table. Drop it yourself, or with a cleanup macro.</li>
+  <li><strong>CI</strong>: run <code>state:modified+</code> with contracts enforced. A breaking change without a new version is caught before merge.</li>
+</ul>
+
+</main>
+<footer class="foot">
+  Built with <code>python build.py</code>. Version-specific blocks are tagged
+  <span class="tag v18">1.8.6</span> and <span class="tag v112">1.12</span>. Use the switch at the top to show one or compare both.
+</footer>
+<script>
+// ---------- version switch (shared by every page) ----------
+const VER_KEY = "dbt-mechanics-version";
+function getVer() { return document.documentElement.dataset.ver; }
+function setVer(v) {
+  document.documentElement.dataset.ver = v;
+  document.querySelectorAll("[data-set-ver]").forEach(b => b.classList.toggle("on", b.dataset.setVer === v));
+  try { localStorage.setItem(VER_KEY, v); } catch (e) { /* storage unavailable: fine */ }
+  document.dispatchEvent(new CustomEvent("verchange", { detail: v }));
+}
+document.querySelectorAll("[data-set-ver]").forEach(b => b.addEventListener("click", () => setVer(b.dataset.setVer)));
+let savedVer = "both";
+try { savedVer = localStorage.getItem(VER_KEY) || "both"; } catch (e) { /* ignore */ }
+setVer(savedVer);
+
+// ---------- theme toggle ----------
+(function () {
+  const btn = document.getElementById("theme-btn");
+  if (!btn) return;
+  btn.addEventListener("click", () => {
+    const cur = document.documentElement.dataset.theme
+      || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    const next = cur === "dark" ? "light" : "dark";
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem("dbt-mechanics-theme", next); } catch (e) { /* ignore */ }
+  });
+})();
+
+// keep the current page's nav link visible when the nav scrolls sideways
+(function () {
+  const nav = document.querySelector(".nav"), on = nav && nav.querySelector("a.on");
+  if (on) nav.scrollLeft += on.getBoundingClientRect().left - nav.getBoundingClientRect().left - (nav.clientWidth - on.offsetWidth) / 2;
+})();
+
+// ---------- scroll progress + reveal ----------
+(function () {
+  const bar = document.getElementById("progress");
+  const onScroll = () => {
+    const h = document.documentElement.scrollHeight - innerHeight;
+    if (bar) bar.style.width = (h > 0 ? (scrollY / h) * 100 : 0) + "%";
+  };
+  addEventListener("scroll", onScroll, { passive: true }); onScroll();
+  if (!("IntersectionObserver" in window)) return;
+  const io = new IntersectionObserver(entries => entries.forEach(e => {
+    if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); }
+  }), { rootMargin: "0px 0px -40px 0px" });
+  document.querySelectorAll("main h2, main .card, main .diagram, main .callout, main .flag, main .where, main .vcol, main .sim")
+    .forEach(el => { if (!el.closest(".hero")) { el.classList.add("reveal"); io.observe(el); } });
+})();
+
+// ---------- small helpers ----------
+function $(sel, root = document) { return root.querySelector(sel); }
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+
+// Build a segmented control. options: [{value, label, disabled, title}]
+function segmented(container, options, value, onChange) {
+  container.innerHTML = "";
+  container.classList.add("seg");
+  options.forEach(o => {
+    const b = document.createElement("button");
+    b.textContent = o.label; b.dataset.value = o.value;
+    if (o.title) b.title = o.title;
+    b.disabled = !!o.disabled;
+    b.classList.toggle("on", o.value === value);
+    b.addEventListener("click", () => {
+      container.querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b));
+      onChange(o.value);
+    });
+    container.appendChild(b);
+  });
+}
+
+// Render rows as a table. cols: [{key, label, cls?, fmt?}], rows carry an optional _cls and _cellCls {key: cls}
+function renderTable(el, cols, rows, opts = {}) {
+  const head = "<tr>" + cols.map(c => `<th>${esc(c.label)}</th>`).join("") + "</tr>";
+  const body = rows.map(r => {
+    const tds = cols.map(c => {
+      const v = r[c.key];
+      const isNull = v === null || v === undefined;
+      const cls = [c.cls || "", isNull ? "null" : "", (r._cellCls && r._cellCls[c.key]) || ""].join(" ").trim();
+      const shown = isNull ? "null" : (c.fmt ? c.fmt(v, r) : v);
+      return `<td class="${cls}">${esc(shown)}</td>`;
+    }).join("");
+    return `<tr class="${r._cls || ""} ${r._flash ? "flash" : ""}">${tds}</tr>`;
+  }).join("");
+  el.innerHTML = `<div class="tbl-wrap"><table class="dt">${head}${body || `<tr><td colspan="${cols.length}" class="null">${opts.empty || "(empty)"}</td></tr>`}</table></div>`;
+}
+
+// =====================================================================
+// Model versions lifecycle simulator: dim_customers goes from unversioned
+// → breaking change → v2 prerelease → v2 latest → v1 deprecated → v1 removed.
+// Shows YAML, warehouse relations and how each consumer resolves.
+// =====================================================================
+(function () {
+  const root = document.getElementById("versim");
+  if (!root) return;
+  const $$ = s => root.querySelector(s);
+
+  // step: versions present, latest, flags
+  const STEPS = [
+    { t: "1 · Unversioned", vs: [], latest: null, legacyPin: null,
+      txt: "<code>dim_customers</code> is a public, contracted model. Two dbt models and a BI dashboard depend on it." },
+    { t: "2 · Breaking change, no version", vs: [], latest: null, broken: true, legacyPin: null,
+      txt: "You drop <code>country_name</code> and rename <code>full_name → customer_name</code> directly. Every consumer breaks the same day. This is what versions prevent." },
+    { t: "3 · v2 as prerelease", vs: [1, 2], latest: 1, legacyPin: 1,
+      txt: "You add <code>v2</code> with the new shape but keep <code>latest_version: 1</code>. Unpinned refs still get v1, and their builds log that a prerelease v2 is available. Early adopters pin <code>v=2</code>." },
+    { t: "4 · Promote v2 to latest", vs: [1, 2], latest: 2, legacyPin: 1,
+      txt: "<code>latest_version: 2</code>. Every unpinned <code>ref('dim_customers')</code> now resolves to v2 at the next build. Consumers that pinned <code>v=1</code> keep v1." },
+    { t: "5 · Deprecate v1", vs: [1, 2], latest: 2, legacyPin: 1, deprecated: true,
+      txt: "v1 gets a <code>deprecation_date</code>. Consumers still pinned to v1 get a warning on every parse (UpcomingReferenceDeprecation, then DeprecatedReference after the date)." },
+    { t: "6 · Remove v1", vs: [2], latest: 2, legacyPin: 2,
+      txt: "After the window (and after <code>mart_legacy</code> migrated to <code>v=2</code>), you delete <code>dim_customers_v1.sql</code> and its YAML entry. dbt doesn't drop the old table: drop it yourself." },
+  ];
+  const st = { step: 0, strat: "alias", timer: null };
+  const STRATS = {
+    none: { label: "nothing", note: "each version writes <code>dim_customers_v&lt;n&gt;</code>" },
+    alias: { label: "alias on latest (1.8+)", note: "the latest version sets <code>alias: dim_customers</code>" },
+    pointer: { label: "latest_version_pointer (1.12)", note: "a view <code>dim_customers</code> points to the latest" },
+  };
+
+  function relations(s) {
+    // returns [{name, kind, from, stale}]
+    if (!s.vs.length) return [{ name: "dim_customers", kind: "table", from: "dim_customers", broken: s.broken }];
+    const rels = [];
+    s.vs.forEach(v => {
+      const isLatest = v === s.latest;
+      const name = st.strat === "alias" && isLatest ? "dim_customers" : `dim_customers_v${v}`;
+      rels.push({ name, kind: "table", from: `v${v}` });
+    });
+    if (st.strat === "pointer") rels.push({ name: "dim_customers", kind: "view → v" + s.latest, from: "pointer" });
+    if (st.strat === "none") rels.push({ name: "dim_customers", kind: "table (stale!)", from: "leftover", stale: true });
+    if (s.vs.length === 1 && s.vs[0] === 2) rels.push({ name: "dim_customers_v1", kind: "table (orphan, drop it)", from: "leftover", stale: true });
+    return rels;
+  }
+
+  function consumers(s) {
+    const rels = relations(s);
+    const base = rels.find(r => r.name === "dim_customers");
+    const out = [];
+    // fct_orders: unpinned ref
+    if (!s.vs.length) out.push({ id: "fct_orders", code: "ref('dim_customers')", to: "dim_customers", ok: !s.broken, msg: s.broken ? "✗ column country_name no longer exists" : "✓" });
+    else out.push({ id: "fct_orders", code: "ref('dim_customers')", to: `v${s.latest}`, ok: true,
+      msg: s.latest === 1 && s.vs.includes(2) ? "ℹ resolves to v1 · 'A prerelease version 2 is available'" : `✓ resolves to latest (v${s.latest})` });
+    // mart_legacy: pinned
+    if (!s.vs.length) out.push({ id: "mart_legacy", code: "ref('dim_customers')", to: "dim_customers", ok: !s.broken, msg: s.broken ? "✗ column full_name no longer exists" : "✓" });
+    else out.push({ id: "mart_legacy", code: `ref('dim_customers', v=${s.legacyPin})`, to: `v${s.legacyPin}`, ok: true,
+      msg: s.deprecated && s.legacyPin === 1 ? "⚠ v1 is deprecated (deprecation_date 2026-12-31): migrate" : `✓ pinned to v${s.legacyPin}` });
+    // BI tool: reads the table name directly (outside dbt)
+    if (!s.vs.length) out.push({ id: "BI dashboard", code: "select … from analytics.dim_customers", to: "dim_customers", ok: !s.broken, msg: s.broken ? "✗ dashboard broken" : "✓" });
+    else if (!base) out.push({ id: "BI dashboard", code: "select … from analytics.dim_customers", to: null, ok: false, msg: "✗ relation doesn't exist" });
+    else if (base.stale) out.push({ id: "BI dashboard", code: "select … from analytics.dim_customers", to: "dim_customers", ok: false, msg: "✗ reads the OLD table: nobody rebuilds it anymore (silently stale)" });
+    else out.push({ id: "BI dashboard", code: "select … from analytics.dim_customers", to: "dim_customers", ok: true, msg: `✓ gets v${s.latest} (${st.strat === "pointer" ? "pointer view" : "alias"})` });
+    return out;
+  }
+
+  function yaml(s) {
+    const v18 = getVer() === "v18";
+    if (!s.vs.length) return `models:
+  - name: dim_customers
+    config:
+      access: public
+      <span class="h">contract: {enforced: true}</span>
+    columns:
+      - name: customer_id
+        data_type: int
+      - name: full_name${s.broken ? `   <span class="k"># ✗ renamed in place</span>` : ""}
+        data_type: varchar
+      - name: country_name${s.broken ? `   <span class="k"># ✗ dropped in place</span>` : ""}
+        data_type: varchar`;
+    const verEntry = v => {
+      let e = `      - v: ${v}`;
+      if (v === 2) e += `
+        columns:
+          - include: all
+            exclude: [country_name, full_name]
+          - name: customer_name
+            data_type: varchar`;
+      if (v === 1 && s.deprecated) e += `
+        <span class="h">deprecation_date: 2026-12-31</span>`;
+      if (st.strat === "alias" && v === s.latest) e += `
+        config:
+          <span class="h">alias: dim_customers</span>   <span class="c"># latest owns the base name</span>`;
+      return e;
+    };
+    const pointer = st.strat === "pointer" ? `
+      <span class="c"># 1.12 (or project-wide: flags: latest_version_pointer_enabled_by_default)</span>
+      latest_version_pointer:
+        <span class="h">enabled: true</span>` : "";
+    return `models:
+  - name: dim_customers
+    <span class="h">latest_version: ${s.latest}</span>
+    config:
+      access: public
+      contract: {enforced: true}${pointer}
+    columns:
+      - name: customer_id
+        data_type: int
+      - name: full_name
+        data_type: varchar
+      - name: country_name
+        data_type: varchar
+    versions:
+${s.vs.map(verEntry).join("\n")}`;
+  }
+
+  function draw(s) {
+    const rels = relations(s), cons = consumers(s);
+    const files = s.vs.length ? s.vs.map(v => ({ id: `v${v}`, file: `dim_customers_v${v}.sql`, tag: v === s.latest ? "latest" : v > (s.latest || 0) ? "prerelease" : "old", dep: s.deprecated && v === 1 })) : [{ id: "dim_customers", file: "dim_customers.sql", tag: "" }];
+    if (st.strat === "pointer" && s.vs.length) files.push({ id: "pointer", file: "(generated by dbt)", tag: "pointer" });
+    const W = 860, colC = 10, colF = 330, colR = 610, bw = 230, bh = 44, gap = 58;
+    const yC = i => 20 + i * gap, yF = i => 20 + i * gap, yR = i => 20 + i * gap;
+    const H = 20 + Math.max(cons.length, files.length, rels.length) * gap;
+    const parts = [`<text x="${colC}" y="12" font-size="10" fill="var(--muted)" font-weight="700">CONSUMERS</text>
+      <text x="${colF}" y="12" font-size="10" fill="var(--muted)" font-weight="700">MODEL VERSIONS (files)</text>
+      <text x="${colR}" y="12" font-size="10" fill="var(--muted)" font-weight="700">WAREHOUSE (analytics.*)</text>`];
+    // edges consumer → version (or relation for BI)
+    cons.forEach((c, i) => {
+      const y1 = yC(i) + bh / 2;
+      let target, tx, ty;
+      if (c.id === "BI dashboard") { const ri = rels.findIndex(r => r.name === "dim_customers"); if (ri >= 0) { tx = colR; ty = yR(ri) + bh / 2; target = true; } }
+      else { const fi = files.findIndex(f => f.id === c.to || (c.to === "dim_customers" && f.id === "dim_customers")); if (fi >= 0) { tx = colF; ty = yF(fi) + bh / 2; target = true; } }
+      if (target) {
+        const col = c.ok ? (c.msg.startsWith("⚠") ? "#d99a00" : c.msg.startsWith("ℹ") ? "#3a6fd0" : "#1f9d6b") : "#e0442f";
+        parts.push(`<path id="ve${i}" d="M${colC + bw} ${y1} C${colC + bw + 50} ${y1} ${tx - 50} ${ty} ${tx} ${ty}" stroke="${col}" stroke-width="2" fill="none" opacity=".85" ${c.id === "BI dashboard" ? 'stroke-dasharray="6 4"' : ""}/>
+          <circle r="4" fill="${col}"><animateMotion dur="1.8s" repeatCount="indefinite"><mpath href="#ve${i}"/></animateMotion></circle>`);
+      }
+    });
+    // edges version → relation
+    files.forEach((f, i) => {
+      rels.forEach((r, j) => {
+        const link = (r.from === f.id) || (f.id === "dim_customers" && r.name === "dim_customers") || (f.id === "pointer" && r.from === "pointer");
+        if (link) parts.push(`<path d="M${colF + bw} ${yF(i) + bh / 2} C${colF + bw + 30} ${yF(i) + bh / 2} ${colR - 30} ${yR(j) + bh / 2} ${colR} ${yR(j) + bh / 2}" stroke="var(--muted)" stroke-width="1.4" fill="none" opacity=".5"/>`);
+      });
+      if (f.id === "pointer") {
+        const li = files.findIndex(x => x.id === `v${s.latest}`);
+        parts.push(`<path d="M${colF + bw / 2} ${yF(i)} L${colF + bw / 2} ${yF(li) + bh}" stroke="#8a5cf6" stroke-width="1.4" stroke-dasharray="4 3" fill="none"/>`);
+      }
+    });
+    cons.forEach((c, i) => {
+      const y = yC(i);
+      parts.push(`<rect x="${colC}" y="${y}" width="${bw}" height="${bh}" rx="9" fill="${c.ok ? "var(--card)" : "var(--del)"}" stroke="${c.ok ? "var(--line)" : "#e0442f"}"/>
+        <text x="${colC + 10}" y="${y + 17}" font-size="11" font-weight="700" fill="var(--ink)">${c.id}</text>
+        <text x="${colC + 10}" y="${y + 33}" font-size="9" fill="var(--muted)">${esc(c.code)}</text>`);
+    });
+    files.forEach((f, i) => {
+      const y = yF(i), tagCol = f.tag === "latest" ? "#1f9d6b" : f.tag === "prerelease" ? "#3a6fd0" : f.tag === "pointer" ? "#8a5cf6" : "#8d8d99";
+      parts.push(`<rect x="${colF}" y="${y}" width="${bw}" height="${bh}" rx="9" fill="${s.broken ? "var(--del)" : "var(--card)"}" stroke="${f.dep ? "#d99a00" : "var(--line)"}" ${f.dep ? 'stroke-dasharray="5 3" stroke-width="2"' : ""}/>
+        <text x="${colF + 10}" y="${y + 17}" font-size="11" font-weight="700" fill="var(--ink)">${f.id === "pointer" ? "latest_version_pointer" : f.id}</text>
+        <text x="${colF + 10}" y="${y + 33}" font-size="9" fill="var(--muted)">${f.file}${f.dep ? " · deprecated" : ""}</text>
+        ${f.tag ? `<rect x="${colF + bw - 70}" y="${y + 7}" width="62" height="16" rx="8" fill="${tagCol}"/><text x="${colF + bw - 39}" y="${y + 18.5}" font-size="9" text-anchor="middle" fill="#fff" font-weight="700">${f.tag}</text>` : ""}`);
+    });
+    rels.forEach((r, i) => {
+      const y = yR(i);
+      parts.push(`<rect x="${colR}" y="${y}" width="${bw}" height="${bh}" rx="9" fill="${r.stale ? "var(--upd)" : r.broken ? "var(--del)" : "color-mix(in srgb, #2fa36b 14%, var(--card))"}" stroke="${r.stale ? "#d99a00" : "var(--line)"}"/>
+        <text x="${colR + 10}" y="${y + 17}" font-size="11" font-weight="700" fill="var(--ink)">${r.name}</text>
+        <text x="${colR + 10}" y="${y + 33}" font-size="9" fill="var(--muted)">${r.kind}</text>`);
+    });
+    $$("#ver-svg").innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="min-width:700px">${parts.join("")}</svg>`;
+    $$("#ver-cons").innerHTML = cons.map(c => `<div style="border-color:${c.ok ? (c.msg.startsWith("⚠") ? "#d99a00" : "var(--line)") : "#e0442f"}"><b>${c.id}</b>: ${esc(c.msg)}</div>`).join("");
+  }
+
+  function cmds(s) {
+    if (!s.vs.length) return `dbt build -s dim_customers+`;
+    const lines = [`dbt build -s dim_customers            <span class="c"># all versions (${s.vs.map(v => "v" + v).join(", ")})</span>`,
+      `dbt build -s "dim_customers,version:latest"   <span class="c"># only v${s.latest}</span>`];
+    if (s.vs.some(v => v > s.latest)) lines.push(`dbt build -s "version:prerelease"     <span class="c"># v2 while it's being tested</span>`);
+    if (s.vs.some(v => v < s.latest)) lines.push(`dbt build --exclude "version:old"      <span class="c"># skip v1 in dev</span>`);
+    lines.push(`dbt build -s dim_customers.v${s.vs[s.vs.length - 1]}           <span class="c"># one version</span>`);
+    return lines.join("\n");
+  }
+
+  function render() {
+    if (getVer() === "v18" && st.strat === "pointer") st.strat = "alias";
+    segmented($$("#ver-strat"), Object.entries(STRATS).map(([k, v]) => ({ value: k, label: v.label, disabled: k === "pointer" && getVer() === "v18", title: k === "pointer" && getVer() === "v18" ? "dbt 1.12+" : "" })), st.strat, v => { st.strat = v; render(); });
+    const s = STEPS[st.step];
+    $$("#ver-steps").innerHTML = STEPS.map((x, i) => `<button class="step ${i === st.step ? "on" : i < st.step ? "done" : ""}" data-i="${i}">${x.t}</button>`).join("");
+    $$("#ver-steps").querySelectorAll(".step").forEach(b => b.addEventListener("click", () => { stop(); st.step = +b.dataset.i; render(); }));
+    $$("#ver-narr").innerHTML = s.txt + (s.vs.length ? ` <span class="muted">Base name strategy: ${STRATS[st.strat].note}.</span>` : "");
+    draw(s);
+    $$("#ver-yaml").innerHTML = `<div class="file">models/marts/_dim_customers.yml</div><pre class="code">${yaml(s)}</pre>`;
+    $$("#ver-cmd").innerHTML = `<div class="file">selection</div><pre class="code">${cmds(s)}</pre>`;
+  }
+  function stop() { if (st.timer) { clearInterval(st.timer); st.timer = null; $$("#ver-play").textContent = "▶ Play the lifecycle"; } }
+  $$("#ver-play").addEventListener("click", () => {
+    if (st.timer) { stop(); return; }
+    st.step = 0; render(); $$("#ver-play").textContent = "■ Stop";
+    st.timer = setInterval(() => { if (st.step >= STEPS.length - 1) { stop(); return; } st.step++; render(); }, 2600);
+  });
+  document.addEventListener("verchange", render);
+  render();
+})();
+
+</script>
+</body>
+</html>
