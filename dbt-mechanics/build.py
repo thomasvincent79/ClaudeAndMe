@@ -85,6 +85,15 @@ THEMATICS = [
         "scripts": ["versioning.js"],
     },
     {
+        "slug": "grants",
+        "nav": "Grants",
+        "title": "Grants & access",
+        "icon": "🔐",
+        "summary": "The grants config: inheritance and '+select', how dbt reconciles (show/revoke/grant), and the specifics of "
+                   "Snowflake, BigQuery, Databricks, Redshift and Postgres.",
+        "scripts": ["grants.js"],
+    },
+    {
         "slug": "clone",
         "nav": "Clone",
         "title": "dbt clone",

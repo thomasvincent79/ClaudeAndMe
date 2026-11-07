@@ -387,6 +387,22 @@ table.state-grid tr.src td:not(:first-child) { font-size: 1rem; }
           font: 500 .92rem "Inter", sans-serif; transition: .15s; }
 .tg-opt:hover { border-color: var(--accent); transform: translateX(4px); background: color-mix(in srgb, var(--accent) 7%, var(--card)); }
 
+/* ================= grants page ================= */
+.gchip { display: inline-block; font: 600 .76rem "JetBrains Mono", monospace; padding: 4px 9px; border-radius: 20px; margin: 2px 4px 2px 0;
+         background: var(--soft); border: 1px solid var(--line); color: var(--ink); animation: pop .35s ease; word-break: break-all; }
+.gchip.eff { background: var(--new); color: var(--new-ink); border-color: transparent; }
+.gchip.new { background: color-mix(in srgb, var(--accent) 14%, var(--card)); border-color: var(--accent); }
+.gchip.struck { opacity: .45; text-decoration: line-through; }
+.gchip.manual { background: var(--upd); color: var(--upd-ink); border-color: #d99a00; }
+.gchip.empty { border-style: dashed; color: var(--muted); }
+.gmerge { display: grid; grid-template-columns: minmax(0,1fr) 24px minmax(0,1fr) 24px minmax(0,1.2fr); gap: 6px; align-items: center; }
+.gflow { display: grid; grid-template-columns: minmax(0,1fr) 24px minmax(0,1fr); gap: 6px; align-items: center; margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--line); }
+.gop { font: 800 1.2rem "Inter", sans-serif; color: var(--accent); text-align: center; }
+pre.code .gl { display: inline-block; animation: pop .35s ease; }
+pre.code .gl.grant { color: #8fe0b3; } pre.code .gl.revoke { color: #ffa597; } pre.code .gl.show, pre.code .gl.keep { color: #9aa0b4; }
+.gwhy.grant { border-left: 4px solid var(--v112) !important; } .gwhy.revoke { border-left: 4px solid #e0442f !important; }
+@media (max-width: 640px) { .gmerge { grid-template-columns: minmax(0,1fr); } .gmerge .gop { display: none; } }
+
 </style>
 </head>
 <body>
@@ -407,6 +423,7 @@ table.state-grid tr.src td:not(:first-child) { font-size: 1rem; }
 <a href="selectors.html" class="on" title="Selectors & orchestration">Selectors</a>
 <a href="python.html" class="" title="Python models">Python</a>
 <a href="versioning.html" class="" title="Model versions & versioning">Versioning</a>
+<a href="grants.html" class="" title="Grants & access">Grants</a>
 <a href="clone.html" class="" title="dbt clone">Clone</a>
 <a href="freshness.html" class="" title="Source freshness">Freshness</a>
 <a href="dbt-cloud.html" class="" title="dbt Cloud (dbt platform)">dbt Cloud</a>
