@@ -71,9 +71,9 @@ THEMATICS = [
         "nav": "State",
         "title": "State & artifacts",
         "icon": "🧭",
-        "summary": "--state with manifest / run_results / sources.json: state:modified simulator, sub-selectors, result: retries, "
+        "summary": "What is inside manifest / run_results / sources / catalog.json and which commands use them; state:modified simulator, sub-selectors, result: retries, "
                    "and 6 recipes (slim CI, defer, deploy, retry, freshness, clone).",
-        "scripts": ["state.js"],
+        "scripts": ["state.js", "artifacts.js"],
     },
     {
         "slug": "python",

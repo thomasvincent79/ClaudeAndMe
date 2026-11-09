@@ -7,11 +7,12 @@ read unbuilt parents from prod (<code>--defer</code>), or clone prod (<code>dbt 
 in <span class="tag v18">1.8.6</span> and <span class="tag v112">1.12</span>.</p>
 <div class="toc">
   <a href="#artifacts">1 · The artifacts</a>
-  <a href="#diff">2 · state:modified simulator</a>
-  <a href="#sub">3 · state: selectors</a>
-  <a href="#result">4 · Retry with result:</a>
-  <a href="#leverage">5 · How to leverage state</a>
-  <a href="#pitfalls">6 · Pitfalls</a>
+  <a href="#detail">2 · What's inside each artifact</a>
+  <a href="#diff">3 · state:modified simulator</a>
+  <a href="#sub">4 · state: selectors</a>
+  <a href="#result">5 · Retry with result:</a>
+  <a href="#leverage">6 · How to leverage state</a>
+  <a href="#pitfalls">7 · Pitfalls</a>
 </div>
 </section>
 
@@ -65,7 +66,45 @@ dbt build -s "selector:tickets,state:modified+"</pre>
     <p class="muted" style="font-size:.88rem">On the dbt platform, the artifacts are stored for you and CI jobs defer automatically. dbt State keeps model-level state without a manifest file (see the dbt Cloud page).</p></div>
 </div>
 
-<h2 id="diff">2 · state:modified simulator</h2>
+<h2 id="detail">2 · What's inside each artifact</h2>
+<p>Everything lands in <code>target/</code> (or <code>--target-path</code>). First: which command writes which file. Pick a command:</p>
+<div class="sim" id="artsim">
+  <div class="controls" style="margin-bottom:10px"><div id="art-cmds"></div></div>
+  <div class="cmdline" id="art-cmd"></div>
+  <div id="art-tree"></div>
+  <div class="narration" id="art-note"></div>
+</div>
+<p>Then, what you'll find inside. These are trimmed real-looking samples: hover or tap a key.</p>
+<div class="sim" id="artexp">
+  <div class="controls" style="margin-bottom:10px"><div id="ax-tabs"></div></div>
+  <div class="sim-cols" style="grid-template-columns:minmax(0,1.25fr) minmax(0,.75fr)">
+    <div id="ax-json"></div><div id="ax-side"></div>
+  </div>
+</div>
+<div class="tbl-wrap card">
+<table class="prose">
+  <tr><th>Artifact</th><th>Written by</th><th>Main content</th><th>Typical consumers</th></tr>
+  <tr><td><code>manifest.json</code></td><td>anything that parses</td><td>the full project: nodes, configs, SQL (raw + compiled), DAG maps, macros, sources, exposures</td><td><code>--state</code>, <code>--defer</code>, <code>clone</code>, docs, orchestrators, lineage tools</td></tr>
+  <tr><td><code>run_results.json</code></td><td>build, run, test, seed, snapshot, compile, retry, clone</td><td>status, timing, message, rows affected, query id per node, plus the command's args</td><td><code>dbt retry</code>, <code>result:</code>, alerting, performance monitoring</td></tr>
+  <tr><td><code>sources.json</code></td><td><code>dbt source freshness</code></td><td>max_loaded_at, age and status per source table</td><td><code>source_status:fresher+</code>, freshness dashboards</td></tr>
+  <tr><td><code>catalog.json</code></td><td><code>dbt docs generate</code></td><td>what the <em>warehouse</em> says: real columns, types, row counts, bytes</td><td>docs site, catalog tools, doc-coverage checks</td></tr>
+  <tr><td><code>semantic_manifest.json</code></td><td>anything that parses</td><td>semantic models &amp; metrics for MetricFlow</td><td><code>mf</code> / Semantic Layer</td></tr>
+  <tr><td><code>partial_parse.msgpack</code></td><td>parse</td><td>parse cache (binary, not for you)</td><td>dbt itself; <code>--no-partial-parse</code> ignores it</td></tr>
+  <tr><td><code>compiled/</code> · <code>run/</code></td><td>compile · run/build</td><td>the rendered SELECT of each node · the actual DDL/DML executed (merge, create…)</td><td>debugging: "what SQL did dbt really run?"</td></tr>
+</table>
+</div>
+<div class="vgrid">
+  <div class="vcol only-v18"><span class="tag v18">1.8.6</span><ul>
+    <li>The manifest gains <code>unit_tests</code> (new in 1.8).</li>
+    <li>Each file has <code>metadata.dbt_schema_version</code>: check it before parsing artifacts in your own tools, because schemas change between minor versions.</li>
+  </ul></div>
+  <div class="vcol only-v112"><span class="tag v112">1.12</span><ul>
+    <li>run_results: <code>batch_results</code> for microbatch (1.9+), and the exception message when <code>run-operation</code> fails (1.12).</li>
+    <li>manifest: <code>run_started_at</code> in metadata (1.11), <code>functions</code> (UDFs, 1.11), the new semantic-layer spec, and <code>unrendered_config</code> used by state comparison.</li>
+  </ul></div>
+</div>
+
+<h2 id="diff">3 · state:modified simulator</h2>
 <p>Your branch compared with the prod manifest. Tick the changes you made, pick a selector, and see what dbt would build. Also switch the version at the top: the env-aware config behaves differently in 1.8.6 and 1.12.</p>
 <div class="sim" id="statesim2">
   <div class="pane-title"><span>changes in your branch</span></div>
@@ -77,7 +116,7 @@ dbt build -s "selector:tickets,state:modified+"</pre>
   <div id="sd-notes"></div>
 </div>
 
-<h2 id="sub">3 · The state: selectors</h2>
+<h2 id="sub">4 · The state: selectors</h2>
 <div class="tbl-wrap card">
 <table class="prose">
   <tr><th>Selector</th><th>Selects</th><th>Typical use</th><th>Version</th></tr>
@@ -95,7 +134,7 @@ dbt build -s "selector:tickets,state:modified+"</pre>
 </table>
 </div>
 
-<h2 id="result">4 · Retry with result: (run_results.json)</h2>
+<h2 id="result">5 · Retry with result: (run_results.json)</h2>
 <p>Last night, <code>fct_orders</code> errored, so its children were skipped. Use the previous <code>run_results.json</code> as state to re-run only what's needed:</p>
 <div class="sim" id="resultsim">
   <div class="controls" style="margin-bottom:10px"><span class="ctl-label">-s</span><div id="rs-sel"></div></div>
@@ -106,7 +145,7 @@ dbt build -s "selector:tickets,state:modified+"</pre>
 <p class="muted" style="font-size:.88rem"><code>dbt retry</code> (1.6+) is the simplest: it reads <code>target/run_results.json</code> and re-runs from the failure point with the same command and flags. <code>result:</code> selectors give you more control
 (for example <code>1+result:fail</code> rebuilds the models whose tests failed).</p>
 
-<h2 id="leverage">5 · How to leverage state: 6 recipes</h2>
+<h2 id="leverage">6 · How to leverage state: 6 recipes</h2>
 <div class="cards">
   <div class="card recipe"><div class="ico">🧪</div><div><h3>Slim CI</h3>
 <pre class="code">dbt build -s state:modified+ --defer --state prod/</pre>
@@ -132,7 +171,7 @@ dbt build -s state:modified+ --defer --state prod/</pre>
     <p>Incremental models start from a zero-copy clone of prod (Snowflake, BigQuery, Databricks).</p></div></div>
 </div>
 
-<h2 id="pitfalls">6 · Pitfalls</h2>
+<h2 id="pitfalls">7 · Pitfalls</h2>
 <div class="vgrid">
   <div class="vcol only-v18"><span class="tag v18">1.8.6</span><ul>
     <li><strong>Env-aware configs = false positives</strong>: anything rendered from <code>target.name</code> / <code>env_var</code> differs between CI and prod, so whole folders look modified. Workarounds: put environment-specific naming in <code>generate_schema_name</code> / <code>generate_alias_name</code> (relation changes are compared regardless of target), keep other configs environment-independent, or accept the extra builds.</li>
