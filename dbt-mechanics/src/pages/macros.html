@@ -1,0 +1,151 @@
+<section class="hero">
+<span class="eyebrow">🧩 Macros &amp; Jinja</span>
+<h1>Write SQL that <span class="grad">writes SQL</span></h1>
+<p class="lead">A macro is a Jinja function stored in <code>macros/</code>. dbt renders it while compiling, so the warehouse only ever sees plain SQL.
+Macros remove repetition, adapt SQL to each warehouse, override dbt's own behaviour (schema naming, materializations), and run operations (hooks, <code>run-operation</code>).
+The same in <span class="tag v18">1.8.6</span> and <span class="tag v112">1.12</span>, with stricter argument validation and <code>run-operation --sql</code> in 1.12.</p>
+<div class="toc">
+  <a href="#basics">1 · Anatomy</a>
+  <a href="#phases">2 · Parse vs execute</a>
+  <a href="#schema">3 · Overriding dbt: schema names</a>
+  <a href="#dispatch">4 · adapter.dispatch</a>
+  <a href="#ops">5 · Hooks &amp; run-operation</a>
+  <a href="#toolbox">6 · Jinja toolbox</a>
+  <a href="#best">7 · When (not) to write a macro</a>
+</div>
+</section>
+
+<h2 id="basics">1 · Anatomy of a macro</h2>
+<div class="vgrid">
+  <div class="vcol"><span class="badge">macros/cents_to_dollars.sql</span>
+<pre class="code">{% macro cents_to_dollars(column_name, scale=2) %}
+    round({{ column_name }} / 100.0, {{ scale }})
+{% endmacro %}</pre>
+<div class="file">models/stg_payments.sql</div>
+<pre class="code">select
+    payment_id,
+    {{ cents_to_dollars(<span class="s">'amount_cents'</span>) }} as amount
+from {{ source(<span class="s">'stripe'</span>, <span class="s">'payments'</span>) }}</pre>
+<div class="file">compiled</div>
+<pre class="code">select payment_id, round(amount_cents / 100.0, 2) as amount from raw.stripe.payments</pre></div>
+  <div class="vcol"><span class="badge">returning a value instead of SQL text</span>
+<pre class="code">{% macro get_columns_except(relation, excluded) %}
+  {% set cols = adapter.get_columns_in_relation(relation) %}
+  {{ return(cols | map(attribute=<span class="s">'name'</span>)
+                 | reject(<span class="s">'in'</span>, excluded) | list) }}
+{% endmacro %}</pre>
+<pre class="code">{% for c in get_columns_except(ref(<span class="s">'stg_orders'</span>), [<span class="s">'_loaded_at'</span>]) %}
+  {{ c }}{% if not loop.last %},{% endif %}
+{% endfor %}</pre>
+    <ul>
+      <li><code>{{ … }}</code> prints a value, <code>{% … %}</code> runs logic, <code>{# … #}</code> is a comment.</li>
+      <li><code>{%- -%}</code> trims whitespace around a tag, for cleaner compiled SQL.</li>
+      <li>Package macros are called with their namespace: <code>{{ dbt_utils.star(ref('x')) }}</code>.</li>
+    </ul></div>
+</div>
+<div class="vgrid">
+  <div class="vcol only-v18"><span class="tag v18">1.8.6: document macros</span>
+<pre class="code">macros:
+  - name: cents_to_dollars
+    description: Converts cents to dollars
+    arguments:
+      - name: column_name
+        type: string
+      - name: scale
+        type: integer</pre>
+    <p class="muted" style="font-size:.88rem">Used for docs only. A mismatch with the real signature isn't checked.</p></div>
+  <div class="vcol only-v112"><span class="tag v112">1.12</span>
+    <p>Same YAML. The behaviour flag <code>validate_macro_args</code> (introduced in 1.10, mature and on by default in 1.12) <strong>warns</strong> when documented argument names or types don't match the Jinja signature.
+    Also new: <code>config.meta_get()</code> in macros (1.10) and <code>dbt run-operation --sql</code> (1.12).</p></div>
+</div>
+
+<h2 id="phases">2 · Parse vs execute: the <code>execute</code> flag</h2>
+<p>dbt renders Jinja <strong>twice</strong>. First at parse time, to discover refs and configs, without touching the warehouse. Then at compile/run time, for real.
+Any macro that queries the warehouse (<code>run_query</code>, <code>statement</code>, <code>adapter.get_columns_in_relation</code>…) must handle the first pass.</p>
+<div class="sim" id="macsim">
+  <div class="controls" style="margin-bottom:10px"><div id="mac-guard"></div><button class="btn primary" id="mac-play">▶ Compile</button></div>
+  <div class="steps" id="mac-steps"></div>
+  <div class="sim-cols" style="grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr)">
+    <div id="mac-src"></div><div id="mac-out"></div>
+  </div>
+</div>
+
+<h2 id="schema">3 · Overriding dbt: generate_schema_name</h2>
+<p>Many dbt behaviours are macros you can replace by defining a macro with the same name in your project:
+<code>generate_schema_name</code>, <code>generate_alias_name</code>, <code>generate_database_name</code>, materializations, tests…
+The classic case: by default a model with <code>+schema: marts</code> goes into <code>&lt;target_schema&gt;_marts</code>, even in prod.</p>
+<div class="sim" id="schemasim">
+  <div class="controls" style="margin-bottom:8px"><div id="sn-target"></div></div>
+  <div class="controls" style="margin-bottom:8px"><div id="sn-custom"></div><div id="sn-macro"></div></div>
+  <div class="sim-cols" style="grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr)">
+    <div id="sn-code"></div>
+    <div><div id="sn-cfg"></div><div id="sn-out"></div></div>
+  </div>
+</div>
+
+<h2 id="dispatch">4 · adapter.dispatch: one macro, many warehouses</h2>
+<p><code>adapter.dispatch('name', 'namespace')</code> picks the implementation for the current adapter: <code>&lt;adapter&gt;__name</code>, then the parent adapter's (Redshift → Postgres), then <code>default__name</code>.
+That's how packages and dbt's own cross-database macros (<code>dbt.datediff</code>, <code>dbt.dateadd</code>, <code>dbt.concat</code>…) work. With <code>dispatch:</code> in <code>dbt_project.yml</code>, your project can override a package's implementation.</p>
+<div class="sim" id="dispsim">
+  <div class="controls" style="margin-bottom:8px"><span class="ctl-label">target adapter</span><div id="dp-adapter"></div></div>
+  <div class="controls" style="margin-bottom:12px"><div id="dp-ov"></div></div>
+  <div class="sim-cols" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr)">
+    <div><div class="pane-title"><span>resolution order for acme_utils.safe_cast()</span></div><div id="dp-chain"></div></div>
+    <div id="dp-cfg"></div>
+  </div>
+</div>
+
+<h2 id="ops">5 · Hooks &amp; run-operation</h2>
+<div class="cards">
+  <div class="card"><h3>pre_hook / post_hook</h3>
+<pre class="code">{{ config(post_hook=[
+  <span class="s">"alter table {{ this }} cluster by (order_date)"</span>,
+  <span class="s">"{{ log_model_run(this) }}"</span>
+]) }}</pre>
+    <p>SQL run before or after <em>this</em> model. Typical uses: indexes, clustering, masking policies, audit logs.</p></div>
+  <div class="card"><h3>on-run-start / on-run-end</h3>
+<pre class="code">on-run-end:
+  - <span class="s">"{{ grant_usage_on_schemas(schemas, 'reporter') }}"</span>
+  - <span class="s">"{{ upload_results(results) }}"</span></pre>
+    <p>Run once per invocation. In <code>on-run-end</code> you get the <code>schemas</code> and <code>results</code> context variables.
+    <span class="only-v112">Since 1.12 (matured flag), a failing <code>on-run-start</code> skips every selected node.</span></p></div>
+  <div class="card"><h3>dbt run-operation</h3>
+<pre class="code">dbt run-operation drop_pr_schemas --args <span class="s">'{"older_than_days": 7}'</span>
+<span class="only-v112">dbt run-operation --sql <span class="s">"select count(*) from {{ ref('fct_orders') }}"</span>   <span class="c"># 1.12</span></span></pre>
+    <p>Calls a macro directly, outside any model: cleanup, grants, admin tasks.</p></div>
+</div>
+
+<h2 id="toolbox">6 · Jinja toolbox you'll use daily</h2>
+<div class="tbl-wrap card">
+<table class="prose">
+  <tr><th>Tool</th><th>Example</th><th>What for</th></tr>
+  <tr><td><code>ref</code> / <code>source</code> / <code>this</code></td><td><code>{{ this }}</code> in an incremental filter</td><td>relations, and the current model's own relation</td></tr>
+  <tr><td><code>var()</code> / <code>env_var()</code></td><td><code>{{ var('start_date', '2024-01-01') }}</code></td><td>parameters (<code>--vars</code>), secrets and environment settings</td></tr>
+  <tr><td><code>target</code></td><td><code>{% if target.name == 'prod' %}</code></td><td>environment-specific logic (schema, limits)</td></tr>
+  <tr><td><code>config.get()</code></td><td><code>config.get('unique_key')</code></td><td>read the node's config inside macros and materializations</td></tr>
+  <tr><td><code>run_query()</code> / <code>statement</code></td><td>see section 2</td><td>query the warehouse while compiling. Guard it with <code>execute</code>.</td></tr>
+  <tr><td><code>adapter.*</code></td><td><code>adapter.get_relation(…)</code>, <code>get_columns_in_relation</code></td><td>introspection: does a table exist, which columns</td></tr>
+  <tr><td><code>log()</code> / <code>print()</code></td><td><code>{{ log('rows: ' ~ n, info=True) }}</code></td><td>debugging in the console</td></tr>
+  <tr><td><code>exceptions.raise_compiler_error()</code></td><td>fail fast on bad arguments</td><td>defensive macros</td></tr>
+  <tr><td><code>{% set %}</code> / <code>{% do %}</code></td><td><code>{% do cols.append(c) %}</code></td><td>variables and mutating lists or dicts</td></tr>
+  <tr><td><code>is_incremental()</code></td><td><code>{% if is_incremental() %}</code></td><td>incremental filters (see the Incremental page)</td></tr>
+</table>
+</div>
+
+<h2 id="best">7 · When (not) to write a macro</h2>
+<div class="cards">
+  <div class="card"><h3>✓ Good macro</h3><ul>
+    <li>Logic repeated in 3+ models (unit conversions, standard cleaning).</li>
+    <li>Cross-database SQL (<code>adapter.dispatch</code>).</li>
+    <li>Changing dbt's behaviour (schema naming, custom materializations, generic tests).</li>
+    <li>Operations: grants, cleanup, auditing.</li></ul></div>
+  <div class="card"><h3>✗ Over-engineering</h3><ul>
+    <li>Wrapping a one-off <code>case when</code>: readers then have to open another file.</li>
+    <li>Generating whole models from config loops nobody can read in <code>compiled/</code>.</li>
+    <li>Calling <code>run_query</code> in many models: every compile hits the warehouse.</li></ul></div>
+  <div class="card"><h3>🔎 Debug</h3><ul>
+    <li><code>dbt compile -s model</code>, then read <code>target/compiled/</code>.</li>
+    <li><code>{{ log(var, info=True) }}</code>, and <code>dbt --debug</code> for the executed SQL.</li>
+    <li>Check <code>dbt_packages/</code> for how a package macro is really implemented.</li>
+    <li>Test macro output with a unit test on a model that uses it.</li></ul></div>
+</div>

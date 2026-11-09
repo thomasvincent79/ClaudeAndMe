@@ -76,6 +76,15 @@ THEMATICS = [
         "scripts": ["state.js", "artifacts.js"],
     },
     {
+        "slug": "macros",
+        "nav": "Macros",
+        "title": "Macros & Jinja",
+        "icon": "🧩",
+        "summary": "Anatomy, parse vs execute (the execute flag), overriding generate_schema_name, adapter.dispatch, "
+                   "hooks and run-operation, and a daily Jinja toolbox.",
+        "scripts": ["macros.js"],
+    },
+    {
         "slug": "python",
         "nav": "Python",
         "title": "Python models",
