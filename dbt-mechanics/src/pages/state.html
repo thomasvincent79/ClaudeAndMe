@@ -1,0 +1,153 @@
+<section class="hero">
+<span class="eyebrow">🧭 State</span>
+<h1>Compare with a previous run, <span class="grad">build only what matters</span></h1>
+<p class="lead">"State" means the <strong>artifacts of another run</strong> (usually production): <code>manifest.json</code>, <code>run_results.json</code> and <code>sources.json</code>.
+You give them to dbt with <code>--state</code>. dbt can then select what changed (<code>state:</code>), what failed (<code>result:</code>), or what got new data (<code>source_status:</code>),
+read unbuilt parents from prod (<code>--defer</code>), or clone prod (<code>dbt clone</code>). It's the engine behind slim CI, cheap retries and fast dev loops,
+in <span class="tag v18">1.8.6</span> and <span class="tag v112">1.12</span>.</p>
+<div class="toc">
+  <a href="#artifacts">1 · The artifacts</a>
+  <a href="#diff">2 · state:modified simulator</a>
+  <a href="#sub">3 · state: selectors</a>
+  <a href="#result">4 · Retry with result:</a>
+  <a href="#leverage">5 · How to leverage state</a>
+  <a href="#pitfalls">6 · Pitfalls</a>
+</div>
+</section>
+
+<h2 id="artifacts">1 · The artifacts that make up "state"</h2>
+<div class="diagram">
+<svg viewBox="0 0 900 250" role="img" aria-label="State artifacts flow">
+  <g font-family="Inter, sans-serif">
+    <rect x="10" y="90" width="170" height="70" rx="12" fill="var(--card)" stroke="var(--accent)"/>
+    <text x="95" y="118" text-anchor="middle" class="d-txt" font-weight="700">prod job</text><text x="95" y="137" text-anchor="middle" class="d-mut">dbt build / source freshness</text>
+    <rect x="230" y="20" width="200" height="50" rx="10" class="d-box"/><text x="330" y="41" text-anchor="middle" class="d-txt" font-weight="700">manifest.json</text><text x="330" y="58" text-anchor="middle" class="d-mut">code, configs, DAG, relations</text>
+    <rect x="230" y="100" width="200" height="50" rx="10" class="d-box"/><text x="330" y="121" text-anchor="middle" class="d-txt" font-weight="700">run_results.json</text><text x="330" y="138" text-anchor="middle" class="d-mut">status of every node</text>
+    <rect x="230" y="180" width="200" height="50" rx="10" class="d-box"/><text x="330" y="201" text-anchor="middle" class="d-txt" font-weight="700">sources.json</text><text x="330" y="218" text-anchor="middle" class="d-mut">freshness: max_loaded_at</text>
+    <rect x="480" y="90" width="150" height="70" rx="12" fill="color-mix(in srgb, #8a5cf6 14%, var(--card))" stroke="#8a5cf6"/>
+    <text x="555" y="118" text-anchor="middle" class="d-txt" font-weight="700">artifact store</text><text x="555" y="137" text-anchor="middle" class="d-mut">S3 / GCS / dbt platform</text>
+    <rect x="680" y="10" width="210" height="40" rx="9" fill="var(--new)"/><text x="785" y="35" text-anchor="middle" class="d-txt" font-weight="700">state:modified+ (slim CI)</text>
+    <rect x="680" y="58" width="210" height="40" rx="9" fill="var(--new)"/><text x="785" y="83" text-anchor="middle" class="d-txt" font-weight="700">--defer / --favor-state</text>
+    <rect x="680" y="106" width="210" height="40" rx="9" fill="var(--new)"/><text x="785" y="131" text-anchor="middle" class="d-txt" font-weight="700">dbt clone</text>
+    <rect x="680" y="154" width="210" height="40" rx="9" fill="var(--upd)"/><text x="785" y="179" text-anchor="middle" class="d-txt" font-weight="700">result:error+ / dbt retry</text>
+    <rect x="680" y="202" width="210" height="40" rx="9" fill="var(--upd)"/><text x="785" y="227" text-anchor="middle" class="d-txt" font-weight="700">source_status:fresher+</text>
+  </g>
+  <path id="sa1" class="d-line" d="M180 115 C205 115 205 45 230 45"/><path id="sa2" class="d-line" d="M180 125 L230 125"/><path id="sa3" class="d-line" d="M180 135 C205 135 205 205 230 205"/>
+  <path class="d-line" d="M430 45 C455 45 455 115 480 115"/><path class="d-line" d="M430 125 L480 125"/><path class="d-line" d="M430 205 C455 205 455 135 480 135"/>
+  <path id="sb1" class="d-line" d="M630 115 C655 115 655 30 680 30"/><path id="sb2" class="d-line" d="M630 120 C655 120 655 78 680 78"/><path class="d-line" d="M630 125 L680 125"/>
+  <path id="sb4" class="d-line" d="M630 130 C655 130 655 174 680 174"/><path id="sb5" class="d-line" d="M630 135 C655 135 655 222 680 222"/>
+  <circle r="5" class="flow-dot"><animateMotion dur="2.2s" repeatCount="indefinite"><mpath href="#sa1"/></animateMotion></circle>
+  <circle r="5" class="flow-dot"><animateMotion dur="2.2s" begin=".5s" repeatCount="indefinite"><mpath href="#sa2"/></animateMotion></circle>
+  <circle r="5" class="flow-dot"><animateMotion dur="2.2s" begin="1s" repeatCount="indefinite"><mpath href="#sa3"/></animateMotion></circle>
+  <circle r="5" class="flow-dot"><animateMotion dur="2.2s" begin=".3s" repeatCount="indefinite"><mpath href="#sb1"/></animateMotion></circle>
+  <circle r="5" class="flow-dot"><animateMotion dur="2.2s" begin=".9s" repeatCount="indefinite"><mpath href="#sb2"/></animateMotion></circle>
+  <circle r="5" class="flow-dot"><animateMotion dur="2.2s" begin="1.4s" repeatCount="indefinite"><mpath href="#sb4"/></animateMotion></circle>
+  <circle r="5" class="flow-dot"><animateMotion dur="2.2s" begin="1.8s" repeatCount="indefinite"><mpath href="#sb5"/></animateMotion></circle>
+</svg>
+</div>
+<div class="vgrid">
+  <div class="vcol only-v18"><span class="tag v18">1.8.6</span>
+<pre class="code"><span class="c"># after every prod run: save the artifacts outside target/</span>
+aws s3 sync target/ s3://acme-dbt-artifacts/prod/ \
+  --exclude "*" --include "manifest.json" --include "run_results.json" --include "sources.json"
+
+<span class="c"># anywhere else (CI, dev):</span>
+aws s3 sync s3://acme-dbt-artifacts/prod/ prod-artifacts/
+dbt build -s state:modified+ --defer --state prod-artifacts/
+<span class="c"># or: export DBT_STATE=prod-artifacts/   DBT_DEFER=true</span></pre></div>
+  <div class="vcol only-v112"><span class="tag v112">1.12</span>
+<pre class="code"><span class="c"># same workflow; env vars use the 1.11+ prefix</span>
+export DBT_ENGINE_STATE=prod-artifacts/
+export DBT_ENGINE_DEFER=true
+dbt build -s state:modified+
+<span class="c"># combine with named selectors (1.12):</span>
+dbt build -s "selector:tickets,state:modified+"</pre>
+    <p class="muted" style="font-size:.88rem">On the dbt platform, the artifacts are stored for you and CI jobs defer automatically. dbt State keeps model-level state without a manifest file (see the dbt Cloud page).</p></div>
+</div>
+
+<h2 id="diff">2 · state:modified simulator</h2>
+<p>Your branch compared with the prod manifest. Tick the changes you made, pick a selector, and see what dbt would build. Also switch the version at the top: the env-aware config behaves differently in 1.8.6 and 1.12.</p>
+<div class="sim" id="statesim2">
+  <div class="pane-title"><span>changes in your branch</span></div>
+  <div class="controls" id="sd-changes" style="margin-bottom:10px"></div>
+  <div class="controls" style="margin-bottom:10px"><span class="ctl-label">-s</span><div id="sd-sel"></div>
+    <label class="toggle on"><input type="checkbox" id="sd-defer" checked>--defer</label></div>
+  <div class="cmdline" id="sd-cmd"></div>
+  <div class="dag-wrap" id="sd-dag"></div>
+  <div id="sd-notes"></div>
+</div>
+
+<h2 id="sub">3 · The state: selectors</h2>
+<div class="tbl-wrap card">
+<table class="prose">
+  <tr><th>Selector</th><th>Selects</th><th>Typical use</th><th>Version</th></tr>
+  <tr><td><code>state:new</code></td><td>nodes absent from the state manifest</td><td>test only new models</td><td>both</td></tr>
+  <tr><td><code>state:modified</code></td><td>new + changed nodes (all the sub-selectors below)</td><td>slim CI with <code>+</code></td><td>both</td></tr>
+  <tr><td><code>state:modified.body</code></td><td>SQL changed, or seed content (seeds &lt; 1 MiB are hashed)</td><td>logic changes only</td><td>both</td></tr>
+  <tr><td><code>state:modified.configs</code></td><td>config changed (except database/schema/alias/tags/meta)</td><td>materialization changes</td><td>both</td></tr>
+  <tr><td><code>state:modified.relation</code></td><td>database / schema / alias changed</td><td>objects that move</td><td>both</td></tr>
+  <tr><td><code>state:modified.macros</code></td><td>a macro used (even indirectly) changed</td><td>after editing shared macros</td><td>both</td></tr>
+  <tr><td><code>state:modified.contract</code></td><td>contract columns or types changed. A breaking change raises an error.</td><td>governance gate in CI</td><td>both</td></tr>
+  <tr><td><code>state:modified.persisted_descriptions</code></td><td>descriptions, only with <code>persist_docs</code></td><td>doc-only deploys</td><td>both</td></tr>
+  <tr><td><code>state:old</code> / <code>state:unmodified</code></td><td>nodes that exist in state / exist and are unchanged</td><td><code>--exclude state:unmodified</code>, reuse</td><td><span class="tag v112">1.9+</span></td></tr>
+  <tr><td><code>result:&lt;status&gt;</code></td><td>error / fail / warn / success / skipped in run_results.json</td><td>targeted retries</td><td>both</td></tr>
+  <tr><td><code>source_status:fresher</code></td><td>sources whose max_loaded_at moved since the state's sources.json</td><td>build only what got data</td><td>both</td></tr>
+</table>
+</div>
+
+<h2 id="result">4 · Retry with result: (run_results.json)</h2>
+<p>Last night, <code>fct_orders</code> errored, so its children were skipped. Use the previous <code>run_results.json</code> as state to re-run only what's needed:</p>
+<div class="sim" id="resultsim">
+  <div class="controls" style="margin-bottom:10px"><span class="ctl-label">-s</span><div id="rs-sel"></div></div>
+  <div class="cmdline" id="rs-cmd"></div>
+  <div class="dag-wrap" id="rs-dag"></div>
+  <div class="narration" id="rs-out"></div>
+</div>
+<p class="muted" style="font-size:.88rem"><code>dbt retry</code> (1.6+) is the simplest: it reads <code>target/run_results.json</code> and re-runs from the failure point with the same command and flags. <code>result:</code> selectors give you more control
+(for example <code>1+result:fail</code> rebuilds the models whose tests failed).</p>
+
+<h2 id="leverage">5 · How to leverage state: 6 recipes</h2>
+<div class="cards">
+  <div class="card recipe"><div class="ico">🧪</div><div><h3>Slim CI</h3>
+<pre class="code">dbt build -s state:modified+ --defer --state prod/</pre>
+    <p>Build and test only what the PR changed, plus its children. Read every other parent from prod. Minutes instead of hours.</p></div></div>
+  <div class="card recipe"><div class="ico">💻</div><div><h3>Dev without rebuilding upstream</h3>
+<pre class="code">dbt run -s my_model --defer --state prod/ --favor-state</pre>
+    <p><code>--favor-state</code> reads prod even if a stale copy exists in your dev schema.</p></div></div>
+  <div class="card recipe"><div class="ico">🚀</div><div><h3>Deploy only what changed</h3>
+<pre class="code"><span class="c"># merge job on main</span>
+dbt build -s state:modified+ --state last-prod/</pre>
+    <p>After a merge, rebuild just the changed models and their children instead of the whole project, then upload the new manifest.</p></div></div>
+  <div class="card recipe"><div class="ico">🔁</div><div><h3>Retry a failed night</h3>
+<pre class="code">dbt retry
+<span class="c"># or explicit:</span>
+dbt build -s "result:error+ result:skipped+" --state target_last/</pre></div></div>
+  <div class="card recipe"><div class="ico">⏱️</div><div><h3>Build only what got data</h3>
+<pre class="code">dbt source freshness
+dbt build -s source_status:fresher+ --state last-run/</pre>
+    <p>For frequent jobs: unchanged branches of the DAG are skipped.</p></div></div>
+  <div class="card recipe"><div class="ico">🧬</div><div><h3>Warm CI for incrementals</h3>
+<pre class="code">dbt clone -s "state:modified+,config.materialized:incremental" --state prod/
+dbt build -s state:modified+ --defer --state prod/</pre>
+    <p>Incremental models start from a zero-copy clone of prod (Snowflake, BigQuery, Databricks).</p></div></div>
+</div>
+
+<h2 id="pitfalls">6 · Pitfalls</h2>
+<div class="vgrid">
+  <div class="vcol only-v18"><span class="tag v18">1.8.6</span><ul>
+    <li><strong>Env-aware configs = false positives</strong>: anything rendered from <code>target.name</code> / <code>env_var</code> differs between CI and prod, so whole folders look modified. Workarounds: put environment-specific naming in <code>generate_schema_name</code> / <code>generate_alias_name</code> (relation changes are compared regardless of target), keep other configs environment-independent, or accept the extra builds.</li>
+    <li><code>state:old</code> / <code>state:unmodified</code> don't exist yet. Use <code>--exclude state:modified</code>.</li>
+  </ul></div>
+  <div class="vcol only-v112"><span class="tag v112">1.12</span><ul>
+    <li>Unrendered config comparison is on by default (flag matured in 1.12), which removes most env-aware false positives. <strong>Regenerate the state with 1.9+</strong>, otherwise you still get them.</li>
+    <li>New <code>state:old</code>, <code>state:unmodified</code> (1.9). Env vars <code>DBT_ENGINE_STATE</code> / <code>DBT_ENGINE_DEFER</code>.</li>
+  </ul></div>
+</div>
+<ul>
+  <li><strong>Never point <code>--state</code> at <code>target/</code></strong>: dbt overwrites <code>target/manifest.json</code> while parsing. Copy the artifacts to their own folder.</li>
+  <li><strong>Stale state = wrong diff</strong>: always use the manifest of the <em>latest</em> prod run, and upload it after every prod and merge job.</li>
+  <li><strong>Vars and env vars aren't tracked</strong>: changing a var's value alone doesn't mark models modified.</li>
+  <li><strong>Seeds over 1 MiB</strong> are compared by path only, so content edits go unnoticed.</li>
+  <li><strong>Cross-environment tests</strong>: with <code>--defer</code>, a <code>relationships</code> test can compare CI data with prod data. Exclude it in CI if it's noisy (<code>--exclude test_name:relationships</code>).</li>
+  <li><strong>Don't use <code>state:modified</code> in scheduled prod jobs</strong>: when nothing changed in the code, it builds nothing.</li>
+</ul>
