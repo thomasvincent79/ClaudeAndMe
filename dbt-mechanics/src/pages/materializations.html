@@ -1,0 +1,69 @@
+<section class="hero">
+<span class="eyebrow">🧱 Materializations &amp; configs</span>
+<h1>How a model <span class="grad">becomes an object</span></h1>
+<p class="lead">A model is a SELECT. Its <strong>materialization</strong> decides what dbt builds from it: a view, a table, a merged incremental table, a CTE inlined downstream, or a warehouse-maintained object.
+Configs come from three places that combine by precise rules. Both are core certification topics, and the same in <span class="tag v18">1.8.6</span> and <span class="tag v112">1.12</span>, with platform additions since.</p>
+<div class="toc">
+  <a href="#compare">1 · The materializations</a>
+  <a href="#sim">2 · What dbt runs</a>
+  <a href="#prec">3 · Config precedence</a>
+  <a href="#choose">4 · Choosing</a>
+</div>
+</section>
+
+<h2 id="compare">1 · The materializations at a glance</h2>
+<div class="tbl-wrap card">
+<table class="prose">
+  <tr><th>Materialization</th><th>In the warehouse</th><th>Rebuilt</th><th>Notes</th></tr>
+  <tr><td><code>view</code> (default)</td><td>a view</td><td>every run (cheap DDL)</td><td>always fresh; cost paid by every query that reads it</td></tr>
+  <tr><td><code>table</code></td><td>a table</td><td>fully, every run</td><td>fast to query; build cost grows with the data</td></tr>
+  <tr><td><code>incremental</code></td><td>a table</td><td>only new or changed rows</td><td>see the <a href="incremental.html">Incremental page</a></td></tr>
+  <tr><td><code>ephemeral</code></td><td>nothing</td><td>inlined as a CTE</td><td>can't be selected in BI, nor ref'd from Python models; tests and debugging are harder</td></tr>
+  <tr><td><code>materialized_view</code> (1.6+)</td><td>a materialized view</td><td>refreshed by dbt or the warehouse</td><td>Postgres, Redshift, BigQuery, Databricks; <code>on_configuration_change</code>: apply / continue / fail</td></tr>
+  <tr><td><code>dynamic_table</code> (dbt-snowflake)</td><td>a Snowflake dynamic table</td><td>by Snowflake, to meet <code>target_lag</code></td><td><span class="only-v112">1.11–1.12 add <code>cluster_by</code>, <code>immutable_where</code>, <code>refresh_warehouse</code>, <code>scheduler</code>, <code>transient</code></span><span class="only-v18">target_lag, snowflake_warehouse, on_configuration_change</span></td></tr>
+  <tr><td><code>snapshot</code> / <code>seed</code></td><td>tables</td><td>own commands</td><td>see the <a href="snapshots.html">Snapshots page</a>. Seeds load CSVs.</td></tr>
+</table>
+</div>
+<div class="vgrid">
+  <div class="vcol only-v18"><span class="tag v18">1.8.6</span><p>All of the above, plus custom materializations (<code>{% materialization my_mat, adapter='snowflake' %}</code>). Python models: <code>table</code> and <code>incremental</code> only.</p></div>
+  <div class="vcol only-v112"><span class="tag v112">1.12</span><p>Same core set. New platform materializations: Snowflake <code>interactive_table</code> (beta, 1.12) and Databricks <code>streaming_table</code>.
+  Microbatch (1.9) is an incremental <em>strategy</em>, not a materialization.</p></div>
+</div>
+
+<h2 id="sim">2 · What dbt actually runs</h2>
+<div class="sim" id="matsim">
+  <div class="controls" style="margin-bottom:8px"><span class="ctl-label">materialized</span><div id="mat-m"></div></div>
+  <div class="controls" style="margin-bottom:8px"><span class="ctl-label">platform</span><div id="mat-p"></div><div id="mat-r"></div>
+    <span id="mat-changed-wrap"><div id="mat-changed"></div></span></div>
+  <div class="sim-cols" style="grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr)">
+    <div><div id="mat-cfg"></div><div id="mat-sql"></div></div>
+    <div id="mat-prof"></div>
+  </div>
+</div>
+
+<h2 id="prec">3 · Config precedence: where configs come from and how they combine</h2>
+<p>From least to most specific: <code>dbt_project.yml</code> (project, then deeper folders) → properties YAML (<code>config:</code>) → <code>config()</code> in the SQL file.
+"More specific wins" is only true for most keys. Toggle the layers:</p>
+<div class="sim" id="precsim">
+  <div class="sim-cols" style="grid-template-columns:minmax(0,1fr) minmax(0,1.1fr)">
+    <div><div class="pane-title"><span>layers (1 = least specific)</span></div><div id="pc-layers"></div></div>
+    <div><div class="pane-title"><span>effective config of fct_orders</span></div><div id="pc-out"></div></div>
+  </div>
+</div>
+<div class="cards">
+  <div class="card"><h3>Clobber (most keys)</h3><p><code>materialized</code>, <code>schema</code>, <code>unique_key</code>…: the most specific value replaces the others.
+    Grants follow this rule too, unless you use the <code>'+select'</code> prefix (see the <a href="grants.html">Grants page</a>).</p></div>
+  <div class="card"><h3>Additive</h3><p><code>tags</code>, <code>pre-hook</code>, <code>post-hook</code>: every level adds to the list.</p></div>
+  <div class="card"><h3>Shallow merge</h3><p><code>meta</code> (and <code>freshness</code>): top-level keys merge, and a nested dict at the same key is replaced entirely.</p></div>
+  <div class="card"><h3>Packages &amp; the + prefix</h3><p>Your root <code>dbt_project.yml</code> clobbers a package's own configs (<code>models: dbt_utils: +enabled: false</code>).
+    The <code>+</code> prefix exists only in <code>dbt_project.yml</code>.</p></div>
+</div>
+
+<h2 id="choose">4 · Choosing a materialization</h2>
+<ul>
+  <li><strong>Start with views</strong> for staging, then switch to <strong>tables</strong> when queries get slow or the model is read often (marts, BI).</li>
+  <li>Go <strong>incremental</strong> only when a table build is too slow or costly. It adds complexity (filters, strategies, full refreshes).</li>
+  <li>Use <strong>ephemeral</strong> sparingly: it can't be queried or debugged directly. An intermediate view is usually clearer.</li>
+  <li><strong>Materialized views / dynamic tables</strong> are for freshness targets the warehouse can maintain itself, within their SQL limitations.</li>
+  <li>Set materializations <strong>per folder</strong> in <code>dbt_project.yml</code> (<code>staging: +materialized: view</code>, <code>marts: +materialized: table</code>) and keep exceptions in the model.</li>
+</ul>

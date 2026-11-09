@@ -22,6 +22,24 @@ VERSIONS = {"v18": "1.8.6", "v112": "1.12"}
 
 THEMATICS = [
     {
+        "slug": "materializations",
+        "nav": "Materializations",
+        "title": "Materializations & configs",
+        "icon": "🧱",
+        "summary": "view, table, incremental, ephemeral, materialized views and dynamic tables: what dbt runs for each, "
+                   "and how configs combine (clobber, additive, shallow merge).",
+        "scripts": ["materializations.js"],
+    },
+    {
+        "slug": "sources",
+        "nav": "Sources & packages",
+        "title": "Sources, exposures & packages",
+        "icon": "🔌",
+        "summary": "Declaring sources and exposures, selecting by business impact (+exposure:), and packages: "
+                   "hub / git / local / private, lock file and version resolution.",
+        "scripts": ["sources.js"],
+    },
+    {
         "slug": "snapshots",
         "nav": "Snapshots",
         "title": "Snapshots & hard deletes",

@@ -1,0 +1,144 @@
+<section class="hero">
+<span class="eyebrow">🔌 External dependencies</span>
+<h1>Sources in, exposures out, <span class="grad">packages around</span></h1>
+<p class="lead">Your project sits between <strong>sources</strong> (raw tables loaded by someone else) and <strong>exposures</strong> (the dashboards, ML models and apps that read your marts).
+<strong>Packages</strong> bring code from other projects. Declaring all three makes lineage complete end to end, and lets you select by business impact.
+The same in <span class="tag v18">1.8.6</span> and <span class="tag v112">1.12</span>, with YAML moves and private packages in 1.12.</p>
+<div class="toc">
+  <a href="#sources">1 · Sources</a>
+  <a href="#exposures">2 · Exposures</a>
+  <a href="#lineage">3 · Lineage &amp; selection</a>
+  <a href="#packages">4 · Packages</a>
+  <a href="#resolve">5 · Version resolution</a>
+  <a href="#best">6 · Best practices</a>
+</div>
+</section>
+
+<h2 id="sources">1 · Sources</h2>
+<div class="vgrid">
+  <div class="vcol only-v18"><span class="tag v18">1.8.6</span>
+<div class="file">models/staging/stripe/_stripe__sources.yml</div>
+<pre class="code">sources:
+  - name: stripe                    <span class="c"># source('stripe', …)</span>
+    database: raw
+    schema: stripe_prod             <span class="c"># default: the source name</span>
+    loader: fivetran
+    loaded_at_field: _fivetran_synced
+    freshness:
+      warn_after: {count: 6, period: hour}
+    tables:
+      - name: payments
+        identifier: PAYMENTS_V2     <span class="c"># real table name, if different</span>
+        quoting: {identifier: true}
+        columns:
+          - name: id
+            data_tests: [unique, not_null]</pre></div>
+  <div class="vcol only-v112"><span class="tag v112">1.12</span>
+<div class="file">models/staging/stripe/_stripe__sources.yml</div>
+<pre class="code">sources:
+  - name: stripe
+    database: raw
+    schema: stripe_prod
+    loader: fivetran
+    <span class="h">config:</span>                         <span class="c"># freshness (1.9) and loaded_at_field (1.10)</span>
+      loaded_at_field: _fivetran_synced   <span class="c"># moved under config</span>
+      freshness:
+        warn_after: {count: 6, period: hour}
+    tables:
+      - name: payments
+        identifier: PAYMENTS_V2
+        columns:
+          - name: id
+            data_tests: [unique, not_null]</pre></div>
+</div>
+<pre class="code">select * from {{ source(<span class="s">'stripe'</span>, <span class="s">'payments'</span>) }}   <span class="c">-- → raw.stripe_prod."PAYMENTS_V2", plus a lineage edge</span></pre>
+<ul>
+  <li><strong>One <code>source()</code> per raw table, only in staging models.</strong> Every other model refs staging, never raw tables directly.</li>
+  <li><strong>Test sources</strong> (keys, accepted values) and add <a href="freshness.html">freshness</a>: problems are caught at the entrance.</li>
+  <li>Select them: <code>dbt test -s source:stripe</code>, or <code>dbt build -s source:stripe+</code> for everything downstream.</li>
+  <li class="only-v112">Overriding a package's source (<code>overrides:</code>) warns since 1.11 (SourceOverrideDeprecation). Prefer project vars in the package, or your own source.</li>
+</ul>
+
+<h2 id="exposures">2 · Exposures</h2>
+<div class="vgrid">
+  <div class="vcol"><span class="badge">models/exposures.yml</span>
+<pre class="code">exposures:
+  - name: weekly_kpis
+    label: Weekly KPIs
+    type: dashboard          <span class="c"># dashboard | notebook | analysis | ml | application</span>
+    maturity: high           <span class="c"># high | medium | low</span>
+    url: https://bi.acme.com/dash/42
+    owner:
+      name: Finance analytics
+      email: fin-data@acme.com
+    depends_on:
+      - ref('fct_orders')
+      - ref('dim_customers')
+      - source('stripe', 'payments')    <span class="c"># sources allowed too</span></pre></div>
+  <div class="vcol"><span class="badge">what you get</span><ul>
+    <li><strong>Lineage to the business</strong>: docs and Catalog show which dashboards a model feeds.</li>
+    <li><strong>Selection by impact</strong>: <code>dbt build -s +exposure:weekly_kpis</code> rebuilds exactly what the dashboard needs.</li>
+    <li><strong>Ownership</strong>: whom to warn when a model changes.</li>
+    <li>Exposures aren't built or run: they only declare dependencies.</li>
+    <li>On the dbt platform, <em>auto-exposures</em> import Tableau / Power BI dashboards automatically (see the <a href="dbt-cloud.html">dbt Cloud page</a>).</li></ul></div>
+</div>
+
+<h2 id="lineage">3 · Lineage &amp; selection</h2>
+<div class="sim" id="linsim">
+  <div class="controls" style="margin-bottom:10px"><span class="ctl-label">-s</span><div id="ln-sel"></div></div>
+  <div class="cmdline" id="ln-cmd"></div>
+  <div class="dag-wrap" id="ln-dag"></div>
+  <div class="narration" id="ln-out"></div>
+</div>
+
+<h2 id="packages">4 · Packages</h2>
+<div class="vgrid">
+  <div class="vcol"><span class="badge">packages.yml (or dependencies.yml, 1.6+)</span>
+<pre class="code">packages:
+  - package: dbt-labs/dbt_utils          <span class="c"># dbt Hub</span>
+    version: [<span class="s">"&gt;=1.1.0"</span>, <span class="s">"&lt;2.0.0"</span>]
+  - git: <span class="s">"https://github.com/acme/dbt-shared.git"</span>
+    revision: v2.3.0                     <span class="c"># tag, branch or commit sha</span>
+    subdirectory: transform
+  - local: ../shared_macros               <span class="c"># monorepo</span><span class="only-v112">
+  - private: acme/internal-dbt           <span class="c"># 1.12: native private repos over SSH</span>
+    provider: github</span></pre>
+<pre class="code">dbt deps                                  <span class="c"># install into dbt_packages/ and write package-lock.yml</span>
+dbt deps --upgrade                        <span class="c"># re-resolve within the ranges (1.7+)</span>
+dbt deps --add-package dbt-labs/codegen@0.13.1   <span class="c"># edit packages.yml for you (1.7+)</span></pre></div>
+  <div class="vcol"><span class="badge">using and configuring a package</span>
+<pre class="code">select {{ dbt_utils.generate_surrogate_key([<span class="s">'order_id'</span>, <span class="s">'line_no'</span>]) }} as order_line_sk</pre>
+<pre class="code"><span class="c"># dbt_project.yml: your root project configures package resources</span>
+models:
+  some_package:
+    +schema: vendor
+    staging:
+      +enabled: false
+vars:
+  some_package:
+    start_date: <span class="s">'2024-01-01'</span></pre>
+    <ul>
+      <li><code>dependencies.yml</code> also holds Mesh <code>projects:</code>, but doesn't support Jinja (no <code>env_var</code> for private git tokens). Keep those in <code>packages.yml</code>.</li>
+      <li>Override a package macro implementation with <code>dispatch</code> (see the <a href="macros.html#dispatch">Macros page</a>).</li>
+      <li>Add <code>dbt_packages/</code> to <code>.gitignore</code>. Commit <code>package-lock.yml</code>.</li>
+    </ul></div>
+</div>
+
+<h2 id="resolve">5 · How dbt deps resolves versions</h2>
+<p>Your project and the packages you install can all require the same package (here <code>dbt_utils</code>). dbt intersects the ranges and installs the highest version that satisfies all of them.</p>
+<div class="sim" id="pkgsim">
+  <div class="controls" style="margin-bottom:6px"><span class="ctl-label">your range</span><div id="pk-root"></div></div>
+  <div class="controls" style="margin-bottom:6px"><span class="ctl-label">audit_helper needs</span><div id="pk-pkgA"></div></div>
+  <div class="controls" style="margin-bottom:10px"><span class="ctl-label">codegen needs</span><div id="pk-pkgB"></div></div>
+  <div class="dag-wrap" id="pk-svg"></div>
+  <div id="pk-out"></div>
+</div>
+
+<h2 id="best">6 · Best practices</h2>
+<ul>
+  <li><strong>Ranges, not exact pins</strong>, for hub packages (<code>[">=1.1.0", "&lt;2.0.0"]</code>), so packages can co-resolve. Reproducibility comes from the <strong>lock file</strong>.</li>
+  <li>Pin git packages to a <strong>tag or sha</strong>, never a moving branch.</li>
+  <li>Run <code>dbt deps</code> at the start of every CI and prod job (see the slim CI order on the <a href="state.html">State page</a>).</li>
+  <li>Declare an exposure for every important dashboard, with an owner. Then <code>+exposure:x</code> becomes your "is the dashboard up to date?" job.</li>
+  <li>Keep <code>source()</code> calls in staging only, one staging model per source table.</li>
+</ul>
