@@ -1,6 +1,6 @@
 /* ¡Vamos! — service worker : le jeu reste jouable hors connexion.
    Changer VERSION à chaque mise à jour du jeu pour que le téléphone récupère les nouveaux fichiers. */
-const VERSION = 'vamos-v1';
+const VERSION = 'vamos-v2';
 const FILES = ['./', './index.html', './content.js', './art.js', './engine.js', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', (e) => {

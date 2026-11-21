@@ -774,7 +774,7 @@
     u1l1: {
       title: 'Saludos y reencuentros', fr: 'Saluer, se retrouver, souhaiter (que + subjonctif)',
       basic: '*',
-      tip: `<h3>B1 · Souhaits et retrouvailles</h3>
+      tip: `<h3>Souhaits et retrouvailles</h3>
 <p><b>Que + subjonctif</b> pour souhaiter : <i>¡Que tengas buen viaje!</i> · <i>¡Que te mejores!</i> · <i>¡Que lo pases bien!</i> · <i>Espero que estés bien.</i></p>
 <table><tr><th>Subjonctif présent</th><td>-ar → -e : hable, hables…</td><td>-er / -ir → -a : coma, viva…</td></tr>
 <tr><th>Irréguliers fréquents</th><td colspan="2">tener → tenga · estar → esté · ser → sea · ir → vaya · hacer → haga · venir → venga</td></tr></table>
@@ -800,10 +800,10 @@
     u1l2: {
       title: 'Hablar de ti', fr: 'Se présenter, ser / estar, raconter son passé',
       basic: '*',
-      tip: `<h3>B1 · ser ou estar ?</h3>
+      tip: `<h3>ser ou estar ?</h3>
 <table><tr><th>ser</th><td>identité, profession, origine, caractère, heure, événement (<i>la fiesta es en mi casa</i>)</td></tr>
 <tr><th>estar</th><td>lieu d’une personne ou d’un objet, état passager (<i>estoy cansado</i>), résultat (<i>está cerrado</i>)</td></tr></table>
-<h3>B1 · Raconter au passé</h3>
+<h3>Raconter au passé</h3>
 <table><tr><th>indefinido</th><td>action terminée, moment précis : <i>ayer, en 2010, el año pasado</i></td><td>-ar : -é, -aste, -ó, -amos, -asteis, -aron · -er/-ir : -í, -iste, -ió, -imos, -isteis, -ieron</td></tr>
 <tr><th>imperfecto</th><td>description, habitude : <i>cuando era pequeño…</i></td><td>-ar : -aba · -er/-ir : -ía · ser → era · ir → iba</td></tr></table>
 <p><i>Se me ha olvidado</i> : l’oubli « m’est arrivé » (tournure très fréquente). <i>¿A qué te dedicas?</i> = que fais-tu dans la vie ?</p>`,
@@ -828,10 +828,10 @@
     u1l3: {
       title: 'Moverse por Madrid', fr: 'Demander son chemin, impératif de politesse, comparer',
       basic: '*', keep: ['n21'],
-      tip: `<h3>B1 · L’impératif de politesse (usted)</h3>
+      tip: `<h3>L’impératif de politesse (usted)</h3>
 <p>Il se forme comme le subjonctif : <i>tomar → tome</i>, <i>seguir → siga</i>, <i>girar → gire</i>, <i>coger → coja</i>, <i>cruzar → cruce</i>. Pluriel (ustedes) : <i>tomen, sigan</i>.</p>
 <p>Plus poli encore : le conditionnel. <i>¿Podría decirme dónde está…?</i> · <i>¿Me podría ayudar?</i></p>
-<h3>B1 · Comparer</h3>
+<h3>Comparer</h3>
 <p><i>más … que</i> · <i>menos … que</i> · <i>tan … como</i> · <i>tanto/a … como</i>. Irréguliers : <i>mejor, peor, mayor, menor</i>.</p>
 <p><b>hay</b> + article indéfini (<i>¿Hay una farmacia?</i>) · <b>está</b> + article défini (<i>¿Dónde está la farmacia?</i>). Distance : <i>está a cinco minutos andando</i>.</p>`,
       items: [
@@ -854,7 +854,7 @@
     u2l1: {
       title: 'En el puesto de fruta', fr: 'Fruits et légumes, estar + adjectif, preferir que',
       basic: ['la manzana', 'la naranja', 'el plátano', 'la fresa', 'Una manzana y dos naranjas.', 'el limón', 'la uva', 'la pera', 'una manzana → dos ___', 'un limón → tres ___', '{n} {f}.', 'el tomate', 'la patata', 'la ciudad → las ___', 'Las fresas son rojas.', '¿Necesitamos patatas?'],
-      tip: `<h3>B1 · ser / estar avec un adjectif</h3>
+      tip: `<h3>ser / estar avec un adjectif</h3>
 <table><tr><th>estar maduro</th><td>être mûr</td><th>ser maduro</th><td>être mature</td></tr>
 <tr><th>estar rico</th><td>être bon (plat)</td><th>ser rico</th><td>être riche</td></tr>
 <tr><th>estar verde</th><td>ne pas être mûr</td><th>ser verde</th><td>être vert (couleur)</td></tr></table>
@@ -880,7 +880,7 @@
     u2l2: {
       title: 'Pedir con cortesía', fr: 'Quantités, prix, pronoms (me lo pone), imparfait de politesse',
       basic: ['el pan', 'la leche', 'el huevo', 'el queso', 'un kilo de', 'medio kilo de', 'una docena de', 'Un kilo ___ naranjas.', '{q} de {p}, por favor.', 'el arroz', 'la botella', 'Una botella de aceite.', '¿cuánto cuesta?', 'el euro', 'barato', 'caro', '¿Cuánto es?', 'Son cinco euros.', 'El jamón es muy ___.', 'Las manzanas son ___.', 'El queso ___ ocho euros.'],
-      tip: `<h3>B1 · Les pronoms compléments</h3>
+      tip: `<h3>Les pronoms compléments</h3>
 <table><tr><th>COD</th><td>lo, la, los, las</td><td><i>¿El queso? Lo llevo.</i></td></tr>
 <tr><th>COI + COD</th><td>me lo, te la… · le/les + lo → <b>se lo</b></td><td><i>Se lo envuelvo</i> (je vous l’emballe)</td></tr></table>
 <p>À l’impératif affirmatif, ils se collent au verbe : <i>póngamelo</i>, <i>déjelo</i>, <i>póngamelas</i> (et on ajoute un accent écrit).</p>
@@ -905,7 +905,7 @@
     u2l3: {
       title: 'De compras', fr: 'Acheter, échanger, passé composé, se me ha olvidado',
       basic: ['comprar', 'necesitar', 'buscar', 'pagar', 'querer', 'Yo ___ pan.', 'Nosotros ___ una bolsa.', 'la tienda', 'el supermercado', 'la bolsa', 'la tarjeta', 'el dinero', '¿Tú ___ con tarjeta?', 'Vosotros ___ el supermercado.', 'hablar', 'Quiero comprar pan.', 'abierto', 'cerrado', 'La tienda está cerrada.', '{s} {o}.'],
-      tip: `<h3>B1 · Le passé composé (pretérito perfecto)</h3>
+      tip: `<h3>Le passé composé (pretérito perfecto)</h3>
 <p><i>haber</i> au présent + participe : <i>he, has, ha, hemos, habéis, han</i> + <i>-ado / -ido</i>. En Espagne, on l’emploie pour un passé lié au présent : <i>hoy, esta mañana, esta semana, todavía no, ya</i>.</p>
 <p>Participes irréguliers : <i>hacer → hecho, decir → dicho, ver → visto, poner → puesto, volver → vuelto, escribir → escrito, romper → roto, abrir → abierto</i>.</p>
 <p><b>Se me ha olvidado / se me ha caído / se me ha roto</b> : l’accident « m’est arrivé ».</p>
@@ -929,7 +929,7 @@
     u3l1: {
       title: 'Las comidas', fr: 'Repas, cuisson, allergies, raconter un repas au passé',
       basic: ['el desayuno', 'la comida', 'la cena', 'el café con leche', 'el zumo de naranja', 'el agua', 'el vino', 'la cerveza', 'Un café con leche, por favor.', 'el bocadillo', 'la ensalada', 'el pescado', 'la carne', 'el pollo', 'el postre', 'Un bocadillo de jamón, por favor.', '{m} es a {h}.'],
-      tip: `<h3>B1 · indefinido ou imperfecto ?</h3>
+      tip: `<h3>indefinido ou imperfecto ?</h3>
 <p><i>La cena <b>estuvo</b> genial</i> (bilan d’un moment terminé) · <i>el pescado <b>estaba</b> salado</i> (description). <i>De pequeño <b>desayunaba</b> churros</i> (habitude).</p>
 <p>Indefinidos irréguliers utiles : <i>estar → estuve, tener → tuve, hacer → hice, ir / ser → fui, poder → pude, poner → puse, traer → traje</i>.</p>
 <p><b>llevar</b> = contenir : <i>¿Qué lleva la paella?</i> · <i>¿Esto lleva gluten?</i></p>
@@ -953,7 +953,7 @@
     u3l2: {
       title: 'Opiniones y gustos', fr: 'gustar, apetecer, creo que / no creo que + subjonctif',
       basic: ['me gusta', 'me gustan', 'no me gusta', '¿te gusta?', 'me encanta', 'Me ___ el chocolate.', 'mucho', 'un poco', 'delicioso', 'dulce', 'frío', 'caliente', '¿___ gusta el vino?'],
-      tip: `<h3>B1 · Donner son avis</h3>
+      tip: `<h3>Donner son avis</h3>
 <table><tr><th>+ indicatif</th><td><i>Creo que / pienso que / me parece que</i> + indicatif : <i>Creo que está buena.</i></td></tr>
 <tr><th>+ subjonctif</th><td><i>No creo que / no pienso que</i> + subjonctif : <i>No creo que sea caro.</i></td></tr>
 <tr><th>sentiment</th><td><i>Me encanta / me molesta / no me gusta que</i> + subjonctif : <i>Me molesta que haya tanto ruido.</i></td></tr></table>
@@ -978,7 +978,7 @@
     u3l3: {
       title: 'En el restaurante', fr: 'Réserver, commander, réclamer, recommander (que + subjonctif)',
       basic: ['la mesa', 'la carta', 'el camarero', 'la cuenta', 'Una mesa para dos, por favor.', 'comer', 'Nosotros ___ a las dos.', 'beber', 'Yo ___ agua.', 'vivir', '¿Dónde ___ tú?', 'Yo ___ hambre.', 'el tenedor', 'el cuchillo', 'la cuchara', 'La cuenta, por favor.', 'Tengo sed.', '{s} {o}.', '¿Y para beber?'],
-      tip: `<h3>B1 · Recommander, réclamer</h3>
+      tip: `<h3>Recommander, réclamer</h3>
 <p><b>recomendar / aconsejar que + subjonctif</b> : <i>Le recomiendo que pruebe el arroz negro.</i></p>
 <p><b>Conditionnel de politesse</b> : <i>¿Podría traerme…?</i> · <i>¿Tendría una mesa?</i> · <i>Me gustaría…</i> · ou imparfait : <i>Quería reservar…</i></p>
 <p>Réclamer poliment : <i>Perdone, esto no es lo que he pedido.</i> · <i>¿Me lo podría calentar?</i></p>

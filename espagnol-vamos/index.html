@@ -182,9 +182,8 @@ body.in-session main{padding-bottom:0}
 .bank{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
 .tile{border:2px solid var(--border);border-bottom-width:4px;background:var(--card);border-radius:12px;padding:8px 13px;font-size:17px;font-weight:600;cursor:pointer}
 .tile.used{opacity:.18;cursor:default}
-.match{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.match>div{display:flex;flex-direction:column;gap:10px}
-.mt{border:2px solid var(--border);border-bottom-width:4px;background:var(--card);border-radius:12px;padding:11px 12px;font-size:16px;font-weight:600;cursor:pointer;text-align:center}
+.pairs{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-auto-rows:1fr;gap:10px;max-width:560px;margin:0 auto}
+.mt{display:flex;align-items:center;justify-content:center;min-height:54px;border:2px solid var(--border);border-bottom-width:4px;background:var(--card);border-radius:12px;padding:10px 10px;font-size:16px;font-weight:600;line-height:1.25;cursor:pointer;text-align:center;overflow-wrap:anywhere;hyphens:auto}
 .mt.sel{border-color:var(--blue);background:var(--bluebg)}
 .mt.done{opacity:.35;border-color:var(--good);cursor:default}
 .mt.bad{border-color:var(--bad);background:var(--badbg);animation:shake .3s}
@@ -428,6 +427,9 @@ body{font-family:"Nunito","Segoe UI",system-ui,-apple-system,Roboto,sans-serif;
 .reading details summary,.wbubble details summary{cursor:pointer;color:var(--blue);font-size:13px;margin-top:6px}
 .wbubble p{margin:6px 0}
 @media (max-width:640px){.bil{grid-template-columns:1fr}}
+.fbtns{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.btn.redo{background:var(--card);color:var(--badd);border-color:color-mix(in srgb,var(--bad) 45%,var(--border))}
+@media (max-width:560px){.fbtns{width:100%}.fbtns .btn{flex:1;min-width:0}.fbtns .btn.big{padding:12px 14px}.mt{font-size:15px;min-height:52px;padding:8px}}
 .qfr{margin:-4px 0 12px;font-size:13px;color:var(--muted)}
 .qfr summary{cursor:pointer;display:inline-block;font:800 11px Nunito,sans-serif;letter-spacing:.08em;color:var(--blue);border:1px solid var(--border);border-radius:6px;padding:1px 7px}
 .qfr[open] summary{margin-right:8px}

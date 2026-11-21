@@ -53,7 +53,7 @@
   const shuffle = (a) => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = rnd(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const stripAcc = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '');
-  const norm = (s) => String(s).toLowerCase().replace(/[’`]/g, "'").replace(/[¿?¡!.,;:"«»()…]/g, ' ').replace(/\s+/g, ' ').trim();
+  const norm = (s) => String(s).normalize('NFC').toLowerCase().replace(/[’‘`´ʼ]/g, "'").replace(/[^\p{L}\p{N}' ]+/gu, ' ').replace(/\s+/g, ' ').trim();
   const slug = (s) => stripAcc(String(s)).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
   const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
   const toks = (s) => s.replace(/[¿?¡!.,;:…«»"]/g, ' ').split(/\s+/).filter(Boolean);
@@ -249,7 +249,7 @@
     const emo = it.e ? `<span class="emo">${it.e}</span>` : '';
     switch (fmt) {
       case 'mcq_es2fr':
-        return Object.assign(ex, { kind: 'choice', label: it.b && isNew ? 'Échauffement · les bases (une seule fois)' : 'Que signifie… ?', prompt: `<div class="big es">${isNew ? emo : ''}${esc(it.es)}</div>`, options: shuffle([it.fr].concat(distract(it, 'fr', 3))), answer: it.fr, x: it.x });
+        return Object.assign(ex, { kind: 'choice', label: it.b && isNew ? 'Échauffement' : 'Que signifie… ?', prompt: `<div class="big es">${isNew ? emo : ''}${esc(it.es)}</div>`, options: shuffle([it.fr].concat(distract(it, 'fr', 3))), answer: it.fr, x: it.x });
       case 'mcq_fr2es':
         return Object.assign(ex, { kind: 'choice', label: isNew ? 'Nouveau · comment dit-on… ?' : 'Comment dit-on… ?', prompt: `<div class="big">${emo}${esc(it.fr)}</div>`, options: shuffle([it.es].concat(distract(it, 'es', 3))), answer: it.es, x: it.x, esOpts: true });
       case 'type_fr2es': {
@@ -310,7 +310,7 @@
   }
   const buildAuto = (it, mode) => build(it, pickFmt(it, mode));
   function buildMatch(items, cons, basic) {
-    return { kind: 'match', fmt: 'match', cons, label: basic ? 'Échauffement · les bases, une seule fois' : cons ? 'Associe les paires' : 'Associe les paires (révision)', ids: cons ? [] : items.map((i) => i.id), pairs: items.map((i) => ({ id: i.id, es: i.es, fr: i.fr })) };
+    return { kind: 'match', fmt: 'match', cons, label: basic ? 'Échauffement · associe les paires' : cons ? 'Associe les paires' : 'Associe les paires (révision)', ids: cons ? [] : items.map((i) => i.id), pairs: items.map((i) => ({ id: i.id, es: i.es, fr: i.fr })) };
   }
   function cardInfo(c) { return info(c.gold ? 'Cromo dorado' : 'Nouveau cromo · lis l’espagnol, le français est à côté', `<div class="cromo big-cromo ${c.gold ? 'gold' : ''}" style="--uc:${c.unit.color}">${cromoInner(c, true)}</div>`, 'J’ai lu, continuer'); }
   const bil = (es, fr) => `<div class="bil"><div class="bes"><span class="lang">ES</span>${es}</div><div class="bfr"><span class="lang">FR</span>${fr}</div></div>`;
@@ -516,8 +516,8 @@
       if (!ex._L) { ex._L = shuffle(ex.pairs.map((p, i) => i)); ex._R = shuffle(ex.pairs.map((p, i) => i)); }
       const m = SES.m;
       const cls = (side, i) => (m.done.has(i) ? 'done' : m.bad && m.bad[side] === i ? 'bad' : m[side] === i ? 'sel' : '');
-      a.innerHTML = `<div class="match"><div>${ex._L.map((i) => `<button class="mt es ${cls('l', i)}" data-act="ml" data-v="${i}" ${m.done.has(i) ? 'disabled' : ''}>${esc(ex.pairs[i].es)}</button>`).join('')}</div>
-        <div>${ex._R.map((i) => `<button class="mt ${cls('r', i)}" data-act="mr" data-v="${i}" ${m.done.has(i) ? 'disabled' : ''}>${esc(ex.pairs[i].fr)}</button>`).join('')}</div></div>`;
+      a.innerHTML = `<div class="pairs">${ex._L.map((li, k) => { const ri = ex._R[k];
+        return `<button class="mt es ${cls('l', li)}" data-act="ml" data-v="${li}" ${m.done.has(li) ? 'disabled' : ''}>${esc(ex.pairs[li].es)}</button><button class="mt ${cls('r', ri)}" data-act="mr" data-v="${ri}" ${m.done.has(ri) ? 'disabled' : ''}>${esc(ex.pairs[ri].fr)}</button>`; }).join('')}</div>`;
     }
   }
   function canCheck() {
@@ -546,8 +546,9 @@
     if (!fb.ok && fb.sol) h += `<div>Bonne réponse : <b class="es">${esc(fb.sol)}</b></div>`;
     if (ex.x && (!fb.ok || ex.kind === 'choice')) h += `<div class="xp">${esc(ex.x)}</div>`;
     if (fb.matchErr) h += `<div>${fb.matchErr}</div>`;
-    if (!fb.ok && TRAIN.includes(SES.mode) && !ex.retry && ex.ids.length) h += '<div class="muted">Cet élément reviendra une fois en fin de séance, sous une autre forme.</div>';
-    h += `</div><button class="btn ${fb.ok ? 'go' : 'stop'} big" data-act="cont">Continuer</button>`;
+    if (!fb.ok && TRAIN.includes(SES.mode) && !ex.retry && ex.ids.length) h += '<div class="muted">Il reviendra aussi en fin de séance, sous une autre forme.</div>';
+    const redo = !fb.ok && TRAIN.includes(SES.mode) && ex.kind !== 'info';
+    h += `</div><div class="fbtns">${redo ? '<button class="btn redo" data-act="again">↺ Refaire</button>' : ''}<button class="btn ${fb.ok ? 'go' : 'stop'} big" data-act="cont">Continuer</button></div>`;
     f.innerHTML = h;
     const b = f.querySelector('[data-act=cont]'); if (b) setTimeout(() => b.focus(), 20);
   }
@@ -765,7 +766,7 @@
     if (SELU == null) SELU = (firstOpen ? firstOpen.unit : pos).ui;
     const due = dueIds();
     let say, mood = 'happy';
-    if (S.sessions === 0) say = '¡Bienvenido! Empezamos en Madrid. Lo básico lo veremos una sola vez, como calentamiento; luego, ¡nivel B1!';
+    if (S.sessions === 0) say = '¡Bienvenido! El viaje empieza en Madrid: Lola te está esperando en la Puerta del Sol.';
     else if (due.length) {
       const who = [...new Set(due.map((id) => ITEMS[id].unit).filter(Boolean))].map((x) => CH[x.guide].name);
       const wl = who.length <= 1 ? who.join('') : who.slice(0, -1).join(', ') + ' y ' + who[who.length - 1];
@@ -881,8 +882,7 @@
         <div class="mbtns"><button class="btn" data-act="export">⬇️ Exporter ma progression</button><button class="btn" data-act="import">⬆️ Importer</button><input type="file" id="impf" accept=".json,application/json" hidden></div></div>
       <div class="set"><h2>Test de niveau</h2><p class="muted">${S.placement ? 'Dernier test : ' + fmtShort(S.placement.date) + ' — ' + esc((C.levelsText.find((x) => x.t === S.placement.tier) || {}).n || '') : 'Pas encore passé.'}</p><button class="btn" data-act="placement">🧭 ${S.placement ? 'Refaire' : 'Passer'} le test</button></div>
       <div class="set"><h2>Comment ça marche ?</h2>
-        <ul><li><b>Niveau B1 par défaut</b> : les bases (bonjour, merci, les fruits…) passent une seule fois, en échauffement ; réussies du premier coup, elles ne reviennent plus jamais. Les exercices partent du français vers l’espagnol.</li>
-        <li><b>Pas de répétition inutile</b> : chaque mot, phrase ou règle a sa propre échéance de révision. Une séance mélange des éléments <i>nouveaux</i> et seulement ceux qui arrivent à échéance.</li>
+        <ul><li><b>Les révisions</b> : chaque mot, phrase ou règle a sa propre échéance de révision. Une séance mélange des éléments <i>nouveaux</i> et seulement ceux qui arrivent à échéance.</li>
         <li><b>Jamais deux fois pareil</b> : un même élément change de forme à chaque passage (QCM, tuiles, clavier, conjugaison…), les gabarits génèrent de nouvelles phrases et les nombres sont tirés au hasard.</li>
         <li><b>Tu sais déjà ?</b> Le test de niveau, les tests rapides de niveau et le test de passage d’unité valident d’un coup ce que tu maîtrises.</li>
         <li><b>Adaptation</b> : au-delà de 90 % de réussite, les séances raccourcissent et passent en mode exigeant.</li>
@@ -892,10 +892,9 @@
   function vWelcome() {
     V().innerHTML = `<div class="welcome"><div class="wtop"><div class="prof hop">${AV('prof', 'joy', 160)}</div><div class="wbubble"><div class="hname es">¡Hola! Soy <b>Don Ramón</b>.</div>
       <p class="es">Voy a ser tu profesor de español. Vamos a dar la vuelta a España: <b>Madrid</b>, <b>Valencia</b>, <b>Barcelona</b>… y pronto Bilbao, Santiago y Sevilla. En cada ciudad te recibirá un vecino con su traje típico. Y ojo: les encanta pasar a verte más tarde para comprobar que no has olvidado nada.</p>
-      <p class="es">Parto de que tienes un <b>nivel B1</b>: lo básico (hola, gracias…) lo veremos una sola vez, como calentamiento.</p>
-      <details><summary>Voir la traduction</summary><p class="muted">Je serai ton professeur d’espagnol. Nous allons faire le tour de l’Espagne : Madrid, Valence, Barcelone… et bientôt Bilbao, Saint-Jacques et Séville. Dans chaque ville, un habitant en costume local t’accueillera. Et attention : ils adorent passer te voir plus tard pour vérifier que tu n’as rien oublié. Je pars du principe que tu as un niveau B1 : les bases (bonjour, merci…) ne passeront qu’une fois, en échauffement.</p></details></div></div>
+      <details><summary>Voir la traduction</summary><p class="muted">Je serai ton professeur d’espagnol. Nous allons faire le tour de l’Espagne : Madrid, Valence, Barcelone… et bientôt Bilbao, Saint-Jacques et Séville. Dans chaque ville, un habitant en costume local t’accueillera. Et attention : ils adorent passer te voir plus tard pour vérifier que tu n’as rien oublié.</p></details></div></div>
       <div class="wcast">${['lola', 'amparo', 'jordi', 'inaki', 'xose', 'rocio'].map((id) => `<div>${AV(id, 'happy', 78)}<b>${esc(CH[id].name)}</b><span>${esc(CH[id].city)}</span></div>`).join('')}</div>
-      <div class="wcards"><div><b>🗺️ Un voyage</b><span>une ville = des leçons B1, un niveau culture et un défi</span></div><div><b>🔁 Zéro rabâchage</b><span>les bases une seule fois, le reste quand il le faut</span></div><div><b>🏆 Des récompenses</b><span>XP, étoiles, tampons, cromos, badges</span></div></div>
+      <div class="wcards"><div><b>🗺️ Un voyage</b><span>une ville = des leçons, un niveau culture et un défi</span></div><div><b>🎭 Des personnages</b><span>Lola, Amparo, Jordi… et Don Ramón</span></div><div><b>🏆 Des récompenses</b><span>XP, étoiles, tampons, cromos, badges</span></div></div>
       <div class="mbtns center"><button class="btn primary big" data-act="zero">¡Vamos! Commencer à Madrid</button><button class="btn" data-act="placement">🧭 Test de niveau (facultatif)</button></div></div>`;
   }
   function vResult() {
@@ -948,6 +947,15 @@
     quitok: () => { closeModal(); SES = null; save(); go('path'); },
     check: () => check(),
     cont: () => next(),
+    // refaire tout de suite le même exercice (même forme), sans recompter les points
+    again: () => {
+      const ex = cur(); if (!SES.fb || SES.fb.ok) return;
+      const nx = Object.assign({}, ex, { retry: true, _L: null, _R: null });
+      if (!/^🔁/.test(nx.label || '')) nx.label = '🔁 ' + (nx.label || '');
+      if (nx.options) nx.options = shuffle(nx.options);
+      if (nx.bank) nx.bank = shuffle(nx.bank);
+      SES.queue.splice(SES.i + 1, 0, nx); next();
+    },
     dunno: () => { const ex = cur(); if (!SES.fb) applyResult(ex, { ok: false, sol: ex.sol || ex.answer, dunno: true }); },
     opt: (v) => { if (SES.fb) return; SES.sel = +v; renderArea(); renderFoot(); },
     tadd: (v) => { if (SES.fb) return; SES.pick.push(+v); renderArea(); renderFoot(); },

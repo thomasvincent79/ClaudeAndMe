@@ -1,7 +1,7 @@
 {
   "name": "¡Vamos! — espagnol",
   "short_name": "¡Vamos!",
-  "description": "Un voyage en Espagne pour apprendre l'espagnol (niveau B1), avec Don Ramón.",
+  "description": "Un voyage en Espagne pour apprendre l'espagnol, avec Don Ramón.",
   "lang": "fr",
   "start_url": "./index.html",
   "scope": "./",
