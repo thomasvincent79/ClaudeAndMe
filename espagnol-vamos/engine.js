@@ -91,12 +91,50 @@
   }
 
   /* ============================================================ état */
+  /* ---------- sauvegarde : ne jamais perdre la progression d'une version à l'autre
+     - SAVE_V : version du FORMAT de sauvegarde. Si le format change : SAVE_V + 1 et une entrée dans MIGRATIONS
+       (MIGRATIONS[n] transforme une sauvegarde v=n en v=n+1). Ne jamais retirer une migration.
+     - GAME_V : version du jeu (même valeur que VERSION dans sw.js). Au 1er lancement d'une nouvelle version,
+       une copie de la sauvegarde est gardée dans BACKUP_KEY (restaurable depuis Ajustes).
+     - ALIASES : identifiants renommés (ancien → nouveau) — à compléter quand le texte d'un élément est corrigé. */
+  const SAVE_V = 1;
+  const GAME_V = 'vamos-v3';
+  const BACKUP_KEY = 'vamos-espanol-backup';
+  const MIGRATIONS = {};
+  const ALIASES = {};
   function blank() {
-    return { v: 1, started: false, xp: 0, streak: 0, lastDay: null, day: { d: null, xp: 0 }, goal: 30, items: {}, levels: {}, units: {}, cards: {}, badges: {}, placement: null, sessions: 0, reviews: 0, acc: [] };
+    return { v: SAVE_V, started: false, xp: 0, streak: 0, lastDay: null, day: { d: null, xp: 0 }, goal: 30, items: {}, levels: {}, units: {}, cards: {}, badges: {}, placement: null, sessions: 0, reviews: 0, acc: [], lastExport: null };
   }
-  function load() { try { const o = JSON.parse(localStorage.getItem(KEY)); if (o && o.v === 1) return Object.assign(blank(), o); } catch (e) { /* stockage indisponible */ } return blank(); }
+  // sauvegarde (même ancienne, ou exportée d'une autre version) → état utilisable ; null si ce n'est pas une sauvegarde ¡Vamos!
+  function upgrade(o) {
+    if (!o || typeof o !== 'object' || typeof o.items !== 'object' || o.items === null) return null;
+    let v = Number(o.v) || 1;
+    while (v < SAVE_V) { if (MIGRATIONS[v]) o = MIGRATIONS[v](o); v++; }
+    ['items', 'levels', 'units', 'cards'].forEach((k) => {
+      const m = o[k]; if (!m || typeof m !== 'object') return;
+      Object.keys(ALIASES).forEach((old) => { if (m[old] !== undefined) { if (m[ALIASES[old]] === undefined) m[ALIASES[old]] = m[old]; delete m[old]; } });
+    });
+    // une sauvegarde plus récente que ce code garde sa version et ses champs inconnus (rien n'est écrasé)
+    return Object.assign(blank(), o, { v: Math.max(v, Number(o.v) || 1) });
+  }
+  function backup(raw, why) { try { localStorage.setItem(BACKUP_KEY, JSON.stringify({ date: Date.now(), why, data: raw })); } catch (e) { /* stockage indisponible */ } }
+  function readBackup() { try { const b = JSON.parse(localStorage.getItem(BACKUP_KEY)); return b && b.data ? b : null; } catch (e) { return null; } }
+  function load() {
+    let raw = null;
+    try { raw = localStorage.getItem(KEY); } catch (e) { return blank(); }
+    if (!raw) return blank();
+    let o = null; try { o = JSON.parse(raw); } catch (e) { /* illisible */ }
+    const s = upgrade(o);
+    if (!s) { backup(raw, 'sauvegarde illisible'); return blank(); } // on garde le texte brut au lieu de l'écraser
+    if (o._g !== GAME_V) backup(raw, 'avant la mise à jour ' + GAME_V);
+    s._g = GAME_V;
+    return s;
+  }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* stockage indisponible */ } }
   let S = load();
+  save();
+  // demande au navigateur de ne jamais vider ce stockage tout seul (manque de place, etc.)
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persisted().then((p) => p || navigator.storage.persist()).catch(() => {}); } catch (e) { /* non supporté */ }
   const lv = (id) => S.levels[id] || (S.levels[id] = { ok: 0, tot: 0 });
   const un = (id) => S.units[id] || (S.units[id] = {});
 
@@ -776,6 +814,7 @@
     let h = `<div class="hello"><div class="prof">${AV('prof', mood, 96)}</div><div class="hb"><div class="hname">Don Ramón <span>· ton professeur</span></div><div class="hsay">${esc(say)}</div>
       <div class="hbtns">${!S.placement ? '<button class="btn small" data-act="placement">🧭 Test de niveau</button>' : ''}${due.length ? `<button class="btn small go" data-act="review">🔁 Réviser (${due.length})</button>` : ''}</div>
       <div class="rank"><span class="rk">Rang</span> <b class="es">${r[1]}</b> <span class="muted small">${r[2]}</span>${nx ? `<div class="rkbar"><i style="width:${Math.round(((S.xp - r[0]) / (nx[0] - r[0])) * 100)}%"></i></div><span class="muted small">${nx[0] - S.xp} XP → ${nx[1]}</span>` : ''}</div></div></div>`;
+    if (S.sessions >= 3 && (!S.lastExport || Date.now() - S.lastExport > 30 * DAY)) h += `<div class="callout"><span>💾 ${S.lastExport ? 'Dernier export il y a plus d’un mois.' : 'Pense à exporter ta progression : c’est ta copie de sécurité.'}</span><button class="btn small" data-act="export">Exporter</button></div>`;
     h += `<div class="mapcard">${mapSVG(pos, SELU)}<div class="maphint">Touche une ville pour voir son étape · les villes grisées arrivent bientôt</div></div>`;
     const u = UNITS[SELU], ui = SELU, open = unitOpen(ui), us = S.units[u.id] || {}, g = CH[u.guide];
     h += `<section class="unit ${open ? '' : 'locked'}" id="unitsec" style="--uc:${u.color};--ucd:${u.dark}">
@@ -878,8 +917,10 @@
   function vSettings() {
     V().innerHTML = `<h1 class="es">Ajustes</h1>
       <div class="set"><h2>Objectif quotidien</h2><div class="seg">${[20, 30, 50].map((g) => `<button class="${S.goal === g ? 'on' : ''}" data-act="goal" data-v="${g}">${g} XP${g === 20 ? ' · tranquille' : g === 30 ? ' · régulier' : ' · intensif'}</button>`).join('')}</div></div>
-      <div class="set"><h2>Sauvegarde</h2><p class="muted">Ta progression est enregistrée dans ce navigateur. Exporte-la de temps en temps (ou pour la transférer sur un autre PC).</p>
-        <div class="mbtns"><button class="btn" data-act="export">⬇️ Exporter ma progression</button><button class="btn" data-act="import">⬆️ Importer</button><input type="file" id="impf" accept=".json,application/json" hidden></div></div>
+      <div class="set"><h2>Sauvegarde</h2><p class="muted">Ta progression est enregistrée sur cet appareil et conservée lors des mises à jour du jeu. Exporte-la de temps en temps : c’est ta copie de sécurité, et le moyen de la passer d’un appareil à l’autre.</p>
+        <p class="small">Dernier export : <b>${S.lastExport ? fmtDate(S.lastExport) : 'jamais'}</b></p>
+        <div class="mbtns"><button class="btn" data-act="export">⬇️ Exporter ma progression</button><button class="btn" data-act="import">⬆️ Importer</button><input type="file" id="impf" hidden></div>
+        ${readBackup() ? `<p class="muted small" style="margin-top:12px">Copie de secours automatique du ${fmtShort(readBackup().date)} (${esc(readBackup().why || '')}).</p><button class="btn small" data-act="restore">↩️ Restaurer cette copie</button>` : ''}</div>
       <div class="set"><h2>Test de niveau</h2><p class="muted">${S.placement ? 'Dernier test : ' + fmtShort(S.placement.date) + ' — ' + esc((C.levelsText.find((x) => x.t === S.placement.tier) || {}).n || '') : 'Pas encore passé.'}</p><button class="btn" data-act="placement">🧭 ${S.placement ? 'Refaire' : 'Passer'} le test</button></div>
       <div class="set"><h2>Comment ça marche ?</h2>
         <ul><li><b>Les révisions</b> : chaque mot, phrase ou règle a sa propre échéance de révision. Une séance mélange des éléments <i>nouveaux</i> et seulement ceux qui arrivent à échéance.</li>
@@ -936,13 +977,21 @@
     close: () => closeModal(),
     chest: () => { const c = CARDS[RES.chest]; $('#chest').innerHTML = `<div class="muted">Cromo dorado !</div><button class="cromo gold pop" style="--uc:${c.unit.color}" data-act="card" data-v="${c.id}">${cromoInner(c, false)}</button>`; },
     export: () => {
+      S.lastExport = Date.now(); save();
+      if (VIEW !== 'session') setTimeout(render, 600);
       const blob = new Blob([JSON.stringify(S, null, 1)], { type: 'application/json' });
       const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'vamos-progression-' + today() + '.json';
       document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
     },
     import: () => $('#impf').click(),
     reset: () => openModal(`<h2>Tout effacer ?</h2><p>XP, niveaux, cromos et révisions seront supprimés. Pense à exporter avant si tu veux garder une copie.</p><div class="mbtns"><button class="btn stop" data-act="resetok">Oui, tout effacer</button><button class="btn" data-act="close">Annuler</button></div>`),
-    resetok: () => { S = blank(); save(); closeModal(); go('path'); },
+    resetok: () => { backup(JSON.stringify(S), 'avant « tout effacer »'); S = blank(); S._g = GAME_V; save(); closeModal(); go('path'); },
+    restore: () => openModal(`<h2>Restaurer la copie de secours ?</h2><p>La progression actuelle sera remplacée par celle du ${fmtShort(readBackup().date)}. (La progression actuelle deviendra à son tour la copie de secours.)</p><div class="mbtns"><button class="btn primary" data-act="restoreok">Restaurer</button><button class="btn" data-act="close">Annuler</button></div>`),
+    restoreok: () => {
+      const b = readBackup(); let o = null; try { o = JSON.parse(b.data); } catch (e) { /* illisible */ }
+      const s2 = upgrade(o); if (!s2) { closeModal(); return toast('Copie de secours illisible.'); }
+      backup(JSON.stringify(S), 'avant restauration'); S = s2; S._g = GAME_V; save(); closeModal(); toast('Progression restaurée ✔'); go('path');
+    },
     quit: () => openModal(`<h2>Quitter la séance ?</h2><p>Les réponses déjà données sont enregistrées.</p><div class="mbtns"><button class="btn stop" data-act="quitok">Quitter</button><button class="btn" data-act="close">Continuer la séance</button></div>`),
     quitok: () => { closeModal(); SES = null; save(); go('path'); },
     check: () => check(),
@@ -974,8 +1023,12 @@
     if (e.target.id !== 'impf' || !e.target.files[0]) return;
     const fr = new FileReader();
     fr.onload = () => {
-      try { const o = JSON.parse(fr.result); if (!o || o.v !== 1 || typeof o.items !== 'object') throw new Error('format'); S = Object.assign(blank(), o); save(); toast('Progression importée ✔'); go('path'); }
+      try {
+        const s2 = upgrade(JSON.parse(fr.result)); if (!s2) throw new Error('format');
+        backup(JSON.stringify(S), 'avant import'); S = s2; S._g = GAME_V; save(); toast('Progression importée ✔'); go('path');
+      }
       catch (err) { toast('Fichier invalide : ce n’est pas une sauvegarde ¡Vamos!'); }
+      e.target.value = '';
     };
     fr.readAsText(e.target.files[0]);
   });
@@ -988,6 +1041,6 @@
   });
 
   // exposé pour le débogage dans la console
-  window.VAMOS = { get state() { return S; }, get session() { return SES; }, ITEMS, LEVELS, LAD, numEs, genT, gradeText, build, buildStep, buildPQ };
+  window.VAMOS = { get state() { return S; }, upgrade, SAVE_V, GAME_V, ALIASES, MIGRATIONS, get session() { return SES; }, ITEMS, LEVELS, LAD, numEs, genT, gradeText, build, buildStep, buildPQ };
   render();
 })();
